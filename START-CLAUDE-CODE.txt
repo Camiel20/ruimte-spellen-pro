@@ -1,0 +1,37 @@
+START-BERICHT VOOR CLAUDE CODE
+==============================
+
+Kopieer en plak het onderstaande bericht in Claude Code, terwijl je in de
+projectmap `ruimte-spellen-pro` zit (open Claude Code in die map).
+
+------------------------------------------------------------------------
+
+Hoi! Dit is een bestaand spelletjes-project ("Ruimte Spellen") dat ik
+samen met Claude heb gebouwd: educatieve webspellen voor mijn zoontje,
+gemaakt met Phaser 3 en Three.js, in het Nederlands.
+
+Lees eerst het bestand OVERDRACHT-CLAUDE-CODE.md helemaal door — daarin
+staat de complete architectuur, de conventies en de bekende valkuilen.
+Lees daarna kort de relevante scene in src/scenes/ voordat je iets wijzigt.
+
+Belangrijke regels:
+- Alles in het Nederlands (teksten, commentaar, spelnamen).
+- Draai `npm run build` na elke wijziging en controleer dat het zonder
+  fouten bouwt. Ik test zelf visueel met `npm run dev`.
+- Breek niets wat al werkt; de spellen zijn in gebruik.
+- Three.js zit lokaal in src/vendor/ — laat dat zo.
+
+Waar ik aan wil werken:
+[BESCHRIJF HIER WAT JE WILT — bijvoorbeeld:]
+- Het rijspel "Stad Rijden" (src/scenes/CityScene.js) uitbouwen met een
+  doel: pakketjes ophalen en afleveren, met een pijl die de weg wijst en
+  een teller. Zie sectie 5 van het overdrachtsdocument voor ideeën.
+
+Begin met een korte samenvatting van wat je in het project ziet en je plan,
+voordat je begint met code schrijven.
+
+------------------------------------------------------------------------
+
+TIP: vervang het stuk tussen [haakjes] door wat je op dat moment wilt doen.
+Je kunt Claude Code voor van alles vragen: nieuwe spellen, verbeteringen,
+bugs oplossen. Het kan zelf de bestanden bewerken en de build draaien.

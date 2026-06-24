@@ -1,0 +1,22 @@
+PLAATJES EN GELUIDEN MAP
+========================
+
+Leg hier je plaatjes (.png) en geluiden (.mp3) neer.
+
+Voorbeeld bestanden die het spel kan gebruiken:
+  balloon.png       - een mooie ballon-tekening
+  astronaut.png     - de astronaut
+  achtergrond.png   - een sfeervolle ruimte-achtergrond
+  muziek.mp3        - vrolijke achtergrondmuziek
+
+Laad ze in via src/scenes/BootScene.js (zie de uitleg daar).
+
+WAAR HAAL JE PLAATJES VANDAAN?
+- Zelf tekenen of laten tekenen
+- AI-beeldgeneratoren (vraag om "transparante PNG, game asset stijl")
+- Gratis game-art sites zoals kenney.nl (volledig gratis, mag je
+  vrij gebruiken) of opengameart.org
+- Voor geluid: freesound.org of pixabay.com/sound-effects
+
+TIP: gebruik PNG met transparante achtergrond voor figuren zoals
+de ballon en astronaut, zodat ze netjes over de achtergrond passen.

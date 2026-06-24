@@ -1,0 +1,6 @@
+node_modules
+dist
+.DS_Store
+.claude
+# Oudere dubbele kopie van het project — niet meepubliceren
+ruimte-spellen-pro/
