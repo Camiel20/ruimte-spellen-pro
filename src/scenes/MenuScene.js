@@ -19,60 +19,62 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   buildBackground(width, height) {
+    // Heldere Numberblocks-lucht (blauw naar gras-groen)
     const bg = this.add.graphics().setDepth(0);
-    bg.fillGradientStyle(0x04081a, 0x04081a, 0x0a1228, 0x0a1228, 1);
+    bg.fillGradientStyle(0x8fe1ff, 0x8fe1ff, 0xd7f5a8, 0xd7f5a8, 1);
     bg.fillRect(0, 0, width, height);
 
-    const neb = this.add.graphics().setDepth(1);
-    [
-      [width * 0.12, height * 0.15, 200, 0x4c1d95, 0.55],
-      [width * 0.88, height * 0.32, 230, 0x1e3a8a, 0.45],
-      [width * 0.55, height * 0.75, 280, 0x7c1d54, 0.4],
-      [width * 0.05, height * 0.68, 160, 0x064e3b, 0.35],
-    ].forEach(([x, y, r, c, a]) => {
-      for (let i = 7; i > 0; i--) {
-        neb.fillStyle(c, a * (i / 7) * 0.2);
-        neb.fillCircle(x, y, r * (i / 7));
-      }
+    // Zonnetje
+    const sun = this.add.graphics().setDepth(1);
+    sun.fillStyle(0xfff3a3, 0.9);
+    sun.fillCircle(width - 56, 150, 40);
+    sun.fillStyle(0xffe66d, 0.5);
+    sun.fillCircle(width - 56, 150, 54);
+
+    // Wolkjes
+    [[70, 200, 1], [330, 150, 1.25], [120, 470, 0.9], [380, 560, 1.1], [220, 680, 1]].forEach(([x, y, s]) => {
+      const cl = this.add.graphics().setDepth(1);
+      cl.fillStyle(0xffffff, 0.8);
+      cl.fillCircle(x, y, 22 * s);
+      cl.fillCircle(x + 24 * s, y + 6 * s, 18 * s);
+      cl.fillCircle(x - 22 * s, y + 6 * s, 16 * s);
+      cl.fillRoundedRect(x - 30 * s, y, 60 * s, 16 * s, 8);
+      this.tweens.add({ targets: cl, x: `+=${18 * s}`, duration: 6000 + 1500 * s, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     });
 
-    // Sterren in 3 lagen
-    [[70, 0.35, 0.5], [40, 0.7, 1.0], [20, 1.0, 1.8]].forEach(([count, alpha, size]) => {
-      for (let i = 0; i < count; i++) {
-        const s = this.add.image(
-          Phaser.Math.Between(0, width),
-          Phaser.Math.Between(0, height),
-          'star'
-        ).setAlpha(Phaser.Math.FloatBetween(alpha * 0.3, alpha)).setScale(size).setDepth(2);
-        this.tweens.add({
-          targets: s, alpha: Phaser.Math.FloatBetween(0.05, alpha * 0.25),
-          duration: Phaser.Math.Between(900, 3000),
-          delay: Phaser.Math.Between(0, 2500),
-          yoyo: true, repeat: -1,
-        });
-      }
-    });
-
-    // Zwevende achtergrond-planeten
-    [
-      { t: '🪐', x: width * 0.88, y: height * 0.09, sz: 50, dy: 16, dur: 4200 },
-      { t: '🌙', x: width * 0.1,  y: height * 0.16, sz: 36, dy: 12, dur: 3600 },
-      { t: '⭐', x: width * 0.94, y: height * 0.70, sz: 30, dy: 10, dur: 3000 },
-      { t: '☄️', x: width * 0.07, y: height * 0.63, sz: 28, dy: 14, dur: 3900 },
-    ].forEach(({ t, x, y, sz, dy, dur }) => {
-      const p = this.add.text(x, y, t, { fontSize: `${sz}px` })
-        .setOrigin(0.5).setDepth(2).setAlpha(0.5);
-      this.tweens.add({ targets: p, y: y - dy, duration: dur, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-      this.tweens.add({ targets: p, angle: 360, duration: dur * 5, repeat: -1 });
+    // Zwevende Numberblocks-kubusjes (1..9) met gezichtje
+    const SIG = [0xe8402c, 0xf08a24, 0xf6c624, 0x57b947, 0x38b6cf, 0xec6aa9, 0x9b6dd6, 0x6b7b8a, 0x4f63c9];
+    const spots = [
+      [40, 320, 30], [width - 38, 300, 26], [60, 600, 24],
+      [width - 46, 520, 30], [width - 40, 680, 22], [44, 720, 20],
+    ];
+    spots.forEach(([x, y, s], i) => {
+      const col = SIG[i % SIG.length];
+      const cube = this.add.container(x, y).setDepth(2).setAlpha(0.85);
+      const g = this.add.graphics();
+      g.fillStyle(col, 1);
+      g.fillRoundedRect(-s / 2, -s / 2, s, s, 5);
+      g.fillStyle(0xffffff, 0.3);
+      g.fillRoundedRect(-s / 2 + 3, -s / 2 + 2, s - 6, s * 0.32, 4);
+      g.lineStyle(2.5, 0x1f2d3a, 1);
+      g.strokeRoundedRect(-s / 2, -s / 2, s, s, 5);
+      const e = s * 0.16;
+      [-e, e].forEach((dx) => {
+        cube.add(this.add.circle(dx, -s * 0.05, s * 0.1, 0xffffff).setStrokeStyle(1.5, 0x1f2d3a));
+        cube.add(this.add.circle(dx, -s * 0.03, s * 0.045, 0x1f2d3a));
+      });
+      cube.addAt(g, 0);
+      this.tweens.add({ targets: cube, y: y - Phaser.Math.Between(14, 26), duration: Phaser.Math.Between(2600, 4200), yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      this.tweens.add({ targets: cube, angle: Phaser.Math.Between(-14, 14), duration: Phaser.Math.Between(3000, 5000), yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     });
   }
 
   buildHeader(width) {
-    const title = this.add.text(width / 2, 36, '🚀 RUIMTE SPELLEN', {
+    const title = this.add.text(width / 2, 36, '🔢 RUIMTE SPELLEN', {
       fontFamily: 'Arial Black, Arial, sans-serif',
       fontSize: '30px', fontStyle: 'bold', color: '#ffffff',
-    }).setOrigin(0.5).setDepth(10);
-    title.setShadow(0, 0, '#a855f7', 22, true, true);
+    }).setOrigin(0.5).setDepth(10).setStroke('#1f2d3a', 7);
+    title.setShadow(2, 3, '#1f2d3a', 4, true, true);
     this.tweens.addCounter({
       from: 0, to: 360, duration: 5000, repeat: -1,
       onUpdate: (tw) => title.setTint(
@@ -83,8 +85,8 @@ export default class MenuScene extends Phaser.Scene {
 
     const childName = getSetting('childName') || 'Adrian';
     const nameTxt = this.add.text(width / 2, 72, `💖 ${childName} 💖`, {
-      fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#f9a8d4',
-    }).setOrigin(0.5).setDepth(10);
+      fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5).setDepth(10).setStroke('#db2777', 5);
     this.tweens.add({ targets: nameTxt, alpha: 0.5, duration: 1600, yoyo: true, repeat: -1 });
 
     const stars = getStars();
@@ -124,54 +126,41 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   makeGameTile(x, y, w, h, { icon, name, color, go }, index) {
-    const topH = Math.round(h * 0.56);
-    const botH = h - topH;
-    const r = 16;
+    const r = 18;
 
     const container = this.add.container(x, y + 28).setDepth(5).setAlpha(0);
 
-    // Pulserende gloed-ring buiten de kaart
+    // Numberblocks-kubus: felle kleur, glans bovenin, dikke donkere rand
+    const body = this.add.graphics();
+    body.fillStyle(color, 1);
+    body.fillRoundedRect(-w / 2, -h / 2, w, h, r);
+    body.fillStyle(0xffffff, 0.28); // glans
+    body.fillRoundedRect(-w / 2 + 6, -h / 2 + 5, w - 12, h * 0.32, r - 4);
+    body.lineStyle(4, 0x1f2d3a, 1); // dikke donkere rand
+    body.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+
+    // Groot emoji-icoon (in de bovenste helft)
+    const iconTxt = this.add.text(0, -h * 0.16, icon, {
+      fontSize: '46px',
+    }).setOrigin(0.5);
+
+    // Naam op een donker pilletje, zodat het op elke kleur leesbaar is
+    const pillW = w - 26, pillH = 30, pillY = h / 2 - 26;
+    const pill = this.add.graphics();
+    pill.fillStyle(0x12203a, 0.88);
+    pill.fillRoundedRect(-pillW / 2, pillY - pillH / 2, pillW, pillH, 12);
+    const nameTxt = this.add.text(0, pillY, name, {
+      fontFamily: 'Arial Black, Arial', fontSize: '15px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5);
+
+    // Onzichtbare gloed-ring (voor de pulse-animatie hieronder)
     const glowRing = this.add.graphics();
-    glowRing.lineStyle(7, color, 0.6);
-    glowRing.strokeRoundedRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, r + 4);
-    glowRing.fillStyle(color, 0.08);
-    glowRing.fillRoundedRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, r + 4);
-
-    // Gekleurde bovenkant (icon-zone)
-    const topBg = this.add.graphics();
-    topBg.fillStyle(color, 0.3);
-    topBg.fillRoundedRect(-w / 2, -h / 2, w, topH + r, { tl: r, tr: r, bl: 0, br: 0 });
-    topBg.lineStyle(1.5, color, 0.55);
-    topBg.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
-
-    // Donkere onderkant (naam-zone)
-    const botBg = this.add.graphics();
-    botBg.fillStyle(0x060c22, 0.92);
-    botBg.fillRoundedRect(-w / 2, -h / 2 + topH, w, botH, { tl: 0, tr: 0, bl: r, br: r });
-
-    // Glans-highlight bovenin
-    const shine = this.add.graphics();
-    shine.fillStyle(0xffffff, 0.08);
-    shine.fillRoundedRect(-w / 2 + 5, -h / 2 + 5, w - 10, topH * 0.4, { tl: r - 2, tr: r - 2, bl: 0, br: 0 });
-
-    // Groot emoji-icoon
-    const iconTxt = this.add.text(0, -h / 2 + topH * 0.5, icon, {
-      fontSize: '44px',
-    }).setOrigin(0.5);
-
-    // Spelnaam
-    const nameTxt = this.add.text(0, -h / 2 + topH + botH * 0.45, name, {
-      fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#ffffff',
-    }).setOrigin(0.5);
-
-    // Kleur-accent-streepje onderaan
-    const accent = this.add.graphics();
-    accent.fillStyle(color, 0.8);
-    accent.fillRoundedRect(-w / 2 + 22, h / 2 - 6, w - 44, 3, 2);
+    glowRing.lineStyle(5, 0xffffff, 0.5);
+    glowRing.strokeRoundedRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6, r + 3);
 
     const hit = this.add.rectangle(0, 0, w, h, 0, 0).setInteractive({ useHandCursor: true });
 
-    container.add([glowRing, topBg, botBg, shine, iconTxt, nameTxt, accent, hit]);
+    container.add([glowRing, body, iconTxt, pill, nameTxt, hit]);
 
     // Inschuif-animatie
     this.tweens.add({
@@ -190,7 +179,7 @@ export default class MenuScene extends Phaser.Scene {
     // Icoon zachtjes wippen
     this.tweens.add({
       targets: iconTxt,
-      y: -h / 2 + topH * 0.5 - 5,
+      y: -h * 0.16 - 5,
       duration: 1500 + index * 80,
       yoyo: true, repeat: -1, ease: 'Sine.inOut',
     });
