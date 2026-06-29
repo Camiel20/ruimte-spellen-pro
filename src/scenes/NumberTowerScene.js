@@ -21,21 +21,31 @@ const LEVELS = [
   { i: '0️⃣', n: 'Nul-meester',  mode: 'add', gen: 'round',    hundreds: true,  rounds: 4, stars: 8 },
 ];
 
-// Blok-soorten (plaatswaarde). x wordt per level gezet.
+// Blok-soorten (plaatswaarde) in Numberblocks-signatuurkleuren.
+// Eenheden = rood (zoals "One"), Tientallen = blauw (zoals "Five"),
+// Honderden = geel (zoals "Three"). x wordt per level gezet.
 function placeDefs() {
   return {
-    h: { key: 'h', label: 'Honderden', color: 0xfbbf24, val: 100, blab: '100', w: 96 },
-    t: { key: 't', label: 'Tientallen', color: 0x34d399, val: 10, blab: '10', w: 84 },
-    o: { key: 'o', label: 'Eenheden', color: 0x60a5fa, val: 1, blab: '1', w: 70 },
+    h: { key: 'h', label: 'Honderden', color: 0xf6c624, val: 100, blab: '100', w: 82 },
+    t: { key: 't', label: 'Tientallen', color: 0x38b6cf, val: 10, blab: '10', w: 70 },
+    o: { key: 'o', label: 'Eenheden', color: 0xe8402c, val: 1, blab: '1', w: 58 },
   };
+}
+
+// Numberblocks-signatuurkleuren 1..10 (voor het grote getal als figuurtje).
+const SIG = ['#e8402c', '#f08a24', '#f6c624', '#57b947', '#38b6cf',
+  '#ec6aa9', '#9b6dd6', '#6b7b8a', '#4f63c9', '#e34da0'];
+function sigColor(n) {
+  if (n <= 0) return '#cbd5e1';
+  return SIG[(n - 1) % 10];
 }
 
 export default class NumberTowerScene extends Phaser.Scene {
   constructor() { super('NumberTower'); }
 
   create() {
-    const { width } = this.scale;
-    this.addStars();
+    const { width, height } = this.scale;
+    this.buildBackground(width, height);
 
     this.level = 1;
     this.xp = 0;
@@ -43,44 +53,102 @@ export default class NumberTowerScene extends Phaser.Scene {
     this.counts = { h: 0, t: 0, o: 0 };
     this.blocks = [];
     this.boardItems = [];
-    this.bh = 24;
-    this.gap = 4;
-    this.baseY = 558;
+    this.bh = 30;
+    this.gap = 3;
+    this.baseY = 560;
+
+    // Vrolijke voorlees-stem klaarzetten (kiest een NL-stem zodra die laadt)
+    this.nlVoice = null;
+    this.loadVoice();
+
+    // Donker HUD-paneel zodat de tekst goed leesbaar blijft op de
+    // heldere Numberblocks-achtergrond.
+    const panel = this.add.graphics().setDepth(0);
+    panel.fillStyle(0x12203a, 0.66);
+    panel.fillRoundedRect(8, 6, width - 16, 208, 18);
+    panel.lineStyle(2, 0xffffff, 0.18);
+    panel.strokeRoundedRect(8, 6, width - 16, 208, 18);
 
     this.backBtn();
 
-    this.add.text(width / 2, 26, '🧱 Getallen-Toren', {
+    this.add.text(width / 2, 26, '🔢 Getallen-Toren', {
       fontFamily: 'Arial Black, Arial', fontSize: '24px', fontStyle: 'bold', color: '#ffffff',
-    }).setOrigin(0.5).setShadow(0, 0, '#34d399', 14, true, true);
+    }).setOrigin(0.5).setDepth(6).setShadow(0, 0, '#38b6cf', 14, true, true);
 
-    this.levelText = this.add.text(width / 2, 54, '', {
-      fontFamily: 'Arial', fontSize: '15px', color: '#94a3b8',
-    }).setOrigin(0.5);
+    this.levelText = this.add.text(width / 2, 52, '', {
+      fontFamily: 'Arial', fontSize: '15px', color: '#cbd5e1',
+    }).setOrigin(0.5).setDepth(6);
 
-    this.promptText = this.add.text(width / 2, 92, '', {
-      fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#c4b5fd',
+    this.promptText = this.add.text(width / 2, 80, '', {
+      fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#fde68a',
       align: 'center', wordWrap: { width: width - 40 },
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(6);
 
-    // Het grote, levende getal
-    this.totalText = this.add.text(width / 2, 142, '0', {
-      fontFamily: 'Arial Black, Arial', fontSize: '46px', fontStyle: 'bold', color: '#ffffff',
-    }).setOrigin(0.5);
+    // Het grote, levende getal als Numberblocks-figuurtje: googly eyes
+    // boven het getal, dat meekleurt met zijn signatuurkleur.
+    this.totalEyes = this.add.container(width / 2, 122).setDepth(7);
+    [-22, 22].forEach((dx) => {
+      const wsc = this.add.circle(dx, 0, 9, 0xffffff).setStrokeStyle(2, 0x16202b);
+      const pup = this.add.circle(dx, 2, 4, 0x16202b);
+      this.totalEyes.add([wsc, pup]);
+    });
+    this.tweens.add({
+      targets: this.totalEyes, scaleY: 0.1, duration: 90,
+      yoyo: true, repeat: -1, repeatDelay: 2600, ease: 'Sine.inOut',
+    });
 
-    this.breakdownText = this.add.text(width / 2, 182, '', {
-      fontFamily: 'Arial', fontSize: '14px', color: '#94a3b8',
-    }).setOrigin(0.5);
+    this.totalText = this.add.text(width / 2, 152, '0', {
+      fontFamily: 'Arial Black, Arial', fontSize: '46px', fontStyle: 'bold', color: '#cbd5e1',
+    }).setOrigin(0.5).setDepth(6).setStroke('#16202b', 7);
+
+    this.breakdownText = this.add.text(width / 2, 190, '', {
+      fontFamily: 'Arial', fontSize: '14px', color: '#cbd5e1',
+    }).setOrigin(0.5).setDepth(6);
 
     // Voorlees-knop
-    this.speaker = this.add.text(width - 18, 142, '🔊', { fontSize: '28px' })
+    this.speaker = this.add.text(width - 18, 150, '🔊', { fontSize: '28px' })
       .setOrigin(1, 0.5).setDepth(20).setInteractive({ useHandCursor: true });
     this.speaker.on('pointerdown', () => this.sayCurrent());
 
-    this.add.text(width / 2, 712, 'Tik op een blok om het weg te halen ↩', {
-      fontFamily: 'Arial', fontSize: '12px', color: '#64748b',
-    }).setOrigin(0.5);
+    this.add.text(width / 2, 712, 'Tik op een blokje om het weg te halen ↩', {
+      fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: '#1f2d3a',
+    }).setOrigin(0.5).setDepth(6);
 
     this.startLevel();
+  }
+
+  // Heldere, vrolijke Numberblocks-achtergrond met wolkjes en
+  // zwevende gekleurde kubussen.
+  buildBackground(width, height) {
+    const bg = this.add.graphics().setDepth(-5);
+    bg.fillGradientStyle(0x8fe1ff, 0x8fe1ff, 0xd7f5a8, 0xd7f5a8, 1);
+    bg.fillRect(0, 0, width, height);
+
+    [[80, 250, 1], [380, 330, 1.3], [120, 560, 0.9], [410, 600, 1.05]].forEach(([x, y, s]) => {
+      const cl = this.add.graphics().setDepth(-4);
+      cl.fillStyle(0xffffff, 0.75);
+      cl.fillCircle(x, y, 22 * s);
+      cl.fillCircle(x + 24 * s, y + 6 * s, 18 * s);
+      cl.fillCircle(x - 22 * s, y + 6 * s, 16 * s);
+      cl.fillRoundedRect(x - 30 * s, y, 60 * s, 16 * s, 8);
+      this.tweens.add({ targets: cl, x: `+=${20 * s}`, duration: 6000 + 2000 * s, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    });
+
+    const cubeCols = [0xe8402c, 0xf08a24, 0xf6c624, 0x57b947, 0x38b6cf, 0xec6aa9, 0x9b6dd6];
+    for (let i = 0; i < 10; i++) {
+      const s = Phaser.Math.Between(16, 30);
+      const x = Phaser.Math.Between(24, width - 24);
+      const y = Phaser.Math.Between(230, height - 110);
+      const col = Phaser.Utils.Array.GetRandom(cubeCols);
+      const g = this.add.graphics().setDepth(-4).setAlpha(0.4);
+      g.fillStyle(col, 1);
+      g.fillRoundedRect(-s / 2, -s / 2, s, s, 5);
+      g.lineStyle(2, 0x1f2d3a, 0.55);
+      g.strokeRoundedRect(-s / 2, -s / 2, s, s, 5);
+      g.setPosition(x, y);
+      this.tweens.add({ targets: g, y: y - Phaser.Math.Between(15, 30), duration: Phaser.Math.Between(2500, 4500), yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      this.tweens.add({ targets: g, angle: Phaser.Math.Between(-20, 20), duration: Phaser.Math.Between(3000, 5000), yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    }
   }
 
   // --- Level opbouwen (kolommen + palet) ---
@@ -100,26 +168,30 @@ export default class NumberTowerScene extends Phaser.Scene {
     this.blocks = [];
 
     this.places.forEach((p) => {
-      // Grondplaat onder de kolom
+      // Grondplaat + vage kolom-baan zodat het stapelen duidelijk is
       const ground = this.add.graphics().setDepth(2);
-      ground.fillStyle(p.color, 0.85);
-      ground.fillRoundedRect(p.x - p.w / 2 - 8, this.baseY + 2, p.w + 16, 8, 4);
-      // Vage kolom-baan zodat het stapelen duidelijk is
-      ground.fillStyle(p.color, 0.05);
-      ground.fillRoundedRect(p.x - p.w / 2 - 4, 214, p.w + 8, this.baseY - 214 + 2, 8);
+      ground.fillStyle(0xffffff, 0.18);
+      ground.fillRoundedRect(p.x - p.w / 2 - 6, 222, p.w + 12, this.baseY - 222 + 12, 10);
+      ground.lineStyle(2, 0x1f2d3a, 0.18);
+      ground.strokeRoundedRect(p.x - p.w / 2 - 6, 222, p.w + 12, this.baseY - 222 + 12, 10);
+      ground.fillStyle(p.color, 1);
+      ground.fillRoundedRect(p.x - p.w / 2 - 8, this.baseY + 4, p.w + 16, 9, 4);
 
-      const lbl = this.add.text(p.x, this.baseY + 22, p.label, {
-        fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold',
-        color: '#' + p.color.toString(16).padStart(6, '0'),
-      }).setOrigin(0.5);
+      // Naam-label op een wit pilletje voor contrast op de heldere bg
+      const lblBg = this.add.graphics().setDepth(2);
+      lblBg.fillStyle(0x12203a, 0.8);
+      lblBg.fillRoundedRect(p.x - p.w / 2 - 6, this.baseY + 18, p.w + 12, 22, 11);
+      const lbl = this.add.text(p.x, this.baseY + 29, p.label, {
+        fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: '#ffffff',
+      }).setOrigin(0.5).setDepth(3);
 
-      p.cntText = this.add.text(p.x, this.baseY + 40, '', {
-        fontFamily: 'Arial', fontSize: '13px', color: '#cbd5e1',
-      }).setOrigin(0.5);
+      p.cntText = this.add.text(p.x, this.baseY + 50, '', {
+        fontFamily: 'Arial Black, Arial', fontSize: '14px', fontStyle: 'bold', color: '#1f2d3a',
+      }).setOrigin(0.5).setDepth(3);
 
       const btn = this.makePaletteBtn(p);
 
-      this.boardItems.push(ground, lbl, p.cntText, btn);
+      this.boardItems.push(ground, lblBg, lbl, p.cntText, btn);
     });
 
     this.updateHeader();
@@ -131,12 +203,14 @@ export default class NumberTowerScene extends Phaser.Scene {
     const w = this.places.length === 3 ? 108 : 130, h = 56;
     const c = this.add.container(p.x, y).setDepth(15);
     const bg = this.add.graphics();
-    bg.fillStyle(p.color, 0.92);
+    bg.fillStyle(p.color, 1);
     bg.fillRoundedRect(-w / 2, -h / 2, w, h, 14);
-    bg.lineStyle(2, 0xffffff, 0.25);
+    bg.fillStyle(0xffffff, 0.3); // glans
+    bg.fillRoundedRect(-w / 2 + 5, -h / 2 + 4, w - 10, h * 0.34, 9);
+    bg.lineStyle(3, 0x1f2d3a, 1); // dikke donkere rand (Numberblocks-stijl)
     bg.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
     const t = this.add.text(0, 0, `+${p.val}`, {
-      fontFamily: 'Arial Black, Arial', fontSize: '24px', fontStyle: 'bold', color: '#0b1020',
+      fontFamily: 'Arial Black, Arial', fontSize: '24px', fontStyle: 'bold', color: '#16202b',
     }).setOrigin(0.5);
     c.add([bg, t]);
     const hit = this.add.rectangle(0, 0, w, h, 0, 0).setInteractive({ useHandCursor: true });
@@ -234,7 +308,7 @@ export default class NumberTowerScene extends Phaser.Scene {
   ruilCelebrate() {
     const { width } = this.scale;
     SFX.levelup();
-    if (isSoundOn()) this.speak('ruilen!');
+    if (isSoundOn()) this.speak(`Ruilen! ${this.cheer()}`, { pitch: 1.8, rate: 1.05 });
     const banner = this.add.text(width / 2, 300, '🔁 RUILEN!', {
       fontFamily: 'Arial Black, Arial', fontSize: '42px', fontStyle: 'bold', color: '#fde047',
     }).setOrigin(0.5).setDepth(80).setShadow(0, 0, '#f59e0b', 18, true, true).setScale(0.5);
@@ -252,7 +326,9 @@ export default class NumberTowerScene extends Phaser.Scene {
       if (p.cntText) p.cntText.setText(count > 0 ? `×${count}` : '');
       for (let i = 0; i < count; i++) {
         const cy = this.baseY - i * (this.bh + this.gap) - this.bh / 2;
-        const blk = this.makeBlock(p.x, cy, p.w, this.bh, p.color, p.blab, p.key);
+        // Het bovenste blokje van de stapel krijgt een gezichtje,
+        // zodat de stapel een Numberblocks-figuurtje wordt.
+        const blk = this.makeBlock(p.x, cy, p.w, this.bh, p.color, p.blab, p.key, i === count - 1);
         this.blocks.push(blk);
         if (p.key === popKey && i === count - 1) {
           this.tweens.add({ targets: blk, scaleX: { from: 1.3, to: 1 }, scaleY: { from: 0.6, to: 1 }, duration: 220, ease: 'Back.easeOut' });
@@ -261,19 +337,45 @@ export default class NumberTowerScene extends Phaser.Scene {
     });
   }
 
-  makeBlock(cx, cy, w, h, color, label, key) {
+  // Numberblocks-kubus: felle kleur, glans, dikke donkere rand. Met
+  // googly eyes + lach op het bovenste blokje van de stapel.
+  makeBlock(cx, cy, w, h, color, label, key, withFace) {
+    const dark = 0x1f2d3a;
     const c = this.add.container(cx, cy).setDepth(6);
     const g = this.add.graphics();
-    g.fillStyle(color, 0.95);
-    g.fillRoundedRect(-w / 2, -h / 2, w, h, 6);
-    g.lineStyle(1.5, 0xffffff, 0.35);
-    g.strokeRoundedRect(-w / 2, -h / 2, w, h, 6);
-    g.fillStyle(0xffffff, 0.18);
-    g.fillRoundedRect(-w / 2 + 3, -h / 2 + 3, w - 6, h * 0.35, 4);
-    const t = this.add.text(0, 0, label, {
-      fontFamily: 'Arial Black, Arial', fontSize: '14px', fontStyle: 'bold', color: '#0b1020',
-    }).setOrigin(0.5);
-    c.add([g, t]);
+    g.fillStyle(color, 1);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, 7);
+    g.fillStyle(0xffffff, 0.3); // glans bovenin
+    g.fillRoundedRect(-w / 2 + 4, -h / 2 + 3, w - 8, h * 0.32, 5);
+    g.lineStyle(3, dark, 1); // dikke donkere rand
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, 7);
+    c.add(g);
+
+    if (withFace) {
+      const ex = Math.min(11, w * 0.18);
+      const ey = -h * 0.04;
+      [-ex, ex].forEach((dx) => {
+        const wsc = this.add.circle(dx, ey, 5.4, 0xffffff).setStrokeStyle(1.5, dark);
+        const pup = this.add.circle(dx, ey + 1, 2.5, dark);
+        c.add([wsc, pup]);
+      });
+      const smile = this.add.graphics();
+      smile.lineStyle(2, dark, 1);
+      smile.beginPath();
+      smile.arc(0, ey + 4, 5, 0.12 * Math.PI, 0.88 * Math.PI);
+      smile.strokePath();
+      c.add(smile);
+      const t = this.add.text(0, h * 0.30, label, {
+        fontFamily: 'Arial Black, Arial', fontSize: '10px', fontStyle: 'bold', color: '#16202b',
+      }).setOrigin(0.5);
+      c.add(t);
+    } else {
+      const t = this.add.text(0, 0, label, {
+        fontFamily: 'Arial Black, Arial', fontSize: '14px', fontStyle: 'bold', color: '#16202b',
+      }).setOrigin(0.5);
+      c.add(t);
+    }
+
     const hit = this.add.rectangle(0, 0, w, h, 0, 0).setInteractive({ useHandCursor: true });
     c.add(hit);
     hit.on('pointerdown', () => this.removeBlock(key));
@@ -298,9 +400,10 @@ export default class NumberTowerScene extends Phaser.Scene {
       this.success();
     } else if (total > this.target) {
       this.totalText.setColor('#f87171');
-      this.breakdownText.setText('Te veel! Haal een blok weg ↩');
+      this.breakdownText.setText('Te veel! Haal een blokje weg ↩');
     } else {
-      this.totalText.setColor('#ffffff');
+      // Het getal kleurt mee met zijn Numberblocks-signatuurkleur
+      this.totalText.setColor(sigColor(total));
     }
   }
 
@@ -308,7 +411,7 @@ export default class NumberTowerScene extends Phaser.Scene {
     this.locked = true;
     SFX.win();
     confettiBurst(this);
-    if (isSoundOn()) this.speak(this.words(this.target) + '! goed zo!');
+    if (isSoundOn()) this.speak(`${this.cheer()} ${this.words(this.target)}!`, { pitch: 1.7, rate: 1.02 });
     this.floatText('🎉 Goed!', this.scale.width / 2, 230, '#4ade80');
     this.xp++;
     this.updateHeader();
@@ -352,16 +455,41 @@ export default class NumberTowerScene extends Phaser.Scene {
     else this.speak(`${this.words(this.a)} plus ${this.words(this.b)}`);
   }
 
-  speak(text) {
+  speak(text, opts = {}) {
     try {
       const synth = window.speechSynthesis;
       if (!synth) return;
       synth.cancel();
       const u = new SpeechSynthesisUtterance(text);
       u.lang = 'nl-NL';
-      u.rate = 0.9;
+      if (this.nlVoice) u.voice = this.nlVoice;
+      // Hogere toonhoogte = vrolijker/kinderlijker (Numberblocks-sfeer)
+      u.pitch = opts.pitch != null ? opts.pitch : 1.5;
+      u.rate = opts.rate != null ? opts.rate : 1.0;
+      u.volume = 1;
       synth.speak(u);
     } catch (e) {}
+  }
+
+  // Kies een Nederlandse stem, het liefst een vrolijke/vrouwelijke
+  loadVoice() {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) return;
+      const pick = () => {
+        const nl = synth.getVoices().filter((v) => /nl(-|_)?/i.test(v.lang));
+        if (!nl.length) return;
+        const fav = nl.find((v) => /female|vrouw|fenna|lotte|saskia|ellen|google/i.test(v.name));
+        this.nlVoice = fav || nl[0];
+      };
+      pick();
+      synth.onvoiceschanged = pick;
+    } catch (e) {}
+  }
+
+  // Willekeurig vrolijk kreetje
+  cheer() {
+    return Phaser.Utils.Array.GetRandom(['Joepie!', 'Hoera!', 'Goed zo!', 'Super!', 'Top!', 'Wauw!', 'Yes!']);
   }
 
   // Getal -> Nederlandse woorden (0..9999), voor de voorlees-stem
@@ -388,20 +516,11 @@ export default class NumberTowerScene extends Phaser.Scene {
     return r === 0 ? tw : tw + under1000(r);
   }
 
-  // --- Gedeelde helpers (zelfde stijl als andere scenes) ---
-  addStars() {
-    const { width, height } = this.scale;
-    for (let i = 0; i < 50; i++) {
-      const s = this.add.image(Phaser.Math.Between(0, width), Phaser.Math.Between(0, height), 'star')
-        .setAlpha(Phaser.Math.FloatBetween(0.2, 0.7)).setDepth(-1);
-      this.tweens.add({ targets: s, alpha: 0.1, duration: Phaser.Math.Between(1500, 3000), yoyo: true, repeat: -1 });
-    }
-  }
-
+  // --- Gedeelde helpers ---
   backBtn() {
     const b = this.add.text(16, 16, '⬅ Terug', {
-      fontFamily: 'Arial', fontSize: '16px', color: '#94a3b8',
-      backgroundColor: '#1e293b', padding: { x: 10, y: 6 },
+      fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#ffffff',
+      backgroundColor: '#1f2d3a', padding: { x: 10, y: 6 },
     }).setInteractive({ useHandCursor: true }).setDepth(50);
     b.on('pointerdown', () => { SFX.click(); this.scene.start('Menu'); });
   }
