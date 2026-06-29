@@ -60,6 +60,10 @@ export default class NumberTowerScene extends Phaser.Scene {
     // Vrolijke voorlees-stem klaarzetten (kiest een NL-stem zodra die laadt)
     this.nlVoice = null;
     this.loadVoice();
+    // iOS/Safari blokkeert de stem tot de eerste tik. Bij de eerste
+    // aanraking "ontgrendelen" we 'm met een stil zinnetje.
+    this.speechPrimed = false;
+    this.input.on('pointerdown', () => this.primeSpeech());
 
     // Donker HUD-paneel zodat de tekst goed leesbaar blijft op de
     // heldere Numberblocks-achtergrond.
@@ -484,6 +488,21 @@ export default class NumberTowerScene extends Phaser.Scene {
       };
       pick();
       synth.onvoiceschanged = pick;
+    } catch (e) {}
+  }
+
+  // iOS heeft een echte gebruikers-tik nodig voordat de stem mag spreken.
+  // Eén keer een stil zinnetje afspelen "ontgrendelt" het voor de sessie.
+  primeSpeech() {
+    if (this.speechPrimed) return;
+    this.speechPrimed = true;
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) return;
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      synth.speak(u);
+      this.loadVoice();
     } catch (e) {}
   }
 
