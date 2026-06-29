@@ -12,6 +12,7 @@ import PlatformScene from './scenes/PlatformScene.js';
 import AwardsScene from './scenes/AwardsScene.js';
 import SettingsScene from './scenes/SettingsScene.js';
 import CityScene from './scenes/CityScene.js';
+import NumberTowerScene from './scenes/NumberTowerScene.js';
 
 // Het hele spel wordt hier opgebouwd. Elk spel is een aparte "Scene"
 // in de map src/scenes/. Nieuwe spellen voeg je toe door een nieuwe
@@ -38,7 +39,7 @@ const config = {
     BootScene, MenuScene,
     BalloonScene, MathScene, DiffScene,
     TraceScene, TraceMenuScene, ClickerScene, PianoScene, PlatformScene,
-    AwardsScene, SettingsScene, CityScene,
+    AwardsScene, SettingsScene, CityScene, NumberTowerScene,
   ],
 };
 
