@@ -12,7 +12,7 @@ npm run build    # productie-build naar dist/
 
 ## Structuur
 - `src/main.js` — registreert alle spellen (scenes).
-- `src/scenes/*` — elk spel is een aparte Phaser-scene (o.a. `ClickerScene.js` = "Planeet Tikker", `NumberTowerScene.js` = "Getallen-Toren", `PlatformScene.js` = "Getallen-Avontuur").
+- `src/scenes/*` — elk spel is een aparte Phaser-scene (o.a. `ClickerScene.js` = "Planeet Tikker", `NumberTowerScene.js` = "Getallen-Toren", `PlatformScene.js` = "Getallen-Avontuur", `ZeroRocketScene.js` = "Nul-Raket").
 - `MenuScene.js` heeft een **Numberblocks-thema** (heldere lucht, zon, wolkjes, zwevende cijfer-kubussen; tegels als felle kubussen met dikke donkere rand).
 - `src/glyphs.js` — gedeelde cijfer-/letterpaden + `TraceChallenge` (schrijf-overlay), gebruikt door het schrijfspel én Planeet Tikker.
 - `src/progress.js` — voortgang (sterren, medailles, topscores, instellingen) in localStorage.
@@ -83,3 +83,17 @@ zodat de hoogte begrensd (~116px) en speelbaar blijft.
   óók op iOS (Web Audio), in tegenstelling tot de browser-stem.
 - **Stem:** roept het getal bij groeien/krimpen (Web Speech, `nl-NL`), zelfde
   iOS-kanttekening als Getallen-Toren.
+
+## Nul-Raket (`src/scenes/ZeroRocketScene.js`)
+Machten-van-10-spel voor Adrian (dol op nullen/grote getallen). Tik op **+0**
+en er komt een nul bij → het getal wordt 10× groter en de raket vliegt door
+steeds spannendere zones omhoog (gras → wolken → ruimte → melkweg). `−0` haalt
+een nul weg (÷10), `↺` reset. Doorgroeien tot **triljoen** (10^18, 18 nullen).
+- Het getal is een **string** (`'1' + '0'.repeat(zeros)`), niet een JS-number —
+  zo kloppen alle nullen exact, ook voorbij `Number.MAX_SAFE_INTEGER`. De
+  lettergrootte schaalt automatisch zodat het lange getal past.
+- `NAMES`/`ZONES` (per aantal nullen) geven de naam (tien…triljoen) en de
+  landmark/achtergrondkleuren. Mijlpalen (`REWARDS`) geven sterren; triljoen
+  geeft de medaille `rocket_max`.
+- **Geluid:** `SFX.grow` (oplopend), `SFX.fanfare` bij mijlpalen + voorlezen
+  van de getalnaam (Web Speech).
