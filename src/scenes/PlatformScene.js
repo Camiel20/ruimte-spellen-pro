@@ -19,41 +19,67 @@ const SIG_HEX = ['#e8402c', '#f08a24', '#f6c624', '#57b947', '#38b6cf',
 const sig = (v) => (v <= 0 ? 0xcbd5e1 : SIG[(v - 1) % 10]);
 const sigHex = (v) => (v <= 0 ? '#cbd5e1' : SIG_HEX[(v - 1) % 10]);
 
-const TARGETS = [5, 8, 10]; // doelgetal per level
+const TARGETS = [4, 6, 8, 10, 12]; // doelgetal per level
 
+// Levels zijn ontworpen op bereikbaarheid: alle +1-blokjes (C) staan op
+// loop-hoogte (rij 5) of max ~2 tegels erboven (rij 3-4), dus haalbaar met
+// een normale sprong. B = bakstenen platformpje, A = min-monster (rij 5 op
+// het pad), ? = bonusblok, F = vlag, P = start, gaten = eroverheen springen.
 const PLEVELS = [
   [
-    "                                         ",
-    "                                         ",
-    "              C C C                      ",
-    "          C   BBB          C C           ",
-    "      C      C       A    C   C     C    ",
-    "   P C    C     C C     C   C   C C   C F",
-    "XXXXXXXXXXXX XXXXXXXXX X XXXXXXXXXXXXXXXX",
-    "XXXXXXXXXXXX XXXXXXXXX X XXXXXXXXXXXXXXXX",
-    "XXXXXXXXXXXX XXXXXXXXX X XXXXXXXXXXXXXXXX",
+    "                                   ",
+    "                                   ",
+    "                                   ",
+    "             C          C          ",
+    "         BB        BB         BB    ",
+    "P   C   C    C   A    C   C    C   F",
+    "XXXXXXXXXXXXXXX XXXXXXXXXXXXXXXXXXXX",
+    "XXXXXXXXXXXXXXX XXXXXXXXXXXXXXXXXXXX",
+    "XXXXXXXXXXXXXXX XXXXXXXXXXXXXXXXXXXX",
   ],
   [
-    "                                                   ",
-    "           C C        C C                          ",
-    "       ?   BBB   ?    BBB        C C                ",
-    "     C          C          C    BBB        C       ",
-    "   C     A    C    A     C         C   A    C C     ",
-    "P C   C    C    C    C     C C        C   C  C  C  F",
-    "XXXXX XXXXXX XXXXX XXXXXX XXXXXXX XXXXXXXXXXXXXXXXX",
-    "XXXXX XXXXXX XXXXX XXXXXX XXXXXXX XXXXXXXXXXXXXXXXX",
-    "XXXXX XXXXXX XXXXX XXXXXX XXXXXXX XXXXXXXXXXXXXXXXX",
+    "                                         ",
+    "                                         ",
+    "              C            C             ",
+    "          C        C            C        ",
+    "       BB       BB        BB        BB    ",
+    "P  C    C   A    C   C    C    A   C    C F",
+    "XXXXXXXXXX XXXXXXXXXX XXXXXXXXXXXXXXXXXXXX",
+    "XXXXXXXXXX XXXXXXXXXX XXXXXXXXXXXXXXXXXXXX",
+    "XXXXXXXXXX XXXXXXXXXX XXXXXXXXXXXXXXXXXXXX",
   ],
   [
-    "                                                         ",
-    "        C C          C C            C C                   ",
-    "    ?   BBB    ?     BBB     BBB    BBB                   ",
-    "  C        C      C       C      C        C       C  C    ",
-    "     A   C   A   C    A  C    A C     A  C    A  C   C  C  ",
-    "P  C   C   C   C   C   C   C   C   C   C   C   C  C  C  C F",
-    "XXXX  XXXX  XXXX  XXXX  XXXX  XXXX  XXXX  XXXX  XXXXXXXXXX",
-    "XXXX  XXXX  XXXX  XXXX  XXXX  XXXX  XXXX  XXXX  XXXXXXXXXX",
-    "XXXX  XXXX  XXXX  XXXX  XXXX  XXXX  XXXX  XXXX  XXXXXXXXXX",
+    "                                               ",
+    "                                               ",
+    "         C         ?         C        C        ",
+    "      C       C        C   C       C      C     ",
+    "    BB     A     BB      A     BB     A     BB   ",
+    "P C   C  C   C   C   C    C   C   C   C   C   C F",
+    "XXXXXXXX XXXXXXXX XXXXXXX XXXXXXXX XXXXXXXXXXXXXX",
+    "XXXXXXXX XXXXXXXX XXXXXXX XXXXXXXX XXXXXXXXXXXXXX",
+    "XXXXXXXX XXXXXXXX XXXXXXX XXXXXXXX XXXXXXXXXXXXXX",
+  ],
+  [
+    "                                                     ",
+    "          C           C            C                 ",
+    "      C        ?   C        C   ?       C      C      ",
+    "   C      C        C    C       C    C      C     C    ",
+    "  BB    A    BB      A    BB     A    BB     A    BB    ",
+    "P  C  C   C   C   C   C   C   C   C   C   C   C   C   F",
+    "XXXXXX XXXXXXX XXXXXX XXXXXXX XXXXXX XXXXXXXXXXXXXXXXXX",
+    "XXXXXX XXXXXXX XXXXXX XXXXXXX XXXXXX XXXXXXXXXXXXXXXXXX",
+    "XXXXXX XXXXXXX XXXXXX XXXXXXX XXXXXX XXXXXXXXXXXXXXXXXX",
+  ],
+  [
+    "                                                           ",
+    "        C        C         C        C         C            ",
+    "    C       C  ?     C   C       C     C   ?       C    C    ",
+    "  C    C       C   C    C    C      C    C    C   C    C  C   ",
+    " BB  A    BB     A    BB    A    BB     A    BB    A    BB    ",
+    "P C   C  C   C  C   C   C  C   C   C  C   C   C  C   C  C   CF",
+    "XXXXXX XXXXXX XXXXXX XXXXXX XXXXXX XXXXXX XXXXXX XXXXXXXXXXXX",
+    "XXXXXX XXXXXX XXXXXX XXXXXX XXXXXX XXXXXX XXXXXX XXXXXXXXXXXX",
+    "XXXXXX XXXXXX XXXXXX XXXXXX XXXXXX XXXXXX XXXXXX XXXXXXXXXXXX",
   ],
 ];
 
@@ -204,36 +230,41 @@ export default class PlatformScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
   }
 
-  // Teken de speler als stapel van `value` kubussen (bovenste met gezichtje)
+  // Teken de speler als stapel van `value` kubussen (bovenste met gezichtje).
+  // Hij blijft ALTIJD groeien (meer plakjes), maar de totale hoogte is
+  // begrensd: bij grotere getallen worden de plakjes dunner. Zo blijft het
+  // speelbaar én zie je dat je groter wordt.
   drawNumberblock(container, value) {
     container.removeAll(true);
-    const CAP = 6;
-    const n = Math.min(Math.max(value, 1), CAP);
-    const cube = 22;
+    const v = Math.max(1, Math.min(value, 20));
+    const cubeW = 22;
+    const maxPx = 116;                       // maximale staphoogte
+    const step = Math.min(16, maxPx / v);    // hoe groter, hoe dunner de plakjes
+    const cubeH = step + 4;
     const color = sig(value);
-    for (let i = 0; i < n; i++) {
-      const cy = -i * (cube - 2); // licht overlappend stapelen, omhoog
+    for (let i = 0; i < v; i++) {
+      const cy = -i * step;
       const g = this.add.graphics();
       g.fillStyle(color, 1);
-      g.fillRoundedRect(-cube / 2, cy - cube / 2, cube, cube, 5);
-      g.fillStyle(0xffffff, 0.28);
-      g.fillRoundedRect(-cube / 2 + 3, cy - cube / 2 + 2, cube - 6, cube * 0.3, 4);
-      g.lineStyle(2.5, 0x1f2d3a, 1);
-      g.strokeRoundedRect(-cube / 2, cy - cube / 2, cube, cube, 5);
+      g.fillRoundedRect(-cubeW / 2, cy - cubeH / 2, cubeW, cubeH, 5);
+      g.fillStyle(0xffffff, 0.26);
+      g.fillRoundedRect(-cubeW / 2 + 3, cy - cubeH / 2 + 2, cubeW - 6, cubeH * 0.3, 3);
+      g.lineStyle(2, 0x1f2d3a, 1);
+      g.strokeRoundedRect(-cubeW / 2, cy - cubeH / 2, cubeW, cubeH, 5);
       container.add(g);
-      if (i === n - 1) {
-        [-4.5, 4.5].forEach((dx) => {
-          container.add(this.add.circle(dx, cy - 2, 3.4, 0xffffff).setStrokeStyle(1, 0x1f2d3a));
-          container.add(this.add.circle(dx, cy - 1.5, 1.7, 0x1f2d3a));
-        });
-        const sm = this.add.graphics();
-        sm.lineStyle(1.5, 0x1f2d3a, 1);
-        sm.beginPath(); sm.arc(0, cy + 2.5, 3, 0.15 * Math.PI, 0.85 * Math.PI); sm.strokePath();
-        container.add(sm);
-      }
     }
+    // Gezichtje op de bovenste plak
+    const topY = -(v - 1) * step;
+    [-4.5, 4.5].forEach((dx) => {
+      container.add(this.add.circle(dx, topY - 2, 3.2, 0xffffff).setStrokeStyle(1, 0x1f2d3a));
+      container.add(this.add.circle(dx, topY - 1.5, 1.6, 0x1f2d3a));
+    });
+    const sm = this.add.graphics();
+    sm.lineStyle(1.5, 0x1f2d3a, 1);
+    sm.beginPath(); sm.arc(0, topY + 2.5, 3, 0.15 * Math.PI, 0.85 * Math.PI); sm.strokePath();
+    container.add(sm);
     // Nummer-badge naast de stapel
-    const badge = this.add.text(cube / 2 + 5, -((n - 1) * (cube - 2)) / 2, String(value), {
+    const badge = this.add.text(cubeW / 2 + 5, -((v - 1) * step) / 2, String(value), {
       fontFamily: 'Arial Black, Arial', fontSize: '17px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0, 0.5).setStroke('#1f2d3a', 4);
     container.add(badge);
@@ -376,7 +407,7 @@ export default class PlatformScene extends Phaser.Scene {
           a.destroy();
           p.body.setVelocityY(-320);
           this.score += 30;
-          SFX.coin();
+          SFX.stomp();
           this.floatText('Boem! +30', a.x, a.y - 20, '#57b947');
           this.updateHud();
         } else if (time > this.hurtUntil) {
@@ -394,11 +425,12 @@ export default class PlatformScene extends Phaser.Scene {
     this.value++;
     this.score += 10;
     this.drawNumberblock(this.player, this.value);
-    // vrolijk oplopend toontje
-    SFX.merge(this.value * this.value);
+    // vrolijk oplopend tel-toontje (stijgt met het getal)
+    SFX.grow(this.value);
     this.say(this.value, true);
     this.floatText(`${this.value}!`, this.player.x, this.player.y - 40, sigHex(this.value));
     if (this.value === this.target) {
+      SFX.fanfare();
       this.floatText('🎉 Doel!', this.player.x, this.player.y - 64, '#f6c624');
       this.banner(`Top! Je bent ${this.target}! Haal nu de vlag 🚩`);
     }
@@ -409,7 +441,7 @@ export default class PlatformScene extends Phaser.Scene {
     if (this.value > 1) {
       this.value--;
       this.drawNumberblock(this.player, this.value);
-      SFX.wrong();
+      SFX.shrink();
       this.say(this.value, false);
       this.floatText('−1', this.player.x, this.player.y - 40, '#f87171');
       // terugstoot

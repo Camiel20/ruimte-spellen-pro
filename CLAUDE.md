@@ -74,8 +74,12 @@ je telt op, wordt een hogere kubus-stapel, kleurt mee met de signatuurkleur en
 **springt hoger** naarmate je groter bent. **Min-monstertjes** (tile `A`) maken
 je **kleiner** (−1) i.p.v. dood; erop springen = poppen. In een gat vallen of
 geraakt worden op waarde 1 kost een leven. Doel per level: word het doelgetal
-(`TARGETS`) en haal de vlag (`F`). Levelkaarten/physics zijn ongewijzigd t.o.v.
-de oude platformer (geverifieerd haalbaar); alleen de betekenis van `C`/`A` en
-de visuals zijn nieuw.
+(`TARGETS`) en haal de vlag (`F`). **Vijf levels**, op bereikbaarheid ontworpen
+(+1-blokjes max ~2 tegels boven een sta-vlak). De Numberblock blijft altijd
+doorgroeien: `drawNumberblock` maakt de plakjes dunner bij grotere getallen
+zodat de hoogte begrensd (~116px) en speelbaar blijft.
+- **Geluid:** zelfgemaakte Web Audio-effecten in `sound.js` (`SFX.grow` =
+  oplopend tel-toontje, `SFX.shrink`, `SFX.stomp`, `SFX.fanfare`). Deze werken
+  óók op iOS (Web Audio), in tegenstelling tot de browser-stem.
 - **Stem:** roept het getal bij groeien/krimpen (Web Speech, `nl-NL`), zelfde
   iOS-kanttekening als Getallen-Toren.

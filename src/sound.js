@@ -167,4 +167,23 @@ export const SFX = {
   gameover() {
     slide(400, 100, 0.5, 'sawtooth', 0.18);
   },
+  // Vrolijk oplopend "tel-toontje": de toon stijgt met het getal, zodat
+  // groeien klinkt als 1-2-3-4 omhoog. Werkt ook op iOS (Web Audio).
+  grow(n = 1) {
+    const scale = [523.25, 587.33, 659.25, 698.46, 783.99, 880.0, 987.77, 1046.5];
+    const oct = Math.floor((n - 1) / scale.length);
+    const f = scale[(n - 1) % scale.length] * Math.pow(2, oct);
+    tone(f, 0.15, 'triangle', 0.22);
+    tone(f * 2, 0.10, 'sine', 0.10, 0.05); // glinster
+  },
+  shrink() {
+    slide(440, 240, 0.22, 'triangle', 0.16);
+  },
+  stomp() {
+    tone(190, 0.08, 'square', 0.18);
+    tone(120, 0.12, 'sine', 0.14, 0.03);
+  },
+  fanfare() {
+    [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.2, i * 0.08));
+  },
 };
