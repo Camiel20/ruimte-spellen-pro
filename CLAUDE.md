@@ -12,7 +12,8 @@ npm run build    # productie-build naar dist/
 
 ## Structuur
 - `src/main.js` — registreert alle spellen (scenes).
-- `src/scenes/*` — elk spel is een aparte Phaser-scene (o.a. `ClickerScene.js` = "Planeet Tikker", `NumberTowerScene.js` = "Getallen-Toren").
+- `src/scenes/*` — elk spel is een aparte Phaser-scene (o.a. `ClickerScene.js` = "Planeet Tikker", `NumberTowerScene.js` = "Getallen-Toren", `PlatformScene.js` = "Getallen-Avontuur").
+- `MenuScene.js` heeft een **Numberblocks-thema** (heldere lucht, zon, wolkjes, zwevende cijfer-kubussen; tegels als felle kubussen met dikke donkere rand).
 - `src/glyphs.js` — gedeelde cijfer-/letterpaden + `TraceChallenge` (schrijf-overlay), gebruikt door het schrijfspel én Planeet Tikker.
 - `src/progress.js` — voortgang (sterren, medailles, topscores, instellingen) in localStorage.
 - `public/` — afbeeldingen, geluiden, icon, manifest.
@@ -65,3 +66,16 @@ Honderd-held (voorbij 100), Nul-meester (ronde honderdtallen).
 ### Openstaande ideeën Getallen-Toren
 - Optie 3: eigen ingesproken stemmetjes als geluidsbestandjes in `public/`
   (pappa/mamma's stem), als alternatief voor de browser-stem.
+
+## Getallen-Avontuur (`src/scenes/PlatformScene.js`)
+Numberblocks-platformer (voorheen "Ruimte Avontuur"). Je begint als **1** en
+wordt groter door **+1-blokjes** (groene kubussen, tile `C`) te verzamelen:
+je telt op, wordt een hogere kubus-stapel, kleurt mee met de signatuurkleur en
+**springt hoger** naarmate je groter bent. **Min-monstertjes** (tile `A`) maken
+je **kleiner** (−1) i.p.v. dood; erop springen = poppen. In een gat vallen of
+geraakt worden op waarde 1 kost een leven. Doel per level: word het doelgetal
+(`TARGETS`) en haal de vlag (`F`). Levelkaarten/physics zijn ongewijzigd t.o.v.
+de oude platformer (geverifieerd haalbaar); alleen de betekenis van `C`/`A` en
+de visuals zijn nieuw.
+- **Stem:** roept het getal bij groeien/krimpen (Web Speech, `nl-NL`), zelfde
+  iOS-kanttekening als Getallen-Toren.

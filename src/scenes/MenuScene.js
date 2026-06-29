@@ -105,7 +105,7 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '✏️', name: 'Schrijven',        color: 0xf97316, go: () => this.scene.start('TraceMenu') },
       { icon: '🎈', name: 'Ballon Merge',     color: 0xa855f7, go: () => this.scene.start('Balloon') },
       { icon: '🪐', name: 'Planeet Tikker',   color: 0xeab308, go: () => this.scene.start('Clicker') },
-      { icon: '🏃', name: 'Ruimte Avontuur',  color: 0xef4444, go: () => this.scene.start('Platform', { level: 0 }) },
+      { icon: '🦸', name: 'Getallen Avontuur', color: 0xe8402c, go: () => this.scene.start('Platform', { level: 0 }) },
       { icon: '🎹', name: 'Regenboog Piano',  color: 0xec4899, go: () => this.scene.start('Piano') },
       { icon: '🚗', name: 'Stad Rijden',      color: 0x22c55e, go: () => this.scene.start('City') },
       { icon: '🧱', name: 'Getallen Toren',   color: 0x14b8a6, go: () => this.scene.start('NumberTower') },
