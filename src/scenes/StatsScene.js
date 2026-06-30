@@ -7,7 +7,7 @@ import { getStats, gameName, formatDuration, resetStats } from '../stats.js';
 
 const ICONS = {
   Balloon: '🎈', Math: '🧮', Trace: '✏️', Clicker: '🪐', Piano: '🎹',
-  Platform: '🦸', City: '🚗', NumberTower: '🧱', ZeroRocket: '🚀', Snake: '🐍',
+  Platform: '🦸', City: '🚗', NumberTower: '🧱', ZeroRocket: '🚀', NumberLand: '➕', Snake: '🐍',
 };
 
 export default class StatsScene extends Phaser.Scene {

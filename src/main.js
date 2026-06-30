@@ -14,6 +14,7 @@ import SettingsScene from './scenes/SettingsScene.js';
 import CityScene from './scenes/CityScene.js';
 import NumberTowerScene from './scenes/NumberTowerScene.js';
 import ZeroRocketScene from './scenes/ZeroRocketScene.js';
+import NumberLandScene from './scenes/NumberLandScene.js';
 import StatsScene from './scenes/StatsScene.js';
 import { installTracking } from './stats.js';
 
@@ -43,7 +44,7 @@ const config = {
     BalloonScene, MathScene, DiffScene,
     TraceScene, TraceMenuScene, ClickerScene, PianoScene, PlatformScene,
     AwardsScene, SettingsScene, CityScene, NumberTowerScene, ZeroRocketScene,
-    StatsScene,
+    NumberLandScene, StatsScene,
   ],
 };
 

@@ -106,7 +106,7 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '✏️', name: 'Schrijven',        color: 0xf97316, go: () => this.scene.start('TraceMenu') },
       { icon: '🎈', name: 'Ballon Merge',     color: 0xa855f7, go: () => this.scene.start('Balloon') },
       { icon: '🪐', name: 'Planeet Tikker',   color: 0xeab308, go: () => this.scene.start('Clicker') },
-      { icon: '🦸', name: 'Getallen Avontuur', color: 0xe8402c, go: () => this.scene.start('Platform', { level: 0 }) },
+      { icon: '➕', name: 'Getallen-Land',     color: 0xe8402c, go: () => this.scene.start('NumberLand') },
       { icon: '🎹', name: 'Regenboog Piano',  color: 0xec4899, go: () => this.scene.start('Piano') },
       { icon: '🚗', name: 'Stad Rijden',      color: 0x22c55e, go: () => this.scene.start('City') },
       { icon: '🧱', name: 'Getallen Toren',   color: 0x14b8a6, go: () => this.scene.start('NumberTower') },
@@ -250,6 +250,23 @@ export default class MenuScene extends Phaser.Scene {
       loading.destroy();
       canvas.style.display = 'none';
       launchSnake3D(() => {
+        stopTimer();
+        canvas.style.display = 'block';
+        this.scene.restart();
+      });
+    });
+  }
+
+  launchPlatform3D() {
+    const canvas = this.game.canvas;
+    const loading = this.add.text(this.scale.width / 2, this.scale.height / 2, '3D laden... 🦸', {
+      fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#fff',
+    }).setOrigin(0.5).setDepth(100);
+    notePlay('Platform'); startTimer('Platform');
+    import('../platform3d.js').then(({ launchPlatform3D }) => {
+      loading.destroy();
+      canvas.style.display = 'none';
+      launchPlatform3D(() => {
         stopTimer();
         canvas.style.display = 'block';
         this.scene.restart();

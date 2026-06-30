@@ -68,22 +68,39 @@ Honderd-held (voorbij 100), Nul-meester (ronde honderdtallen).
 - Optie 3: eigen ingesproken stemmetjes als geluidsbestandjes in `public/`
   (pappa/mamma's stem), als alternatief voor de browser-stem.
 
-## Getallen-Avontuur (`src/scenes/PlatformScene.js`)
-Numberblocks-platformer (voorheen "Ruimte Avontuur"). Je begint als **1** en
-wordt groter door **+1-blokjes** (groene kubussen, tile `C`) te verzamelen:
-je telt op, wordt een hogere kubus-stapel, kleurt mee met de signatuurkleur en
-**springt hoger** naarmate je groter bent. **Min-monstertjes** (tile `A`) maken
-je **kleiner** (−1) i.p.v. dood; erop springen = poppen. In een gat vallen of
-geraakt worden op waarde 1 kost een leven. Doel per level: word het doelgetal
-(`TARGETS`) en haal de vlag (`F`). **Vijf levels**, op bereikbaarheid ontworpen
-(+1-blokjes max ~2 tegels boven een sta-vlak). De Numberblock blijft altijd
-doorgroeien: `drawNumberblock` maakt de plakjes dunner bij grotere getallen
-zodat de hoogte begrensd (~116px) en speelbaar blijft.
-- **Geluid:** zelfgemaakte Web Audio-effecten in `sound.js` (`SFX.grow` =
-  oplopend tel-toontje, `SFX.shrink`, `SFX.stomp`, `SFX.fanfare`). Deze werken
-  óók op iOS (Web Audio), in tegenstelling tot de browser-stem.
-- **Stem:** roept het getal bij groeien/krimpen (Web Speech, `nl-NL`), zelfde
-  iOS-kanttekening als Getallen-Toren.
+## Getallen-Land (`src/scenes/NumberLandScene.js`)
+Het hoofdmenu-tegeltje **"Getallen-Land"** (scene-key `NumberLand`) is de
+huidige, volledig herontworpen versie van wat ooit "Ruimte/​Getallen-Avontuur"
+heette. Een levende, vrolijke **Numberblocks-wereld** (100% zelfgemaakt, geen
+auteursrechtelijke beelden/audio). De kern is precies waar de serie om draait:
+getallen **maken** door blokjes samen te voegen en te splitsen.
+- **Samenvoegen:** sleep een Numberblock op een andere → ze tellen op tot een
+  groter getal (squash & stretch, confetti, `SFX.combine`, voorlezen).
+- **Splitsen:** tik op een blok → er springt een **1** los (waarde −1).
+- **Puzzel "Maak het getal":** sleep het juiste getal op de gloeiende doel-plek.
+  Goed = feest + sterren; fout = vriendelijk "oei!" en terug (geen straf).
+- **Personages:** elke waarde een eigen signatuurkleur, **3D-glans-kubussen met
+  groeven, een wit cijfer-schijfje bovenop het hoofd, armpjes en schoentjes**
+  (zie `drawBlockVisual`), plus knipperende ogen die de actieve blok volgen en
+  een idle-wiebel. Expressies via `setExpression` (blij/groot/verbaasd/verdrietig).
+- **Wereld:** vier gebieden (`ZONES`: Bloemenweide → Strand → Snoepland →
+  Ruimte) die je **vrijspeelt met sterren** (elke 4 puzzels). Levende deco:
+  drijvende wolken, vlinders/vogels, wiegende bloemen, een 🎁-verrassing die
+  af en toe overzweeft voor bonus-sterren. Doel-getallen lopen op per gebied.
+- **Geluid:** nieuwe vrolijke Web Audio-effecten in `sound.js`
+  (`SFX.pick`, `place`, `sparkle`, `combine`, `yay`, `oops`, `giggle`) — géén
+  placeholder-piepjes. Werkt óók op iOS. Stem leest getallen/kreetjes voor
+  (Web Speech `nl-NL`, hoge toon), zelfde iOS-kanttekening als Getallen-Toren.
+- **Sterren/confetti** via het gedeelde `reward.js` (`confettiBurst`,
+  `showReward` bij een nieuw gebied).
+
+### Oudere Avontuur-versies (niet meer in het menu)
+- `src/platform3d.js` — een **3D-renner** (Three.js, Crossy-Road-stijl): groei
+  van 1 naar het doelgetal, ontwijk/stamp min-monsters, haal de vlag. Werkt,
+  maar voelde te veel als tech-demo; vervangen door Getallen-Land. Kan later
+  als bonus-tegel terugkomen (`MenuScene.launchPlatform3D` staat nog klaar).
+- `src/scenes/PlatformScene.js` — de allereerste 2D-platformer. Nog geregistreerd
+  maar niet meer gekoppeld aan een tegel.
 
 ## Nul-Raket (`src/scenes/ZeroRocketScene.js`)
 Machten-van-10-spel voor Adrian (dol op nullen/grote getallen). Tik op **+0**

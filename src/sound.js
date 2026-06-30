@@ -186,4 +186,46 @@ export const SFX = {
   fanfare() {
     [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.2, i * 0.08));
   },
+
+  // --- Vrolijke, speelse geluidjes voor Getallen-Land ---
+  // Optillen: een blij "boing" omhoog.
+  pick() {
+    slide(280, 560, 0.13, 'sine', 0.18);
+    tone(840, 0.06, 'sine', 0.08, 0.1);
+  },
+  // Neerzetten: zacht plofje.
+  place() {
+    tone(320, 0.07, 'sine', 0.16);
+    tone(210, 0.10, 'sine', 0.12, 0.03);
+  },
+  // Glinster/sprankel.
+  sparkle() {
+    tone(1568, 0.08, 'sine', 0.12);
+    tone(2093, 0.10, 'sine', 0.10, 0.05);
+    tone(2637, 0.08, 'sine', 0.07, 0.1);
+  },
+  // Samenvoegen: vrolijke klim die hoger klinkt naarmate het nieuwe getal groter is.
+  combine(n = 2) {
+    const base = 392; // sol
+    const f = base * Math.pow(2, Math.min(n, 12) / 12);
+    tone(f, 0.12, 'triangle', 0.2);
+    tone(f * 1.5, 0.14, 'sine', 0.13, 0.05);
+    tone(f * 2, 0.12, 'sine', 0.09, 0.1);
+  },
+  // Hoera! (puzzel opgelost)
+  yay() {
+    [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.16, 'triangle', 0.2, i * 0.07));
+    tone(1568, 0.3, 'sine', 0.12, 0.42);
+  },
+  // Vriendelijk "oei" bij een foutje (niet streng).
+  oops() {
+    slide(440, 300, 0.16, 'triangle', 0.14);
+    tone(300, 0.12, 'sine', 0.1, 0.12);
+  },
+  // Vrolijk "wiebel"-stemmetje als een blokje reageert.
+  giggle() {
+    tone(700, 0.05, 'sine', 0.12);
+    tone(900, 0.05, 'sine', 0.12, 0.06);
+    tone(800, 0.05, 'sine', 0.1, 0.12);
+  },
 };

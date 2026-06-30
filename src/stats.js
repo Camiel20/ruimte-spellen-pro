@@ -15,6 +15,7 @@ const NAMES = {
   City: 'Stad Rijden',
   NumberTower: 'Getallen Toren',
   ZeroRocket: 'Nul-Raket',
+  NumberLand: 'Getallen-Land',
   Snake: '3D Snake',
 };
 
