@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SFX } from '../sound.js';
+import { Voice } from '../voice.js';
 import { addStars, giveMedal, getSetting } from '../progress.js';
 
 // Getallen-Avontuur — Numberblocks-platformer. Je begint als "1" en wordt
@@ -567,28 +568,8 @@ export default class PlatformScene extends Phaser.Scene {
     this.time.delayedCall(1800, () => p.destroy());
   }
 
-  // --- Voorlezen ---
+  // --- Geluids-cue bij groeien/krimpen (geen browser-TTS meer) ---
   say(n, happy) {
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) return;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(happy ? `${this.words(n)}!` : this.words(n));
-      u.lang = 'nl-NL';
-      u.pitch = happy ? 1.7 : 1.2;
-      u.rate = 1.0;
-      synth.speak(u);
-    } catch (e) {}
-  }
-
-  words(n) {
-    if (n <= 0) return 'nul';
-    const ones = ['', 'een', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven', 'acht', 'negen'];
-    const teens = ['tien', 'elf', 'twaalf', 'dertien', 'veertien', 'vijftien', 'zestien', 'zeventien', 'achttien', 'negentien'];
-    const tens = ['', '', 'twintig', 'dertig', 'veertig', 'vijftig', 'zestig', 'zeventig', 'tachtig', 'negentig'];
-    if (n < 10) return ones[n];
-    if (n < 20) return teens[n - 10];
-    if (n < 100) { const t = Math.floor(n / 10), o = n % 10; return o === 0 ? tens[t] : ones[o] + 'en' + tens[t]; }
-    return String(n);
+    Voice.cue(happy ? 'number' : 'pop', n);
   }
 }

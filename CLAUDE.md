@@ -94,17 +94,35 @@ meebeweegt; je loopt rond en helpt getallen-vriendjes.
   wenkbrauwen vanaf de 4, ster-in-de-hand voor de 5).
 - **Art:** alles zelf getekend (geen emoji): wolken (parallax), vlinders, bomen,
   struiken, bloemen, getallen-huisjes, een kronkelpad met brug over een riviertje.
-- **Geluid:** vrolijke Web Audio-effecten in `sound.js` (`pick`, `place`,
-  `sparkle`, `combine`, `yay`, `oops`, `giggle`, `split`, `step`) — géén
-  placeholder-piepjes; werkt óók op iOS. **Menu-muziek stopt** bij binnenkomst
-  (`stopMusic()` in `create`). Stem (`say`) is **hoog + vlot** (pitch ~1.85,
-  rate ~1.12) zodat het vrolijk klinkt i.p.v. monotoon; `loadVoice` vermijdt de
-  vlakke NL-mannenstemmen. Zelfde iOS-kanttekening als Getallen-Toren.
+- **Leven in de wereld:** rondlopende **Numberblock-NPC's** (`buildNPCs`/
+  `makeWanderer`/`updateNPCs`) die willekeurig wandelen, knipperen en **Nul
+  begroeten** (hupje + hartje + `Voice.cue('greet')`). De vriendjes leven mee
+  (`updateFriends`): ogen volgen Nul, knipperen, zwaaien als je dichtbij komt.
+  Stofwolkjes onder Nul tijdens het lopen (`dustPuff`), camera-juice bij succes
+  (`cameraPunch` = shake + zoom-tik), en een fade-in bij binnenkomst.
+- **Geheim:** een verstopte **schatkist** (`buildSecrets`/`makeChest`) — tik =
+  open → +5 sterren, confetti, camera-tik. Plus de sterren in de struiken.
+
+### GELUID & STEM — belangrijk
+- **GEEN browser-TTS meer.** Alle `SpeechSynthesis`-code is volledig verwijderd
+  uit het hele project (klonk onnatuurlijk op iPhone/Safari).
+- **`src/voice.js` = VoiceManager.** Spraak/feedback loopt via `Voice.cue(name)`
+  / `Voice.number(n)`: korte, vrolijke **Web Audio**-klankjes (welcome, number,
+  cheer, great, laugh, oops, star, greet, jump, yawn, whee). Werkt overal
+  hetzelfde, ook op iOS.
+- **Klaar voor echte stem:** wil je later ingesproken NL-fragmenten? Zet mp3/ogg
+  in `public/voice/` en registreer ze met `Voice.registerClip('cheer',
+  'voice/cheer.mp3')` (of `'number-5'` → `voice/vijf.mp3`). Bestaat er een clip
+  voor een cue, dan speelt die; anders de Web Audio-fallback. De game roept
+  alleen `Voice.cue(...)` aan en weet niets van de bron.
+- **SFX** blijven in `sound.js` (`pick`, `place`, `sparkle`, `combine`, `yay`,
+  `oops`, `giggle`, `split`, `step`). **Menu-muziek stopt** bij binnenkomst
+  (`stopMusic()` in `create`).
 
 ### Openstaande ideeën Getallen-Land
-- Meer puzzel-typen die in de wereld zélf zitten (brug die een getal nodig heeft,
-  huisje dat op de juiste Numberblock wacht) en meerdere vrij te spelen gebieden
-  met eigen kleuren/landschap (de oude `ZONES`-aanpak, nu nog één gebied).
+- Puzzels nóg meer als avontuur (brug die een getal mist, huisje dat op zijn
+  Numberblock wacht) en meerdere vrij te spelen gebieden met eigen landschap.
+- Meer geheimen (grotten, regenbogen, verborgen paadjes) en verzamelobjecten.
 
 ### Oudere Avontuur-versies (niet meer in het menu)
 - `src/platform3d.js` — een **3D-renner** (Three.js, Crossy-Road-stijl): groei

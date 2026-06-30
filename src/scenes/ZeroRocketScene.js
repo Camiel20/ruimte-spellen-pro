@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { SFX, initAudio, isSoundOn } from '../sound.js';
+import { SFX, initAudio } from '../sound.js';
+import { Voice } from '../voice.js';
 import { addStars, giveMedal } from '../progress.js';
 
 // Nul-Raket — tik op +0 en je getal wordt 10x groter (een nul erbij): de
@@ -105,7 +106,7 @@ export default class ZeroRocketScene extends Phaser.Scene {
     // Voorlees-knop (op de titelregel, zodat het brede getal er niet tegenaan loopt)
     this.speaker = this.add.text(width - 18, 26, '🔊', { fontSize: '24px' })
       .setOrigin(1, 0.5).setDepth(20).setInteractive({ useHandCursor: true });
-    this.speaker.on('pointerdown', () => this.speak(NAMES[this.zeros]));
+    this.speaker.on('pointerdown', () => Voice.cue('number', this.zeros + 1));
 
     const back = this.add.text(16, 16, '⬅ Terug', {
       fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#ffffff',
@@ -197,7 +198,7 @@ export default class ZeroRocketScene extends Phaser.Scene {
     this.updateNumber();
     this.floatText('×10', this.scale.width / 2 + 90, 84, '#fde047');
     this.showName(true);
-    this.speak(NAMES[this.zeros]);
+    Voice.cue('number', this.zeros + 1);
     // beloning bij mijlpalen (eenmalig per sessie)
     if (REWARDS[this.zeros] && !this.rewarded[this.zeros]) {
       this.rewarded[this.zeros] = true;
@@ -286,7 +287,7 @@ export default class ZeroRocketScene extends Phaser.Scene {
     this.confetti();
     if (!this.rewarded.medal) { this.rewarded.medal = true; giveMedal('rocket_max'); }
     this.floatText('🏆 Het hele heelal door!', this.scale.width / 2, 360, '#fde047');
-    this.speak('triljoen! wauw!');
+    Voice.cue('cheer');
   }
 
   confetti() {
@@ -306,17 +307,4 @@ export default class ZeroRocketScene extends Phaser.Scene {
     this.tweens.add({ targets: t, y: y - 40, alpha: 0, duration: 1000, onComplete: () => t.destroy() });
   }
 
-  speak(text) {
-    if (!isSoundOn()) return;
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) return;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'nl-NL';
-      u.pitch = 1.5;
-      u.rate = 1.0;
-      synth.speak(u);
-    } catch (e) {}
-  }
 }

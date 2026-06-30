@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { SFX, initAudio, isSoundOn } from '../sound.js';
+import { SFX, initAudio } from '../sound.js';
+import { Voice } from '../voice.js';
 import { stopMusic } from '../music.js';
 import { confettiBurst, showReward } from '../reward.js';
 import { addStars, getStars } from '../progress.js';
@@ -32,9 +33,6 @@ function darker(c, amt) {
 const PAL = { top: 0x8fd6ff, bot: 0xdff3ff, hill: 0x73c24a, hill2: 0x5fa83a, path: 0xe7c98a, water: 0x5fc7e8, trunk: 0x9c6b3f, leaf: 0x4caf50 };
 const FLOWERS = [0xff6b9d, 0xffd23f, 0xff8a5b, 0xb06eff, 0x6ee0c0];
 
-const WORDS = ['nul', 'een', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven',
-  'acht', 'negen', 'tien', 'elf', 'twaalf', 'dertien', 'veertien', 'vijftien'];
-
 export default class NumberLandScene extends Phaser.Scene {
   constructor() { super('NumberLand'); }
 
@@ -47,10 +45,6 @@ export default class NumberLandScene extends Phaser.Scene {
     this.solvedCount = 0;
     this.locked = false;
     this.walkTarget = null;
-    this.nlVoice = null;
-    this.loadVoice();
-    this.speechPrimed = false;
-    this.input.on('pointerdown', () => this.primeSpeech());
     this.input.dragDistanceThreshold = 12;
 
     this.cameras.main.setBounds(0, 0, WORLD.w, WORLD.h);
@@ -59,6 +53,8 @@ export default class NumberLandScene extends Phaser.Scene {
     this.buildGroundInput();
     this.buildAvatar();
     this.buildSpots();
+    this.buildNPCs();
+    this.buildSecrets();
     this.buildHud();
 
     // slepen van blokjes (in wereld-coördinaten)
@@ -68,9 +64,9 @@ export default class NumberLandScene extends Phaser.Scene {
 
     this.cameras.main.startFollow(this.avatar, true, 0.1, 0.1);
     this.cameras.main.setDeadzone(180, 240);
+    this.cameras.main.fadeIn(450, 8, 16, 26);
 
-    this.say('Hoi, ik ben Nul! Help je de vriendjes?', { pitch: 1.85 });
-    this.events.once('shutdown', () => { try { window.speechSynthesis.cancel(); } catch (e) {} });
+    Voice.cue('welcome');
   }
 
   // ============================================================ WERELD
@@ -205,9 +201,8 @@ export default class NumberLandScene extends Phaser.Scene {
         const sp = Math.min(d, 200 * dt);
         a.x += (dx / d) * sp; a.y += (dy / d) * sp;
         a.scaleX = dx < 0 ? -1 : 1;
-        a.y += 0; // (camera volgt automatisch)
         a.body.y = Math.sin(time * 0.02) * 2; // wiebel
-        if (Math.floor(time / 160) !== this._lastStep) { this._lastStep = Math.floor(time / 160); SFX.step(); }
+        if (Math.floor(time / 160) !== this._lastStep) { this._lastStep = Math.floor(time / 160); SFX.step(); this.dustPuff(a.x, a.y + 24); }
       }
     } else if (a.body) {
       a.body.y *= 0.8;
@@ -237,12 +232,15 @@ export default class NumberLandScene extends Phaser.Scene {
     g.lineStyle(3, darker(col, 40), 1); g.strokeCircle(0, 6, 26);
     g.fillStyle(darker(col, 35), 1); g.fillRoundedRect(-18, 28, 12, 10, 4); g.fillRoundedRect(6, 28, 12, 10, 4);
     f.add(g);
-    f.add(this.add.circle(-9, 0, 7, 0xffffff).setStrokeStyle(2, 0x16202b));
-    f.add(this.add.circle(9, 0, 7, 0xffffff).setStrokeStyle(2, 0x16202b));
+    const eL = this.add.circle(-9, 0, 7, 0xffffff).setStrokeStyle(2, 0x16202b);
+    const eR = this.add.circle(9, 0, 7, 0xffffff).setStrokeStyle(2, 0x16202b);
+    f.add(eL); f.add(eR);
     const pL = this.add.circle(-9, 1, 3.2, 0x16202b), pR = this.add.circle(9, 1, 3.2, 0x16202b);
+    pL.baseX = -9; pL.baseY = 1; pR.baseX = 9; pR.baseY = 1;
     f.add(pL); f.add(pR);
     const m = this.add.graphics(); m.lineStyle(2.5, 0x16202b, 1); m.beginPath(); m.arc(0, 10, 7, 0.1 * Math.PI, 0.9 * Math.PI); m.strokePath(); f.add(m);
-    spot.friend = f; spot.mouth = m; spot.pupils = [pL, pR];
+    spot.friend = f; spot.mouth = m; spot.pupils = [pL, pR]; spot.eyes = [eL, eR];
+    spot.baseY = def.y; spot.blinkT = Phaser.Math.Between(900, 3200); spot.greeted = false; spot.idleT = Phaser.Math.Between(2000, 5000);
     this.tweens.add({ targets: f, y: def.y - 6, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
     // wens-wolkje met het doelgetal
@@ -278,6 +276,132 @@ export default class NumberLandScene extends Phaser.Scene {
     }
     parts.push(rest);
     return Phaser.Utils.Array.Shuffle(parts);
+  }
+
+  // ============================================================ LEVEN (rondlopende Numberblocks)
+  buildNPCs() {
+    this.npcs = [];
+    [[120, 1380, 1], [350, 900, 2], [150, 560, 4]].forEach(([x, y, v]) => this.npcs.push(this.makeWanderer(v, x, y)));
+  }
+
+  makeWanderer(value, x, y) {
+    const c = this.add.container(x, y).setDepth(12);
+    const col = sig(value);
+    const sh = this.add.ellipse(0, 22, 34, 9, 0x000000, 0.16);
+    const body = this.add.graphics();
+    body.fillStyle(col, 1); body.fillRoundedRect(-16, -16, 32, 34, 7);
+    body.fillStyle(darker(col, 28), 1); body.fillRoundedRect(-16, 10, 32, 8, 7);
+    body.fillStyle(col, 1); body.fillRoundedRect(-16, -16, 32, 26, 7);
+    body.fillStyle(lighten(col, 70), 0.5); body.fillRoundedRect(-12, -12, 10, 14, 4);
+    body.lineStyle(2.5, darker(col, 50), 0.9); body.strokeRoundedRect(-16, -16, 32, 34, 7);
+    const feet = this.add.graphics(); feet.fillStyle(darker(col, 40), 1);
+    feet.fillRoundedRect(-13, 16, 11, 8, 4); feet.fillRoundedRect(2, 16, 11, 8, 4);
+    const eL = this.add.circle(-6, -4, 6, 0xffffff).setStrokeStyle(2, 0x16202b);
+    const eR = this.add.circle(6, -4, 6, 0xffffff).setStrokeStyle(2, 0x16202b);
+    const pL = this.add.circle(-6, -3, 2.6, 0x16202b), pR = this.add.circle(6, -3, 2.6, 0x16202b);
+    const mouth = this.add.graphics(); mouth.lineStyle(2, 0x16202b, 1); mouth.beginPath(); mouth.arc(0, 3, 5, 0.15 * Math.PI, 0.85 * Math.PI); mouth.strokePath();
+    const disc = this.add.circle(0, -24, 9, 0xffffff).setStrokeStyle(2, 0x16202b);
+    const num = this.add.text(0, -24, `${value}`, { fontFamily: 'Arial Black, Arial', fontSize: '11px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+    c.add([sh, feet, body, eL, eR, pL, pR, mouth, disc, num]);
+    c.body = body; c.eyes = [eL, eR]; c.value = value;
+    c.target = null; c.retarget = Phaser.Math.Between(500, 2500); c.greetT = 0; c.blinkT = Phaser.Math.Between(900, 3200);
+    this.tweens.add({ targets: body, scaleY: 1.05, duration: Phaser.Math.Between(800, 1100), yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    return c;
+  }
+
+  updateNPCs(dt, time) {
+    const a = this.avatar;
+    for (const n of this.npcs) {
+      n.retarget -= dt * 1000;
+      if (!n.target || n.retarget <= 0) {
+        n.target = { x: Phaser.Math.Clamp(n.x + Phaser.Math.Between(-130, 130), 50, WORLD.w - 50), y: Phaser.Math.Clamp(n.y + Phaser.Math.Between(-130, 130), 250, WORLD.h - 60) };
+        n.retarget = Phaser.Math.Between(2200, 5000);
+      }
+      const dx = n.target.x - n.x, dy = n.target.y - n.y, d = Math.hypot(dx, dy);
+      if (d > 3) { const sp = Math.min(d, 64 * dt); n.x += (dx / d) * sp; n.y += (dy / d) * sp; n.body.y = Math.sin(time * 0.014) * 1.6; }
+      else n.body.y *= 0.85;
+      n.blinkT -= dt * 1000;
+      if (n.blinkT <= 0) { n.blinkT = Phaser.Math.Between(1800, 4200); for (const e of n.eyes) this.tweens.add({ targets: e, scaleY: 0.1, duration: 70, yoyo: true }); }
+      n.greetT -= dt * 1000;
+      if (a && n.greetT <= 0 && Phaser.Math.Distance.Between(n.x, n.y, a.x, a.y) < 84) {
+        n.greetT = 4500;
+        this.tweens.add({ targets: n, y: n.y - 14, duration: 170, yoyo: true, ease: 'Quad.out' });
+        Voice.cue('greet'); this.heart(n.x, n.y - 26);
+      }
+    }
+  }
+
+  // vriendjes leven: ogen volgen Nul, knipperen, zwaaien als je dichtbij komt
+  updateFriends(dt, time) {
+    const a = this.avatar;
+    for (const s of this.spots) {
+      if (!s.friend || !s.friend.active) continue;
+      let tx = 0, ty = 0;
+      if (a) { const ang = Math.atan2(a.y - s.friend.y, a.x - s.friend.x); tx = Math.cos(ang) * 1.8; ty = Math.sin(ang) * 1.8; }
+      for (const p of s.pupils) { p.x = p.baseX + tx; p.y = p.baseY + ty; }
+      s.blinkT -= dt * 1000;
+      if (s.blinkT <= 0) { s.blinkT = Phaser.Math.Between(1800, 4200); for (const e of s.eyes) this.tweens.add({ targets: e, scaleY: 0.1, duration: 70, yoyo: true }); }
+      if (a && !s.solved) {
+        const d = Phaser.Math.Distance.Between(a.x, a.y, s.friend.x, s.friend.y);
+        if (d < 110 && !s.greeted) {
+          s.greeted = true;
+          Voice.cue('greet');
+          this.tweens.add({ targets: s.friend, scaleX: 1.18, scaleY: 0.86, duration: 130, yoyo: true, ease: 'Quad.out' });
+          this.heart(s.friend.x, s.friend.y - 30);
+        } else if (d > 200) s.greeted = false;
+      }
+    }
+  }
+
+  // ============================================================ GEHEIMEN
+  buildSecrets() {
+    this.chest = this.makeChest(WORLD.w - 56, 1180);
+  }
+
+  makeChest(x, y) {
+    const c = this.add.container(x, y).setDepth(11);
+    const g = this.add.graphics();
+    g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 16, 40, 10);
+    g.fillStyle(0x9c6b3f, 1); g.fillRoundedRect(-20, -6, 40, 22, 4);
+    g.fillStyle(0x7a4f2c, 1); g.fillRoundedRect(-20, -14, 40, 12, 5);
+    g.fillStyle(0xffd23f, 1); g.fillRect(-3, -10, 6, 22);
+    g.fillStyle(0xffe9a8, 1); g.fillCircle(0, 2, 3);
+    g.lineStyle(2.5, 0x4a2f18, 1); g.strokeRoundedRect(-20, -14, 40, 30, 5);
+    c.add(g);
+    c.opened = false;
+    c.setSize(48, 40); c.setInteractive(new Phaser.Geom.Rectangle(-24, -22, 48, 40), Phaser.Geom.Rectangle.Contains);
+    c.on('pointerup', (p) => { if (p.getDistance && p.getDistance() > 16) return; this.openChest(c); });
+    this.tweens.add({ targets: c, scaleX: 1.04, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    return c;
+  }
+
+  openChest(chest) {
+    if (chest.opened) return; chest.opened = true;
+    this.tweens.killTweensOf(chest);
+    this.tweens.add({ targets: chest, scaleX: 1.25, scaleY: 0.8, duration: 120, yoyo: true });
+    this.sparkleAt(chest.x, chest.y - 10, 22); this.burstStars(chest.x, chest.y - 10, 22);
+    SFX.yay(); Voice.cue('cheer');
+    addStars(5); this.starText.setText(`${getStars()}`);
+    this.tweens.add({ targets: this.starText, scale: 1.4, duration: 200, yoyo: true });
+    this.cameraPunch();
+  }
+
+  cameraPunch(zoom = 0.03, shake = 5) {
+    const cam = this.cameras.main;
+    cam.shake(180, shake / 1000);
+    this.tweens.add({ targets: cam, zoom: 1 + zoom, duration: 110, yoyo: true, ease: 'Quad.out' });
+  }
+
+  heart(x, y) {
+    const g = this.add.graphics().setDepth(60);
+    g.fillStyle(0xff6b9d, 1); g.fillCircle(-4, 0, 5); g.fillCircle(4, 0, 5); g.fillTriangle(-9, 2, 9, 2, 0, 13);
+    g.x = x; g.y = y;
+    this.tweens.add({ targets: g, y: y - 34, alpha: 0, scale: 1.4, duration: 800, ease: 'Quad.out', onComplete: () => g.destroy() });
+  }
+
+  dustPuff(x, y) {
+    const p = this.add.particles(x, y, 'star', { speed: { min: 10, max: 38 }, angle: { min: 200, max: 340 }, scale: { start: 0.6, end: 0 }, lifespan: 360, quantity: 2, tint: [0xead9b0, 0xcbb489] }).setDepth(18);
+    this.time.delayedCall(380, () => p.destroy());
   }
 
   // ============================================================ HUD
@@ -460,7 +584,7 @@ export default class NumberLandScene extends Phaser.Scene {
     this.sparkleAt(sx, sy - block.totalH / 2, 10);
     this.setExpression(block, 'surprise'); this.setExpression(piece, 'surprise');
     this.time.delayedCall(430, () => { this.setExpression(block, 'happy'); this.setExpression(piece, 'happy'); });
-    this.say(`${WORDS[topV]} en ${WORDS[botV]}`);
+    Voice.cue('whee');
   }
 
   dropBlock(block) {
@@ -508,7 +632,7 @@ export default class NumberLandScene extends Phaser.Scene {
         this.setExpression(target, newVal >= 10 ? 'big' : 'happy');
         this.time.delayedCall(500, () => { if (target.mouth) this.setExpression(target, 'happy'); });
         this.sparkleAt(b.x, b.y - target.totalH / 2, 12); this.burstStars(b.x, b.y, 6);
-        SFX.combine(newVal); this.say(`${WORDS[newVal] || newVal}`);
+        SFX.combine(newVal); Voice.number(newVal);
         this.lookAll(target); this.locked = false;
       },
     });
@@ -523,7 +647,7 @@ export default class NumberLandScene extends Phaser.Scene {
     } else {
       SFX.oops(); this.setExpression(block, 'sad');
       this.spotReact(spot, 'sad');
-      this.say(`oei, ik wilde ${WORDS[spot.target]}`);
+      Voice.cue('oops');
       this.shake(c);
       this.tweens.add({ targets: c, x: block.homeX, y: block.homeY, duration: 380, ease: 'Back.out', onComplete: () => { this.setExpression(block, 'happy'); c.setDepth(10); } });
     }
@@ -542,9 +666,10 @@ export default class NumberLandScene extends Phaser.Scene {
     confettiBurst(this, 200);
     this.burstStars(spot.friend.x, spot.friend.y, 16);
     this.sparkleAt(spot.friend.x, spot.friend.y, 18);
+    this.cameraPunch();
     SFX.yay();
     this.spotReact(spot, 'happy');
-    this.say(`${WORDS[spot.target]}! ${this.cheer()}`, { pitch: 1.75 });
+    Voice.cue('great');
 
     // vriendje + blok dansen
     this.tweens.add({ targets: spot.friend, y: spot.friend.y - 26, duration: 220, yoyo: true, repeat: 2, ease: 'Sine.inOut' });
@@ -652,7 +777,7 @@ export default class NumberLandScene extends Phaser.Scene {
     if (bush.hasStar) {
       this.sparkleAt(bush.x, bush.y - 6, 10); this.burstStars(bush.x, bush.y, 6);
       addStars(1); this.starText.setText(`${getStars()}`); SFX.sparkle();
-      this.say('Een ster! ' + this.cheer(), { pitch: 1.85 });
+      Voice.cue('star');
     } else { SFX.giggle(); }
   }
   drawFlower(x, y, color) {
@@ -684,6 +809,8 @@ export default class NumberLandScene extends Phaser.Scene {
   update(time, delta) {
     const dt = delta / 1000;
     this.updateAvatar(dt, time);
+    this.updateNPCs(dt, time);
+    this.updateFriends(dt, time);
 
     for (const c of this.clouds) { c.x += c.driftSpeed * dt; if (c.x > WORLD.w + 70) c.x = -70; }
     for (const f of this.fliers) {
@@ -710,35 +837,4 @@ export default class NumberLandScene extends Phaser.Scene {
     }
   }
 
-  // ============================================================ STEM
-  say(text, opts = {}) {
-    if (!isSoundOn()) return;
-    try {
-      const synth = window.speechSynthesis; if (!synth) return;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'nl-NL'; if (this.nlVoice) u.voice = this.nlVoice;
-      u.pitch = opts.pitch != null ? opts.pitch : 1.85 + Phaser.Math.FloatBetween(-0.05, 0.1);
-      u.rate = opts.rate != null ? opts.rate : 1.12; u.volume = 1;
-      synth.speak(u);
-    } catch (e) {}
-  }
-  loadVoice() {
-    try {
-      const synth = window.speechSynthesis; if (!synth) return;
-      const pick = () => {
-        const nl = synth.getVoices().filter((v) => /nl(-|_)?/i.test(v.lang));
-        if (!nl.length) return;
-        const lively = nl.find((v) => /female|vrouw|fenna|lotte|saskia|ellen|google|flo|nora/i.test(v.name));
-        const notFlat = nl.find((v) => !/xander|frank/i.test(v.name));
-        this.nlVoice = lively || notFlat || nl[0];
-      };
-      pick(); synth.onvoiceschanged = pick;
-    } catch (e) {}
-  }
-  primeSpeech() {
-    if (this.speechPrimed) return; this.speechPrimed = true;
-    try { const synth = window.speechSynthesis; if (!synth) return; const u = new SpeechSynthesisUtterance(' '); u.volume = 0; synth.speak(u); this.loadVoice(); } catch (e) {}
-  }
-  cheer() { return Phaser.Utils.Array.GetRandom(['Joepie!', 'Hoera!', 'Goed zo!', 'Super!', 'Top!', 'Wauw!', 'Yes!']); }
 }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { SFX, initAudio, isSoundOn } from '../sound.js';
+import { SFX, initAudio } from '../sound.js';
+import { Voice } from '../voice.js';
 import { showReward, confettiBurst } from '../reward.js';
 
 // Getallen-Toren — stapel plaatswaarde-blokken (1, 10, 100) tot ze samen
@@ -56,14 +57,6 @@ export default class NumberTowerScene extends Phaser.Scene {
     this.bh = 30;
     this.gap = 3;
     this.baseY = 560;
-
-    // Vrolijke voorlees-stem klaarzetten (kiest een NL-stem zodra die laadt)
-    this.nlVoice = null;
-    this.loadVoice();
-    // iOS/Safari blokkeert de stem tot de eerste tik. Bij de eerste
-    // aanraking "ontgrendelen" we 'm met een stil zinnetje.
-    this.speechPrimed = false;
-    this.input.on('pointerdown', () => this.primeSpeech());
 
     // Donker HUD-paneel zodat de tekst goed leesbaar blijft op de
     // heldere Numberblocks-achtergrond.
@@ -312,7 +305,7 @@ export default class NumberTowerScene extends Phaser.Scene {
   ruilCelebrate() {
     const { width } = this.scale;
     SFX.levelup();
-    if (isSoundOn()) this.speak(`Ruilen! ${this.cheer()}`, { pitch: 1.8, rate: 1.05 });
+    Voice.cue('cheer');
     const banner = this.add.text(width / 2, 300, '🔁 RUILEN!', {
       fontFamily: 'Arial Black, Arial', fontSize: '42px', fontStyle: 'bold', color: '#fde047',
     }).setOrigin(0.5).setDepth(80).setShadow(0, 0, '#f59e0b', 18, true, true).setScale(0.5);
@@ -415,7 +408,7 @@ export default class NumberTowerScene extends Phaser.Scene {
     this.locked = true;
     SFX.win();
     confettiBurst(this);
-    if (isSoundOn()) this.speak(`${this.cheer()} ${this.words(this.target)}!`, { pitch: 1.7, rate: 1.02 });
+    Voice.cue('great');
     this.floatText('🎉 Goed!', this.scale.width / 2, 230, '#4ade80');
     this.xp++;
     this.updateHeader();
@@ -452,87 +445,9 @@ export default class NumberTowerScene extends Phaser.Scene {
     this.levelText.setText(`${lv.i} Level ${this.level} — ${lv.n}   (ronde ${ronde}/${lv.rounds})`);
   }
 
-  // --- Voorlezen (Web Speech API, nl-NL) ---
+  // Vrolijk geluids-cue bij een nieuwe opdracht (geen browser-TTS meer).
   sayCurrent() {
-    if (!isSoundOn()) return;
-    if (this.lv.mode === 'build') this.speak(this.words(this.target));
-    else this.speak(`${this.words(this.a)} plus ${this.words(this.b)}`);
-  }
-
-  speak(text, opts = {}) {
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) return;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'nl-NL';
-      if (this.nlVoice) u.voice = this.nlVoice;
-      // Hogere toonhoogte = vrolijker/kinderlijker (Numberblocks-sfeer)
-      u.pitch = opts.pitch != null ? opts.pitch : 1.5;
-      u.rate = opts.rate != null ? opts.rate : 1.0;
-      u.volume = 1;
-      synth.speak(u);
-    } catch (e) {}
-  }
-
-  // Kies een Nederlandse stem, het liefst een vrolijke/vrouwelijke
-  loadVoice() {
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) return;
-      const pick = () => {
-        const nl = synth.getVoices().filter((v) => /nl(-|_)?/i.test(v.lang));
-        if (!nl.length) return;
-        const fav = nl.find((v) => /female|vrouw|fenna|lotte|saskia|ellen|google/i.test(v.name));
-        this.nlVoice = fav || nl[0];
-      };
-      pick();
-      synth.onvoiceschanged = pick;
-    } catch (e) {}
-  }
-
-  // iOS heeft een echte gebruikers-tik nodig voordat de stem mag spreken.
-  // Eén keer een stil zinnetje afspelen "ontgrendelt" het voor de sessie.
-  primeSpeech() {
-    if (this.speechPrimed) return;
-    this.speechPrimed = true;
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) return;
-      const u = new SpeechSynthesisUtterance(' ');
-      u.volume = 0;
-      synth.speak(u);
-      this.loadVoice();
-    } catch (e) {}
-  }
-
-  // Willekeurig vrolijk kreetje
-  cheer() {
-    return Phaser.Utils.Array.GetRandom(['Joepie!', 'Hoera!', 'Goed zo!', 'Super!', 'Top!', 'Wauw!', 'Yes!']);
-  }
-
-  // Getal -> Nederlandse woorden (0..9999), voor de voorlees-stem
-  words(n) {
-    if (n === 0) return 'nul';
-    const ones = ['', 'een', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven', 'acht', 'negen'];
-    const teens = ['tien', 'elf', 'twaalf', 'dertien', 'veertien', 'vijftien', 'zestien', 'zeventien', 'achttien', 'negentien'];
-    const tens = ['', '', 'twintig', 'dertig', 'veertig', 'vijftig', 'zestig', 'zeventig', 'tachtig', 'negentig'];
-    const under100 = (x) => {
-      if (x < 10) return ones[x];
-      if (x < 20) return teens[x - 10];
-      const t = Math.floor(x / 10), o = x % 10;
-      return o === 0 ? tens[t] : ones[o] + 'en' + tens[t];
-    };
-    const under1000 = (x) => {
-      if (x < 100) return under100(x);
-      const h = Math.floor(x / 100), r = x % 100;
-      const hw = h === 1 ? 'honderd' : ones[h] + 'honderd';
-      return r === 0 ? hw : hw + under100(r);
-    };
-    if (n < 1000) return under1000(n);
-    const th = Math.floor(n / 1000), r = n % 1000;
-    const tw = th === 1 ? 'duizend' : under1000(th) + 'duizend';
-    return r === 0 ? tw : tw + under1000(r);
+    Voice.cue('number', this.lv.mode === 'build' ? this.target : (this.a + this.b));
   }
 
   // --- Gedeelde helpers ---

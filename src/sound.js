@@ -52,27 +52,11 @@ export function toggleSound() {
   return soundOn;
 }
 
-// iOS/Safari laat de voorlees-stem (Web Speech) alleen toe als hij voor het
-// eerst binnen een ECHTE DOM-tik wordt aangezwengeld. Phaser verwerkt input in
-// zijn eigen lus (net naast die echte tik), dus doen we het hier op window-
-// niveau. Eén stil zinnetje "ontgrendelt" de stem voor de rest van de sessie.
-let speechPrimed = false;
-function primeSpeech() {
-  if (speechPrimed) return;
-  try {
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    const u = new SpeechSynthesisUtterance(' ');
-    u.volume = 0;
-    synth.speak(u);
-    if (synth.getVoices().length) speechPrimed = true; // pas "klaar" als stemmen geladen zijn
-  } catch (e) {}
-}
-
-// Browsers staan audio pas toe na een gebruikersactie.
-// Daarom "ontgrendelen" we de audio + stem bij de eerste aanraking/klik.
+// Browsers staan audio pas toe na een gebruikersactie. Daarom "ontgrendelen"
+// we de Web Audio bij de eerste aanraking/klik. (Geen browser-TTS meer — alle
+// stem/feedback loopt via voice.js met Web Audio.)
 if (typeof window !== 'undefined') {
-  const unlock = () => { initAudio(); primeSpeech(); };
+  const unlock = () => { initAudio(); };
   window.addEventListener('pointerdown', unlock);
   window.addEventListener('touchstart', unlock);
 }

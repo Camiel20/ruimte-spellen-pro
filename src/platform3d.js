@@ -1,6 +1,7 @@
 // Three.js zit LOKAAL in het project (src/vendor/three.module.js).
 import * as THREE from './vendor/three.module.js';
 import { SFX, initAudio } from './sound.js';
+import { Voice } from './voice.js';
 import { getHigh, saveHigh, addStars, giveMedal } from './progress.js';
 
 // ===== GETALLEN-AVONTUUR 3D (renner-stijl) =====
@@ -621,14 +622,5 @@ export function launchPlatform3D(onExit) {
     return new THREE.CanvasTexture(cv);
   }
 
-  function speak(n) {
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth || n < 0 || n > 20) return;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance(WORDS[n]);
-      u.lang = 'nl-NL'; u.pitch = 1.5; u.rate = 1.0;
-      synth.speak(u);
-    } catch (e) {}
-  }
+  function speak(n) { Voice.cue('number', n); }
 }
