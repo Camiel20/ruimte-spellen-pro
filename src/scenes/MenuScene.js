@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { SFX, initAudio, toggleSound, isSoundOn } from '../sound.js';
 import { getStars, getMedalCount, getSetting } from '../progress.js';
 import { startMusic } from '../music.js';
+import { notePlay, startTimer, stopTimer } from '../stats.js';
 
 export default class MenuScene extends Phaser.Scene {
   constructor() { super('Menu'); }
@@ -208,6 +209,10 @@ export default class MenuScene extends Phaser.Scene {
     const gear = this.add.text(16, 14, '⚙️', { fontSize: '26px' })
       .setOrigin(0, 0).setDepth(20).setInteractive({ useHandCursor: true });
     gear.on('pointerdown', () => { SFX.click(); this.scene.start('Settings'); });
+
+    const stats = this.add.text(54, 14, '📊', { fontSize: '26px' })
+      .setOrigin(0, 0).setDepth(20).setInteractive({ useHandCursor: true });
+    stats.on('pointerdown', () => { SFX.click(); this.scene.start('Stats'); });
   }
 
   scheduleShootingStar(width, height) {
@@ -240,10 +245,12 @@ export default class MenuScene extends Phaser.Scene {
     const loading = this.add.text(this.scale.width / 2, this.scale.height / 2, '3D laden... 🐍', {
       fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#fff',
     }).setOrigin(0.5).setDepth(100);
+    notePlay('Snake'); startTimer('Snake');
     import('../snake3d.js').then(({ launchSnake3D }) => {
       loading.destroy();
       canvas.style.display = 'none';
       launchSnake3D(() => {
+        stopTimer();
         canvas.style.display = 'block';
         this.scene.restart();
       });

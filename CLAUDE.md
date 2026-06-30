@@ -16,6 +16,7 @@ npm run build    # productie-build naar dist/
 - `MenuScene.js` heeft een **Numberblocks-thema** (heldere lucht, zon, wolkjes, zwevende cijfer-kubussen; tegels als felle kubussen met dikke donkere rand).
 - `src/glyphs.js` — gedeelde cijfer-/letterpaden + `TraceChallenge` (schrijf-overlay), gebruikt door het schrijfspel én Planeet Tikker.
 - `src/progress.js` — voortgang (sterren, medailles, topscores, instellingen) in localStorage.
+- `src/stats.js` — speel-statistieken (hoe vaak + hoe lang per spel) in localStorage; `installTracking(game)` koppelt zich aan de scene-events. Bekijken via `StatsScene.js` ("Statistieken", 📊-knop in het menu).
 - `public/` — afbeeldingen, geluiden, icon, manifest.
 
 ## Hosting & deploy

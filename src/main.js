@@ -14,6 +14,8 @@ import SettingsScene from './scenes/SettingsScene.js';
 import CityScene from './scenes/CityScene.js';
 import NumberTowerScene from './scenes/NumberTowerScene.js';
 import ZeroRocketScene from './scenes/ZeroRocketScene.js';
+import StatsScene from './scenes/StatsScene.js';
+import { installTracking } from './stats.js';
 
 // Het hele spel wordt hier opgebouwd. Elk spel is een aparte "Scene"
 // in de map src/scenes/. Nieuwe spellen voeg je toe door een nieuwe
@@ -41,7 +43,8 @@ const config = {
     BalloonScene, MathScene, DiffScene,
     TraceScene, TraceMenuScene, ClickerScene, PianoScene, PlatformScene,
     AwardsScene, SettingsScene, CityScene, NumberTowerScene, ZeroRocketScene,
+    StatsScene,
   ],
 };
 
-new Phaser.Game(config);
+installTracking(new Phaser.Game(config));
