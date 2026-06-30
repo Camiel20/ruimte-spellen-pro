@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SFX, initAudio, isSoundOn } from '../sound.js';
+import { stopMusic } from '../music.js';
 import { confettiBurst, showReward } from '../reward.js';
 import { addStars, getStars } from '../progress.js';
 
@@ -33,12 +34,13 @@ function darker(c, amt) {
   return (r << 16) | (g << 8) | b;
 }
 
-// Vier gebieden om vrij te spelen (lucht-kleuren, heuvel, accenten, deco-emoji).
+// Vier gebieden om vrij te spelen — alles wordt zelf getekend (geen emoji).
+// Elk gebied heeft eigen lucht-, grond-, pad-, water- en bloemkleuren.
 const ZONES = [
-  { name: 'Bloemenweide', top: 0x8fd6ff, bot: 0xd6f3ff, hill: 0x73c24a, hill2: 0x66b03f, deco: ['🌸', '🌼', '🌷', '🍀'], air: ['🦋', '🐝', '🐦'] },
-  { name: 'Zonnestrand', top: 0x6ec7ff, bot: 0xfff0c8, hill: 0xf2d59a, hill2: 0xe8c483, deco: ['🐚', '⭐', '🌴', '🏖️'], air: ['🦋', '🪁', '🐦'] },
-  { name: 'Snoepland', top: 0xffb6e6, bot: 0xffe9f6, hill: 0xff9ed6, hill2: 0xf07ec2, deco: ['🍭', '🍬', '🧁', '🍩'], air: ['🍓', '🦋', '⭐'] },
-  { name: 'Sterrenruimte', top: 0x2a2a66, bot: 0x4b3b8f, hill: 0x3a2f6e, hill2: 0x2e2658, deco: ['⭐', '🪐', '🌟', '🚀'], air: ['✨', '🌟', '🛸'] },
+  { name: 'Bloemenweide', top: 0x8fd6ff, bot: 0xd9f4ff, hill: 0x73c24a, hill2: 0x5fa83a, path: 0xe7c98a, water: 0x5fc7e8, trunk: 0x9c6b3f, leaf: 0x4caf50, flowers: [0xff6b9d, 0xffd23f, 0xff8a5b, 0xb06eff] },
+  { name: 'Zonnestrand', top: 0x6ec7ff, bot: 0xfff0c8, hill: 0xf2d59a, hill2: 0xe2bd76, path: 0xf0dca6, water: 0x49b6e0, trunk: 0x8a5a32, leaf: 0x57c06a, flowers: [0xff8a5b, 0xffd23f, 0xff5e7e, 0x6ee0c0] },
+  { name: 'Snoepland', top: 0xffb6e6, bot: 0xffe9f6, hill: 0xff9ed6, hill2: 0xef76bd, path: 0xffd1ec, water: 0xff9ed6, trunk: 0xb5728f, leaf: 0xff7ec4, flowers: [0xff5ea8, 0xfff06b, 0x8be0ff, 0xc98bff] },
+  { name: 'Sterrenruimte', top: 0x241a55, bot: 0x49379a, hill: 0x3a2f6e, hill2: 0x271f52, path: 0x6b5bb0, water: 0x7a6bd0, trunk: 0x5a4a9a, leaf: 0x8a7be0, flowers: [0xffe16b, 0x8be0ff, 0xff8ad0, 0xb6a0ff], night: true },
 ];
 
 const WORDS = ['nul', 'een', 'twee', 'drie', 'vier', 'vijf', 'zes', 'zeven',
@@ -52,6 +54,7 @@ export default class NumberLandScene extends Phaser.Scene {
 
   create() {
     initAudio();
+    stopMusic(); // geen menu-muziek in Getallen-Land (eigen geluid + stem)
     const { width, height } = this.scale;
     this.W = width; this.H = height;
 
@@ -98,36 +101,31 @@ export default class NumberLandScene extends Phaser.Scene {
     this.hills = this.add.graphics().setDepth(-8);
     this.paintHills(z);
 
-    // Wolken (drijven)
+    // Wolken (zelf getekend, drijven)
     this.clouds = [];
     for (let i = 0; i < 4; i++) {
-      const c = this.add.text(Phaser.Math.Between(0, this.W), Phaser.Math.Between(70, 210), '☁️', {
-        fontSize: `${Phaser.Math.Between(40, 72)}px`,
-      }).setOrigin(0.5).setDepth(-7).setAlpha(0.95);
-      c.driftSpeed = Phaser.Math.FloatBetween(6, 16);
+      const c = this.makeCloud(Phaser.Math.Between(0, this.W), Phaser.Math.Between(70, 200), Phaser.Math.FloatBetween(0.7, 1.3));
+      c.driftSpeed = Phaser.Math.FloatBetween(5, 14);
       this.clouds.push(c);
     }
 
-    // Bloemen/deco op de grond
-    this.deco = [];
-    for (let i = 0; i < 9; i++) {
-      const e = Phaser.Utils.Array.GetRandom(z.deco);
-      const d = this.add.text(Phaser.Math.Between(20, this.W - 20), Phaser.Math.Between(706, 778), e, {
-        fontSize: `${Phaser.Math.Between(24, 40)}px`,
-      }).setOrigin(0.5).setDepth(-6);
-      this.tweens.add({ targets: d, angle: Phaser.Math.Between(-8, 8), duration: Phaser.Math.Between(1600, 2600), yoyo: true, repeat: -1, ease: 'Sine.inOut', delay: Phaser.Math.Between(0, 800) });
-      this.deco.push(d);
-    }
+    // Scenery: pad, riviertje, brug, bomen, struiken, bloemen, getallen-huisjes
+    this.scenery = [];
+    this.buildScenery(z);
 
-    // Vlinders/vogels in de lucht (zweven rond)
+    // Vlinders in de lucht (zweven rond)
     this.fliers = [];
-    for (let i = 0; i < 4; i++) this.spawnFlier(z);
+    for (let i = 0; i < 4; i++) this.spawnButterfly(z);
   }
 
   paintSky(z) {
     this.sky.clear();
     this.sky.fillGradientStyle(z.top, z.top, z.bot, z.bot, 1);
     this.sky.fillRect(0, 0, this.W, this.H);
+    if (z.night) {
+      this.sky.fillStyle(0xffffff, 0.9);
+      for (let i = 0; i < 44; i++) this.sky.fillCircle(Phaser.Math.Between(8, this.W - 8), Phaser.Math.Between(56, 380), Phaser.Math.FloatBetween(0.7, 1.9));
+    }
   }
 
   paintHills(z) {
@@ -142,27 +140,174 @@ export default class NumberLandScene extends Phaser.Scene {
     g.beginPath(); g.moveTo(0, 752); g.lineTo(this.W, 752); g.lineTo(this.W, 760); g.lineTo(0, 760); g.closePath(); g.fillPath();
   }
 
-  spawnFlier(z) {
-    const e = Phaser.Utils.Array.GetRandom(z.air);
-    const f = this.add.text(Phaser.Math.Between(0, this.W), Phaser.Math.Between(150, 300), e, { fontSize: '26px' })
-      .setOrigin(0.5).setDepth(-5);
-    f.baseY = f.y; f.phase = Math.random() * Math.PI * 2;
-    f.vx = Phaser.Math.FloatBetween(10, 26) * (Math.random() < 0.5 ? 1 : -1);
-    this.fliers.push(f);
-    return f;
+  // ---- zelf-getekende cartoon-art (geen emoji) ----
+  makeCloud(x, y, s = 1) {
+    const c = this.add.container(x, y).setDepth(-7).setScale(s);
+    const g = this.add.graphics();
+    g.fillStyle(0xe8f5ff, 1); g.fillEllipse(6, 15, 82, 20);
+    g.fillStyle(0xffffff, 1);
+    [[-26, 4, 17], [-6, -8, 23], [16, 0, 20], [34, 7, 14], [4, 11, 26]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+    c.add(g);
+    return c;
+  }
+
+  spawnButterfly(z) {
+    const col = Phaser.Utils.Array.GetRandom(z.flowers);
+    const x = Phaser.Math.Between(0, this.W), y = Phaser.Math.Between(150, 320);
+    const b = this.add.container(x, y).setDepth(-5);
+    const wing = this.add.graphics();
+    const drawWings = (sx) => {
+      wing.fillStyle(col, 1);
+      wing.fillEllipse(sx * 11, -6, 18, 20); wing.fillEllipse(sx * 12, 10, 14, 15);
+      wing.fillStyle(lighten(col, 65), 0.65); wing.fillEllipse(sx * 11, -6, 9, 11);
+      wing.fillStyle(darker(col, 40), 1); wing.fillCircle(sx * 11, -6, 2.5);
+    };
+    drawWings(-1); drawWings(1);
+    wing.fillStyle(0x3a2c20, 1); wing.fillRoundedRect(-2, -11, 4, 24, 2);
+    // voelsprieten
+    wing.lineStyle(1.5, 0x3a2c20, 1);
+    wing.beginPath(); wing.moveTo(0, -11); wing.lineTo(-4, -17); wing.strokePath();
+    wing.beginPath(); wing.moveTo(0, -11); wing.lineTo(4, -17); wing.strokePath();
+    b.add(wing);
+    this.tweens.add({ targets: wing, scaleX: 0.72, duration: 240, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    b.baseY = y; b.phase = Math.random() * Math.PI * 2;
+    b.vx = Phaser.Math.FloatBetween(12, 28) * (Math.random() < 0.5 ? 1 : -1);
+    this.fliers.push(b);
+    return b;
+  }
+
+  buildScenery(z) {
+    // pad + riviertje + brug
+    const g = this.add.graphics().setDepth(-7.6);
+    g.lineStyle(34, darker(z.path, 22), 1);
+    g.beginPath(); g.moveTo(this.W * 0.5, 698); g.lineTo(this.W * 0.42, 738); g.lineTo(this.W * 0.5, 778); g.strokePath();
+    g.lineStyle(27, z.path, 1);
+    g.beginPath(); g.moveTo(this.W * 0.5, 698); g.lineTo(this.W * 0.42, 738); g.lineTo(this.W * 0.5, 778); g.strokePath();
+    g.fillStyle(z.water, 1); g.fillRect(0, 780, this.W, this.H - 780);
+    g.fillStyle(lighten(z.water, 45), 0.5);
+    for (let x = 0; x < this.W; x += 30) g.fillEllipse(x + 15, 788, 18, 5);
+    g.fillStyle(0x9c6b3f, 1); g.fillRoundedRect(this.W * 0.5 - 34, 772, 68, 20, 4);
+    g.fillStyle(0x7a4f2c, 1);
+    for (let i = 0; i < 5; i++) g.fillRect(this.W * 0.5 - 30 + i * 13, 774, 2, 16);
+    this.scenery.push(g);
+
+    // bomen + struiken
+    [42, 116, this.W - 48, this.W - 124].forEach((tx, i) => this.scenery.push(this.drawTree(tx, 712 + (i % 2) * 10, z, 0.8 + Math.random() * 0.5)));
+    [72, this.W - 78, this.W * 0.5].forEach((bx) => this.scenery.push(this.drawBush(bx, 754, z)));
+
+    // getallen-huisjes op de heuvel
+    this.scenery.push(this.drawHouse(80, 690, 1, sig(1)));
+    this.scenery.push(this.drawHouse(this.W - 80, 684, 2, sig(2)));
+
+    // bloemen
+    for (let i = 0; i < 11; i++) {
+      this.scenery.push(this.drawFlower(Phaser.Math.Between(16, this.W - 16), Phaser.Math.Between(706, 774), Phaser.Utils.Array.GetRandom(z.flowers)));
+    }
+  }
+
+  drawTree(x, y, z, s = 1) {
+    const c = this.add.container(x, y).setDepth(-6).setScale(s);
+    const g = this.add.graphics();
+    g.fillStyle(z.trunk, 1); g.fillRoundedRect(-7, -6, 14, 42, 4);
+    g.fillStyle(darker(z.leaf, 28), 1); g.fillCircle(0, -34, 30);
+    g.fillStyle(z.leaf, 1); g.fillCircle(-17, -30, 20); g.fillCircle(17, -30, 20); g.fillCircle(0, -46, 22);
+    g.fillStyle(lighten(z.leaf, 50), 0.5); g.fillCircle(-9, -46, 9);
+    c.add(g);
+    this.tweens.add({ targets: c, angle: { from: -2.5, to: 2.5 }, duration: Phaser.Math.Between(2200, 3200), yoyo: true, repeat: -1, ease: 'Sine.inOut', delay: Phaser.Math.Between(0, 900) });
+    return c;
+  }
+
+  drawBush(x, y, z) {
+    const c = this.add.container(x, y).setDepth(-6);
+    const g = this.add.graphics();
+    g.fillStyle(darker(z.leaf, 22), 1); g.fillCircle(0, 0, 18);
+    g.fillStyle(z.leaf, 1); g.fillCircle(-13, 3, 13); g.fillCircle(13, 3, 13); g.fillCircle(0, -6, 15);
+    g.fillStyle(lighten(z.leaf, 42), 0.5); g.fillCircle(-6, -6, 6);
+    c.add(g);
+    return c;
+  }
+
+  drawFlower(x, y, color) {
+    const c = this.add.container(x, y).setDepth(-6);
+    const g = this.add.graphics();
+    g.lineStyle(3, 0x3f9d3f, 1); g.beginPath(); g.moveTo(0, 11); g.lineTo(0, 0); g.strokePath();
+    g.fillStyle(color, 1);
+    for (let a = 0; a < 5; a++) { const an = (a / 5) * Math.PI * 2; g.fillCircle(Math.cos(an) * 6, Math.sin(an) * 6 - 2, 4.5); }
+    g.fillStyle(0xfff0a0, 1); g.fillCircle(0, -2, 4);
+    c.add(g);
+    this.tweens.add({ targets: c, angle: { from: -7, to: 7 }, duration: Phaser.Math.Between(1700, 2500), yoyo: true, repeat: -1, ease: 'Sine.inOut', delay: Phaser.Math.Between(0, 900) });
+    return c;
+  }
+
+  drawHouse(x, y, number, color) {
+    const c = this.add.container(x, y).setDepth(-6);
+    const g = this.add.graphics();
+    g.fillStyle(lighten(color, 45), 1); g.fillRoundedRect(-26, -22, 52, 44, 5);
+    g.lineStyle(3, darker(color, 30), 1); g.strokeRoundedRect(-26, -22, 52, 44, 5);
+    g.fillStyle(color, 1); g.fillTriangle(-32, -19, 32, -19, 0, -50);
+    g.lineStyle(3, darker(color, 42), 1); g.strokeTriangle(-32, -19, 32, -19, 0, -50);
+    g.fillStyle(darker(color, 22), 1); g.fillRoundedRect(-9, -1, 18, 23, 3);
+    g.fillStyle(0xfff0a0, 1); g.fillCircle(-16, -8, 5); g.fillCircle(16, -8, 5);
+    c.add(g);
+    const sign = this.add.circle(0, -34, 9, 0xffffff).setStrokeStyle(2.5, 0x16202b);
+    const num = this.add.text(0, -34, `${number}`, { fontFamily: 'Arial Black, Arial', fontSize: '13px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+    c.add(sign); c.add(num);
+    return c;
+  }
+
+  makeGift(x, y) {
+    const c = this.add.container(x, y).setDepth(35);
+    const g = this.add.graphics();
+    g.fillStyle(0xff5e7e, 1); g.fillRoundedRect(-16, -12, 32, 26, 4);
+    g.fillStyle(0xffd23f, 1); g.fillRect(-3, -12, 6, 26); g.fillRect(-16, -2, 32, 6);
+    g.fillCircle(-6, -14, 6); g.fillCircle(6, -14, 6);
+    g.fillStyle(0xff5e7e, 1); g.fillCircle(0, -14, 3);
+    c.add(g);
+    c.setSize(40, 44);
+    c.setInteractive(new Phaser.Geom.Rectangle(-20, -22, 40, 44), Phaser.Geom.Rectangle.Contains);
+    return c;
+  }
+
+  // Geef elke Numberblock eigen trekjes (bril, knoopjes, wenkbrauwen, sterhand…)
+  drawPersonality(block) {
+    const c = block.container, v = block.value;
+    const fy = block.faceY, top = -block.totalH / 2;
+    const g = this.add.graphics(); c.add(g);
+    // rode wangetjes voor iedereen
+    g.fillStyle(0xff8a8a, 0.45); g.fillCircle(-19, fy + 6, 4.5); g.fillCircle(19, fy + 6, 4.5);
+    if (v === 2) { // bril
+      g.lineStyle(2.5, 0x16202b, 1);
+      g.strokeCircle(-12, fy - 2, 11); g.strokeCircle(12, fy - 2, 11);
+      g.beginPath(); g.moveTo(-1, fy - 2); g.lineTo(1, fy - 2); g.strokePath();
+    } else if (v === 3) { // knoopjes op de buik
+      g.fillStyle(0x16202b, 0.75);
+      for (let i = 0; i < 3; i++) g.fillCircle(0, fy + 20 + i * 15, 3);
+    }
+    if (v >= 4) { // stoere/blije wenkbrauwen
+      g.lineStyle(3, 0x16202b, 1);
+      g.beginPath(); g.moveTo(-18, fy - 13); g.lineTo(-7, fy - 11); g.strokePath();
+      g.beginPath(); g.moveTo(18, fy - 13); g.lineTo(7, fy - 11); g.strokePath();
+    }
+    if (v === 5 && block.rightHand) { // sterhand
+      const star = this.add.image(block.rightHand.x + 5, block.rightHand.y, 'star').setScale(2.6).setTint(0xffe16b);
+      c.add(star);
+      this.tweens.add({ targets: star, angle: 360, duration: 4500, repeat: -1 });
+    }
   }
 
   // ------------------------------------------------------------------ HUD
   buildHud() {
-    // Terug-knop
-    const back = this.add.text(16, 18, '⬅', {
-      fontFamily: 'Arial', fontSize: '24px', fontStyle: 'bold', color: '#ffffff',
-      backgroundColor: '#00000055', padding: { x: 10, y: 4 },
-    }).setDepth(50).setInteractive({ useHandCursor: true });
+    // Terug-knop (zelf getekend pijltje)
+    const back = this.add.graphics().setDepth(50);
+    back.fillStyle(0x16202b, 0.42); back.fillRoundedRect(10, 12, 48, 34, 11);
+    back.fillStyle(0xffffff, 1);
+    back.fillTriangle(38, 18, 38, 40, 22, 29); back.fillRect(38, 25, 12, 8);
+    back.setInteractive(new Phaser.Geom.Rectangle(10, 12, 48, 34), Phaser.Geom.Rectangle.Contains);
     back.on('pointerdown', () => { SFX.click(); this.scene.start('Menu'); });
 
-    // Sterren-teller
-    this.starText = this.add.text(this.W - 16, 22, `⭐ ${getStars()}`, {
+    // Sterren-teller (echte ster-afbeelding i.p.v. emoji)
+    this.add.image(this.W - 64, 23, 'star').setDepth(50).setScale(2.4);
+    this.starText = this.add.text(this.W - 16, 23, `${getStars()}`, {
       fontFamily: 'Arial Black, Arial', fontSize: '22px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(1, 0.5).setDepth(50).setStroke('#1f2d3a', 5);
 
@@ -311,6 +456,7 @@ export default class NumberLandScene extends Phaser.Scene {
     armG.lineTo(W / 2 + 16, armY + 10); armG.lineTo(W / 2 + 20, armY + 30); armG.strokePath();
     armG.fillCircle(W / 2 + 20, armY + 33, 6);
     c.add(armG); block.arms = armG;
+    block.rightHand = { x: W / 2 + 20, y: armY + 33 };
 
     // ---- schoentjes ----
     const feet = this.add.graphics();
@@ -378,6 +524,9 @@ export default class NumberLandScene extends Phaser.Scene {
       fontFamily: 'Arial Black, Arial', fontSize: `${Math.min(24, 16 + v)}px`, fontStyle: 'bold', color: '#16202b',
     }).setOrigin(0.5);
     c.add(num);
+
+    // ---- eigen persoonlijkheid (bril, knoopjes, wenkbrauwen, sterhand…) ----
+    this.drawPersonality(block);
 
     // hitbox (lijf + schijfje)
     c.setSize(W, totalH);
@@ -538,7 +687,7 @@ export default class NumberLandScene extends Phaser.Scene {
 
     const reward = 1 + this.zone; // meer sterren in latere gebieden
     addStars(reward);
-    this.starText.setText(`⭐ ${getStars()}`);
+    this.starText.setText(`${getStars()}`);
     this.tweens.add({ targets: this.starText, scale: 1.3, duration: 200, yoyo: true });
 
     const need = this.puzzlesPerZone();
@@ -565,7 +714,7 @@ export default class NumberLandScene extends Phaser.Scene {
       stars: 2,
       buttonText: 'Verken! ✨',
       onClose: () => {
-        this.starText.setText(`⭐ ${getStars()}`);
+        this.starText.setText(`${getStars()}`);
         this.repaintZone();
         this.startPuzzle();
       },
@@ -578,9 +727,10 @@ export default class NumberLandScene extends Phaser.Scene {
     this.paintSky(z); this.paintHills(z);
     this.zoneText.setText(z.name);
     this.drawProgress();
-    // nieuwe deco + luchtdiertjes passend bij het gebied
-    this.deco.forEach((d) => d.setText(Phaser.Utils.Array.GetRandom(z.deco)));
-    this.fliers.forEach((f) => f.setText(Phaser.Utils.Array.GetRandom(z.air)));
+    // bouw de scenery opnieuw op in de stijl van het nieuwe gebied
+    this.scenery.forEach((s) => s.destroy());
+    this.scenery = [];
+    this.buildScenery(z);
   }
 
   // ----------------------------------------------------- KLEINE EFFECTEN
@@ -624,8 +774,7 @@ export default class NumberLandScene extends Phaser.Scene {
     if (this.locked || this.surprise) return;
     if (Phaser.Math.Between(0, 1) === 0) return;
     const y = Phaser.Math.Between(PLAY.y0 + 30, PLAY.y0 + 90);
-    const gift = this.add.text(-30, y, '🎁', { fontSize: '40px' }).setOrigin(0.5).setDepth(35)
-      .setInteractive({ useHandCursor: true });
+    const gift = this.makeGift(-30, y);
     this.surprise = gift;
     this.tweens.add({ targets: gift, x: this.W + 30, duration: 7000, ease: 'Linear',
       onComplete: () => { gift.destroy(); if (this.surprise === gift) this.surprise = null; } });
@@ -635,7 +784,7 @@ export default class NumberLandScene extends Phaser.Scene {
       this.tweens.killTweensOf(gift);
       this.sparkleAt(gift.x, gift.y, 14);
       this.burstStars(gift.x, gift.y, 10);
-      addStars(2); this.starText.setText(`⭐ ${getStars()}`);
+      addStars(2); this.starText.setText(`${getStars()}`);
       SFX.sparkle(); this.say('Cadeautje! Twee sterren!', { pitch: 1.7 });
       gift.destroy(); this.surprise = null;
     });
