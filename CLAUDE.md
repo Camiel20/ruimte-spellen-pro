@@ -69,30 +69,42 @@ Honderd-held (voorbij 100), Nul-meester (ronde honderdtallen).
   (pappa/mamma's stem), als alternatief voor de browser-stem.
 
 ## Getallen-Land (`src/scenes/NumberLandScene.js`)
-Het hoofdmenu-tegeltje **"Getallen-Land"** (scene-key `NumberLand`) is de
-huidige, volledig herontworpen versie van wat ooit "Ruimte/​Getallen-Avontuur"
-heette. Een levende, vrolijke **Numberblocks-wereld** (100% zelfgemaakt, geen
-auteursrechtelijke beelden/audio). De kern is precies waar de serie om draait:
-getallen **maken** door blokjes samen te voegen en te splitsen.
-- **Samenvoegen:** sleep een Numberblock op een andere → ze tellen op tot een
-  groter getal (squash & stretch, confetti, `SFX.combine`, voorlezen).
-- **Splitsen:** tik op een blok → er springt een **1** los (waarde −1).
-- **Puzzel "Maak het getal":** sleep het juiste getal op de gloeiende doel-plek.
-  Goed = feest + sterren; fout = vriendelijk "oei!" en terug (geen straf).
+Het hoofdmenu-tegeltje **"Getallen-Land"** (scene-key `NumberLand`) is een
+**verkenbare Numberblocks-wereld** (100% zelf getekend, geen auteursrechtelijke
+beelden/audio). Een grote verticale vallei (`WORLD` = 480×1560) met camera die
+meebeweegt; je loopt rond en helpt getallen-vriendjes.
+- **Verkennen:** je bestuurt **"Nul"** (een rond gidsje, duidelijk anders dan de
+  vierkante blokken — Adrian houdt van 0). **Tik op de grond** (onzichtbare
+  `ground`-zone) → Nul loopt erheen, de camera volgt (`startFollow` + deadzone,
+  geclampt op `setBounds`). HUD staat vast met `setScrollFactor(0)`.
+- **Vriendjes & puzzels:** verspreid in de wereld staan **getallen-vriendjes**
+  (`buildSpots`/`makeSpot`) met een wens-wolkje (doelgetal). Maak dat getal van
+  de losse Numberblocks ernaast en **sleep het op het vriendje** → opgelost
+  (`solveSpot`): confetti, sterren, dansje. Alle vriendjes klaar → `showReward`
+  + medaille `numberland_hero`.
+- **Samenvoegen:** sleep een blok op een ander → ze tellen op (`mergeBlocks`).
+- **Splitsen (uit elkaar trekken):** **tik** op een blok → het scheurt in twee
+  helften (5 → 3 + 2), `tapBlock` + `SFX.split`.
+- **Verborgen sterren:** tik op een **struik** (`drawBush`/`searchBush`) → soms
+  springt er een ster uit (+1).
 - **Personages:** elke waarde een eigen signatuurkleur, **3D-glans-kubussen met
-  groeven, een wit cijfer-schijfje bovenop het hoofd, armpjes en schoentjes**
-  (zie `drawBlockVisual`), plus knipperende ogen die de actieve blok volgen en
-  een idle-wiebel. Expressies via `setExpression` (blij/groot/verbaasd/verdrietig).
-- **Wereld:** vier gebieden (`ZONES`: Bloemenweide → Strand → Snoepland →
-  Ruimte) die je **vrijspeelt met sterren** (elke 4 puzzels). Levende deco:
-  drijvende wolken, vlinders/vogels, wiegende bloemen, een 🎁-verrassing die
-  af en toe overzweeft voor bonus-sterren. Doel-getallen lopen op per gebied.
-- **Geluid:** nieuwe vrolijke Web Audio-effecten in `sound.js`
-  (`SFX.pick`, `place`, `sparkle`, `combine`, `yay`, `oops`, `giggle`) — géén
-  placeholder-piepjes. Werkt óók op iOS. Stem leest getallen/kreetjes voor
-  (Web Speech `nl-NL`, hoge toon), zelfde iOS-kanttekening als Getallen-Toren.
-- **Sterren/confetti** via het gedeelde `reward.js` (`confettiBurst`,
-  `showReward` bij een nieuw gebied).
+  groeven, wit cijfer-schijfje, armpjes en schoentjes** (`drawBlockVisual`), plus
+  knipperende ogen die de actieve blok volgen, idle-wiebel en **eigen trekjes**
+  (`drawPersonality`: wangetjes voor iedereen, bril voor de 2, knoopjes voor de 3,
+  wenkbrauwen vanaf de 4, ster-in-de-hand voor de 5).
+- **Art:** alles zelf getekend (geen emoji): wolken (parallax), vlinders, bomen,
+  struiken, bloemen, getallen-huisjes, een kronkelpad met brug over een riviertje.
+- **Geluid:** vrolijke Web Audio-effecten in `sound.js` (`pick`, `place`,
+  `sparkle`, `combine`, `yay`, `oops`, `giggle`, `split`, `step`) — géén
+  placeholder-piepjes; werkt óók op iOS. **Menu-muziek stopt** bij binnenkomst
+  (`stopMusic()` in `create`). Stem (`say`) is **hoog + vlot** (pitch ~1.85,
+  rate ~1.12) zodat het vrolijk klinkt i.p.v. monotoon; `loadVoice` vermijdt de
+  vlakke NL-mannenstemmen. Zelfde iOS-kanttekening als Getallen-Toren.
+
+### Openstaande ideeën Getallen-Land
+- Meer puzzel-typen die in de wereld zélf zitten (brug die een getal nodig heeft,
+  huisje dat op de juiste Numberblock wacht) en meerdere vrij te spelen gebieden
+  met eigen kleuren/landschap (de oude `ZONES`-aanpak, nu nog één gebied).
 
 ### Oudere Avontuur-versies (niet meer in het menu)
 - `src/platform3d.js` — een **3D-renner** (Three.js, Crossy-Road-stijl): groei

@@ -228,4 +228,14 @@ export const SFX = {
     tone(900, 0.05, 'sine', 0.12, 0.06);
     tone(800, 0.05, 'sine', 0.1, 0.12);
   },
+  // Uit elkaar trekken/scheuren: korte "ritssss" + plopje.
+  split() {
+    slide(540, 300, 0.14, 'sawtooth', 0.12);
+    tone(700, 0.05, 'triangle', 0.12, 0.02);
+    tone(520, 0.06, 'sine', 0.10, 0.08);
+  },
+  // Voetstapjes van het loop-figuurtje (zacht).
+  step() {
+    tone(180, 0.05, 'sine', 0.08);
+  },
 };
