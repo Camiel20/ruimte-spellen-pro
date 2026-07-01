@@ -5,6 +5,11 @@ import { stopMusic } from '../music.js';
 import { confettiBurst, showReward } from '../reward.js';
 import { addStars, getStars } from '../progress.js';
 import { WORLD1, LEVEL_1_1 } from '../levels/world1.js';
+import { WORLD2 } from '../levels/world2.js';
+
+// Alle levels achter elkaar (Wereld 1 → Wereld 2 → ...); de level-ketting
+// loopt gewoon door via de index.
+const LEVELS = [...WORLD1, ...WORLD2];
 
 // ===== TEL-AVONTUUR — level-engine =====
 // Data-gedreven 2D-platformer in de sfeer van Numberblocks (100% zelf getekend).
@@ -52,7 +57,7 @@ export default class AdventureScene extends Phaser.Scene {
     stopMusic();
 
     this.levelIndex = (data && data.levelIndex) || 0;
-    this.level = WORLD1[this.levelIndex] || LEVEL_1_1;
+    this.level = LEVELS[this.levelIndex] || LEVEL_1_1;
     const L = this.level;
 
     this.mode = 'explore';
@@ -69,6 +74,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, L.worldW, L.worldH);
 
     this.buildBackground(L);
+    this.buildWater(L);
     this.buildPlatforms(L);
     this.buildPickups(L);
     this.buildPuzzles(L);
@@ -123,6 +129,19 @@ export default class AdventureScene extends Phaser.Scene {
     const hills = this.add.graphics().setDepth(-26).setScrollFactor(0.35);
     hills.fillStyle(darker(L.bg.bottom, 20), 0.7);
     for (let x = -100; x < this.scale.width + 200; x += 180) hills.fillCircle(x, this.scale.height, 150);
+  }
+
+  // ============================================================ WATER (visueel)
+  buildWater(L) {
+    (L.water || []).forEach(([x, y, w, h]) => {
+      const g = this.add.graphics().setDepth(-14);
+      g.fillStyle(0x3fa9e0, 1); g.fillRect(x, y, w, h);
+      g.fillStyle(0x7fd0f0, 0.5);
+      for (let wx = x; wx < x + w; wx += 42) g.fillEllipse(wx + 21, y + 12, 26, 8);
+      g.fillStyle(0xffffff, 0.25);
+      for (let wx = x; wx < x + w; wx += 60) g.fillEllipse(wx + 30, y + 26, 18, 5);
+      this.tweens.add({ targets: g, alpha: 0.82, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    });
   }
 
   // ============================================================ PLATFORMS / GROND
@@ -182,7 +201,8 @@ export default class AdventureScene extends Phaser.Scene {
 
       // De kloof zichtbaar maken: donkere spleet.
       const chasm = this.add.graphics().setDepth(-11);
-      chasm.fillStyle(0x2a3a2a, 1); chasm.fillRect(G.gapX, groundTop, G.gapW, 200);
+      chasm.fillStyle(G.water ? 0x3fa9e0 : 0x2a3a2a, 1); chasm.fillRect(G.gapX, groundTop, G.gapW, 200);
+      if (G.water) { chasm.fillStyle(0x7fd0f0, 0.5); for (let wx = G.gapX; wx < G.gapX + G.gapW; wx += 42) chasm.fillEllipse(wx + 21, groundTop + 12, 26, 8); }
 
       // Bordje met het doelgetal.
       const sign = this.add.container(G.gapX - 16, G.y - 74).setDepth(4);
@@ -955,7 +975,7 @@ export default class AdventureScene extends Phaser.Scene {
     confettiBurst(this, 200); this.cameraPunch(0.05, 7); SFX.win(); Voice.cue('cheer');
 
     const L = this.level;
-    const hasNext = !!WORLD1[this.levelIndex + 1];
+    const hasNext = !!LEVELS[this.levelIndex + 1];
     const R = L.reward || {};
     this.time.delayedCall(700, () => {
       showReward(this, {
