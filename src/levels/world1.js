@@ -1,11 +1,20 @@
 // ===== WERELD 1 — LEVELDATA (data-gedreven) =====
-// Een level is PUUR data. De engine (AdventureScene) kent geen level-specifieke
-// code: hij leest deze objecten uit en bouwt de wereld. Nieuwe levels voeg je
-// toe door een object aan WORLD1 te hangen — geen engine-wijziging nodig.
+// Een level is PUUR data. De engine (AdventureScene) leest deze objecten uit en
+// bouwt de wereld. Alle features zijn optioneel per level, dus alle levels delen
+// één engine. Nieuwe levels = een object aan WORLD1 hangen — geen engine-wijziging.
 //
 // Coördinaten: (0,0) = linksboven. Platforms zijn [x, y, breedte, hoogte] met
-// (x,y) als LINKERBOVENHOEK (statische Arcade-bodies). De grond ligt op y≈660;
-// het scherm is 480×800, de wereld scrollt horizontaal mee met de speler.
+// (x,y) als LINKERBOVENHOEK (statische Arcade-bodies). Grond ligt op y≈660; het
+// scherm is 480×800 (worldH=800 = viewport, dus geen verticaal scrollen — alles
+// tussen y 0 en 800 is altijd in beeld). De wereld scrollt horizontaal mee.
+//
+// Ondersteunde velden:
+//   start, startValue, startDoubleJump, worldW, worldH, killY, bg{top,bottom}
+//   platforms[], pickups[{x,y,amount}], grommels[{x,y,patrol}], star{x,y}, goal{x,y,value}
+//   gate{...}        — brug-poort (bouw N van blokjes → planken over de kloof)
+//   rescues[{x,y,doel,blocks,gives,name}] — help een gevallen Numberblock → kracht
+//   doors[{x,doel,topY,y}]                — 'wees N': opent als JIJ waarde N bent
+//   intro, afterGate  — HUD-teksten;  reward{title,subtitle,stars,medal,medalLabel}
 
 export const LEVEL_1_1 = {
   id: '1-1',
@@ -13,55 +22,101 @@ export const LEVEL_1_1 = {
 
   worldW: 2100,
   worldH: 800,
-  killY: 700, // val je hieronder (in de kloof) → meteen zacht terug naar checkpoint
-              // (net onder grondhoogte, zodat je NIET op de wereld-bodem kunt landen
-              //  en aan de overkant omhoog klimt — de brug is echt nodig)
-
-  // Lucht → gras (Numberblocks-thema)
+  killY: 700,
   bg: { top: 0x8fd3ff, bottom: 0x8ed36b },
 
   start: { x: 90, y: 560 },
-  // Zodra de brug ligt en je oversteekt, verschuift je checkpoint hierheen.
-  checkpointAfterGate: { x: 1180, y: 560 },
+  intro: 'Steek de kloof over!',
+  afterGate: 'Ren naar de vlag! 🚩',
 
-  // Statische grond en richels. Vóór de kloof (A), erna (B), plus een hoge
-  // richel met de verstopte ster (alleen te halen als je gegroeid bent).
-  // De kloof (760→1120) is BREED genoeg dat je er NIET overheen kunt springen:
-  // de brug bouwen is de enige weg. Zo is de rekenpuzzel de kern, geen omweg.
   platforms: [
     [0, 660, 760, 140],     // grond A
     [1120, 660, 980, 140],  // grond B (na de kloof)
     [1300, 490, 150, 24],   // richel met de ster
   ],
 
-  // Groei-bolletje: oppakken → Één wordt groter en springt hoger.
   pickups: [
     { x: 360, y: 600, amount: 1 },
   ],
 
-  // Eén brug-poort over de kloof. Maak van de losse blokjes het doelgetal
-  // (3 = 1+2), dan klikt de brug op z'n plek en stroomt de kleur terug.
+  // Brug over de brede (onspringbare) kloof: maak 3 van de losse blokjes.
   gate: {
     type: 'brug',
-    gapX: 760, gapW: 360,   // de kloof die de brug moet dichten (onspringbaar)
+    gapX: 760, gapW: 360,
     y: 650,
     doel: 3,
-    blocks: [1, 2],         // losse blokjes die klaarliggen
-    triggerX: 640,          // vanaf hier (rand van grond A) verschijnt de ✋-knop
+    blocks: [1, 2],
+    triggerX: 640,
     triggerW: 120,
   },
 
-  // Eén Grommel (stomp-type): erop springen → hij wordt vrolijk en kleurig.
-  // Van opzij raken → je krimpt (geen game-over).
   grommels: [
     { type: 'stomp', x: 540, y: 612, patrol: [460, 700] },
   ],
 
-  // Verstopte ster (geheim) op de hoge richel.
   star: { x: 1375, y: 452 },
-
-  // Doel-vlag: een grote glanzende 3 die het level "compleet maakt".
   goal: { x: 2000, y: 588, value: 3 },
+
+  reward: {
+    title: 'Level 1-1 gehaald! 🏆',
+    subtitle: 'Je hebt de brug gemaakt en de kloof overgestoken!',
+    stars: 3, medal: 'adventure_1_1', medalLabel: 'Brug-Bouwer',
+  },
 };
 
-export const WORLD1 = [LEVEL_1_1 /*, LEVEL_1_2, ... */];
+export const LEVEL_1_2 = {
+  id: '1-2',
+  naam: 'Twee en de Deur',
+
+  worldW: 2000,
+  worldH: 800,
+  killY: 720,
+  bg: { top: 0x8fd3ff, bottom: 0x9be0d0 }, // net iets andere lucht
+
+  start: { x: 90, y: 560 },
+  intro: 'Help Twee en open de deur!',
+
+  // Doorlopende grond (geen pits → faal-vriendelijk). Een hoge MUUR op het
+  // hoofdpad die je alléén met de dubbelsprong overkomt: zo MOET je eerst Twee
+  // redden (die de dubbelsprong geeft) voor je verder kunt. Plus een losse
+  // hoge richel met de verstopte ster.
+  platforms: [
+    [0, 660, 2000, 140],
+    [1000, 468, 60, 192],  // MUUR (top y=468): enkel met dubbelsprong eroverheen
+  ],
+
+  // Redding: help "Twee" (twee losse enen → 2). Beloning = DUBBELSPRONG.
+  rescues: [
+    { x: 330, y: 636, doel: 2, blocks: [1, 1], gives: 'doubleJump', name: 'Twee' },
+  ],
+
+  grommels: [
+    { type: 'stomp', x: 660, y: 612, patrol: [580, 800] },
+  ],
+
+  // Twee groei-bolletjes NA de Grommel en vóór de deur: 1 → 3 (geen enemy
+  // ertussen, dus je komt altijd als 3 bij de deur — geen softlock mogelijk).
+  pickups: [
+    { x: 1200, y: 600, amount: 1 },
+    { x: 1340, y: 600, amount: 1 },
+  ],
+
+  // Deur 'wees 3': opent alleen als JIJ waarde 3 bent (nieuw poorttype).
+  doors: [
+    { x: 1480, doel: 3, topY: 120, y: 660 },
+  ],
+
+  // Ster zweeft boven de muur: je pakt 'm tijdens de verplichte dubbelsprong-hop
+  // (iedereen doet die op waarde 1, dus betrouwbaar te pakken).
+  star: { x: 1030, y: 418 },
+
+  goal: { x: 1850, y: 588, value: 3 },
+
+  reward: {
+    title: 'Level 1-2 gehaald! 🏆',
+    subtitle: 'Je hebt Twee gered én de deur geopend!',
+    stars: 3, medal: 'adventure_1_2', medalLabel: 'Deur-Opener',
+  },
+};
+
+export const WORLD1 = [LEVEL_1_1, LEVEL_1_2];
