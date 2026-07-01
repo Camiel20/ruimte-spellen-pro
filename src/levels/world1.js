@@ -169,4 +169,54 @@ export const LEVEL_1_3 = {
   },
 };
 
-export const WORLD1 = [LEVEL_1_1, LEVEL_1_2, LEVEL_1_3];
+export const LEVEL_1_4 = {
+  id: '1-4',
+  naam: 'Twee Krachten',
+
+  worldW: 2600,
+  worldH: 800,
+  killY: 720,
+  bg: { top: 0x8fd3ff, bottom: 0xbfe0c8 },
+
+  start: { x: 90, y: 560 },
+  // Je hebt de krachten van Twee & Drie al geleerd → begin ermee.
+  startDoubleJump: true,
+  startStamp: true,
+  intro: 'Gebruik je krachten en bouw de 5!',
+
+  platforms: [
+    [0, 660, 760, 140],     // grond A (start)
+    [760, 458, 60, 202],    // hoge MUUR: alleen met dubbelsprong eroverheen
+    [820, 660, 820, 140],   // grond B
+    [2120, 660, 480, 140],  // grond C (na de brug) — met de vlag
+  ],
+
+  grommels: [
+    { type: 'stomp', x: 400, y: 612, patrol: [300, 560] },
+    { type: 'stomp', x: 1200, y: 612, patrol: [1050, 1400] },
+  ],
+
+  // Brede kloof (onspringbaar, ook met dubbelsprong): bouw de 5 (2+3).
+  gate: {
+    type: 'brug',
+    gapX: 1640, gapW: 480,
+    y: 650,
+    doel: 5,
+    blocks: [2, 3],
+    triggerX: 1520,
+    triggerW: 120,
+  },
+
+  // Ster boven de muur — pak 'm tijdens de verplichte dubbelsprong-hop.
+  star: { x: 790, y: 405 },
+
+  goal: { x: 2450, y: 588, value: 5 },
+
+  reward: {
+    title: 'Level 1-4 gehaald! 🏆',
+    subtitle: 'Je hebt met al je krachten de 5 gebouwd!',
+    stars: 3, medal: 'adventure_1_4', medalLabel: 'Vijf-Meester',
+  },
+};
+
+export const WORLD1 = [LEVEL_1_1, LEVEL_1_2, LEVEL_1_3, LEVEL_1_4];
