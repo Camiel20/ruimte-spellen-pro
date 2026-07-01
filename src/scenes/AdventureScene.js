@@ -621,7 +621,7 @@ export default class AdventureScene extends Phaser.Scene {
     const title = this.add.text(W / 2, 70, `Maak de ${pz.doel}!`, {
       fontFamily: 'Arial Black, Arial', fontSize: '26px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
-    const hint = this.add.text(W / 2, 104, 'Tik op een blokje om samen te voegen', {
+    const hint = this.add.text(W / 2, 104, 'Sleep de blokjes op elkaar', {
       fontFamily: 'Arial', fontSize: '13px', color: '#9fb3c8',
     }).setOrigin(0.5);
     panel.add([title, hint]);
@@ -636,7 +636,9 @@ export default class AdventureScene extends Phaser.Scene {
 
     this.buildPanel = panel;
     this.buildBlocks = [];
-    this.input.dragDistanceThreshold = 10;
+    // Lage drempel = het blok komt meteen los als je sleept (geen plakkerige
+    // dode zone). Een echte tik (nauwelijks beweging) blijft splitsen.
+    this.input.dragDistanceThreshold = 3;
 
     pz.blocks.forEach((val, i) => {
       const bx = W / 2 + (i - (pz.blocks.length - 1) / 2) * 120;
@@ -647,7 +649,12 @@ export default class AdventureScene extends Phaser.Scene {
     // Sleep-handler: SCHERM-positie van de vinger (blokjes zitten in een
     // scrollFactor-0 overlay; dragX/dragY zijn wereld-coörd. → zou wegspringen).
     this._dragHandler = (p, obj) => {
-      if (obj.getData && obj.getData('buildBlock')) { obj.x = p.x; obj.y = p.y; }
+      if (obj.getData && obj.getData('buildBlock')) {
+        // grijp-offset: het blok volgt de vinger vanaf waar je 'm pakte
+        // (geen sprong met het midden naar de vinger).
+        obj.x = p.x + (obj._grabDX || 0);
+        obj.y = p.y + (obj._grabDY || 0);
+      }
     };
     this.input.on('drag', this._dragHandler);
   }
@@ -670,9 +677,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.buildBlocks.push(c);
 
     c.on('pointerdown', () => { c._dragged = false; });
-    c.on('dragstart', () => { c._dragged = true; c.setDepth(140); this.tweens.add({ targets: c, scale: 1.1, duration: 100, yoyo: true, onComplete: () => c.setScale(1.06) }); SFX.pick(); });
+    c.on('dragstart', (p) => { c._dragged = true; c._grabDX = c.x - p.x; c._grabDY = c.y - p.y; c.setDepth(140); this.tweens.add({ targets: c, scale: 1.1, duration: 100, yoyo: true, onComplete: () => c.setScale(1.06) }); SFX.pick(); });
     c.on('dragend', () => this.dropBuildBlock(c));
-    c.on('pointerup', () => { if (!c._dragged) this.tapBuildBlock(c); });
+    c.on('pointerup', () => { if (!c._dragged) this.splitBuildBlock(c); });
     c.setScale(0.3);
     this.tweens.add({ targets: c, scale: 1, duration: 260, ease: 'Back.out' });
     return c;
@@ -732,23 +739,6 @@ export default class AdventureScene extends Phaser.Scene {
         this.checkPuzzleSolved(target);
       },
     });
-  }
-
-  // Tik op een blok: is er nog een ander blok, dan voegen ze samen (fijn op
-  // touch — geen sleep-gebaar nodig). Is dit het enige blok, dan splitst het
-  // (zodat je toch nog een andere combinatie kunt maken als je wilt).
-  tapBuildBlock(c) {
-    const others = this.buildBlocks.filter((b) => b !== c);
-    if (others.length > 0) {
-      let best = null, bestD = Infinity;
-      for (const b of others) {
-        const d = Phaser.Math.Distance.Between(c.x, c.y, b.x, b.y);
-        if (d < bestD) { bestD = d; best = b; }
-      }
-      this.mergeBuildBlocks(c, best);
-    } else {
-      this.splitBuildBlock(c);
-    }
   }
 
   splitBuildBlock(c) {

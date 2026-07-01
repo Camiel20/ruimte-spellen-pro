@@ -28,6 +28,9 @@
       align-items: center;
       justify-content: center;
     }
+    /* het canvas erft touch-action niet van body → expliciet, zodat slepen
+       op iOS niet als scroll/zoom wordt afgepakt */
+    #game canvas { touch-action: none; -webkit-user-select: none; user-select: none; }
   </style>
 </head>
 <body>
