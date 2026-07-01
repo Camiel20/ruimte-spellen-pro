@@ -621,7 +621,7 @@ export default class AdventureScene extends Phaser.Scene {
     const title = this.add.text(W / 2, 70, `Maak de ${pz.doel}!`, {
       fontFamily: 'Arial Black, Arial', fontSize: '26px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
-    const hint = this.add.text(W / 2, 104, 'Sleep de blokjes samen • tik = splitsen', {
+    const hint = this.add.text(W / 2, 104, 'Tik op een blokje om samen te voegen', {
       fontFamily: 'Arial', fontSize: '13px', color: '#9fb3c8',
     }).setOrigin(0.5);
     panel.add([title, hint]);
@@ -672,7 +672,7 @@ export default class AdventureScene extends Phaser.Scene {
     c.on('pointerdown', () => { c._dragged = false; });
     c.on('dragstart', () => { c._dragged = true; c.setDepth(140); this.tweens.add({ targets: c, scale: 1.1, duration: 100, yoyo: true, onComplete: () => c.setScale(1.06) }); SFX.pick(); });
     c.on('dragend', () => this.dropBuildBlock(c));
-    c.on('pointerup', () => { if (!c._dragged) this.splitBuildBlock(c); });
+    c.on('pointerup', () => { if (!c._dragged) this.tapBuildBlock(c); });
     c.setScale(0.3);
     this.tweens.add({ targets: c, scale: 1, duration: 260, ease: 'Back.out' });
     return c;
@@ -732,6 +732,23 @@ export default class AdventureScene extends Phaser.Scene {
         this.checkPuzzleSolved(target);
       },
     });
+  }
+
+  // Tik op een blok: is er nog een ander blok, dan voegen ze samen (fijn op
+  // touch — geen sleep-gebaar nodig). Is dit het enige blok, dan splitst het
+  // (zodat je toch nog een andere combinatie kunt maken als je wilt).
+  tapBuildBlock(c) {
+    const others = this.buildBlocks.filter((b) => b !== c);
+    if (others.length > 0) {
+      let best = null, bestD = Infinity;
+      for (const b of others) {
+        const d = Phaser.Math.Distance.Between(c.x, c.y, b.x, b.y);
+        if (d < bestD) { bestD = d; best = b; }
+      }
+      this.mergeBuildBlocks(c, best);
+    } else {
+      this.splitBuildBlock(c);
+    }
   }
 
   splitBuildBlock(c) {
