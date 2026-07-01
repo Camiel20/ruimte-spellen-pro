@@ -62,7 +62,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.lastGroundAt = -9999;
     this.jumpBufferedAt = -9999;
     this.jumpsUsed = 0;
-    this.powers = { doubleJump: !!L.startDoubleJump };
+    this.powers = { doubleJump: !!L.startDoubleJump, stamp: !!L.startStamp };
     this.won = false;
 
     this.cameras.main.setBounds(0, 0, L.worldW, L.worldH);
@@ -73,6 +73,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.buildPickups(L);
     this.buildPuzzles(L);
     this.buildDoors(L);
+    this.buildBreakables(L);
     this.buildGrommels(L);
     this.buildStar(L);
     this.buildGoal(L);
@@ -289,6 +290,36 @@ export default class AdventureScene extends Phaser.Scene {
     this.questText.setText('De deur is open! 🚪');
   }
 
+  // ============================================================ BREEKBARE KRATTEN
+  // Kratten die je met de STAMP-kracht (van Drie) van bovenaf kapot slaat.
+  // Zonder de kracht zijn het gewone, stevige platforms.
+  buildBreakables(L) {
+    this.breakGroup = this.physics.add.staticGroup();
+    (L.breakables || []).forEach(([x, y, w, h]) => {
+      const body = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x000000, 0);
+      this.physics.add.existing(body, true);
+      this.breakGroup.add(body);
+      const art = this.add.container(x + w / 2, y + h / 2).setDepth(-9);
+      const g = this.add.graphics();
+      g.fillStyle(0xb5793e, 1); g.fillRoundedRect(-w / 2 + 2, -h / 2 + 2, w - 4, h - 4, 4);
+      g.fillStyle(0x8a5a2b, 1); g.fillRect(-w / 2 + 2, -3, w - 4, 6);
+      g.fillStyle(lighten(0xb5793e, 30), 0.5); g.fillRoundedRect(-w / 2 + 5, -h / 2 + 5, w * 0.3, 8, 3);
+      g.lineStyle(3, 0x6e4620, 1); g.strokeRoundedRect(-w / 2 + 2, -h / 2 + 2, w - 4, h - 4, 4);
+      // barstjes
+      g.lineStyle(1.5, 0x5a3a1c, 0.7); g.beginPath(); g.moveTo(-w * 0.15, -h / 2 + 4); g.lineTo(0, 0); g.lineTo(-w * 0.1, h / 2 - 4); g.strokePath();
+      art.add(g); body._art = art;
+    });
+  }
+
+  breakBlock(block) {
+    if (block._broken) return; block._broken = true;
+    block.body.enable = false;
+    this.breakGroup.remove(block, false, false);
+    if (block._art) { const a = block._art; this.tweens.add({ targets: a, scaleY: 0, scaleX: 1.2, alpha: 0, duration: 200, ease: 'Quad.in', onComplete: () => a.destroy() }); }
+    SFX.stomp(); this.burstStars(block.x, block.y, 8); this.cameraPunch(0.02, 4);
+    this.jumpsUsed = 0;
+  }
+
   // ============================================================ GROMMELS
   buildGrommels(L) {
     this.grommels = [];
@@ -360,6 +391,13 @@ export default class AdventureScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.player, this.doorGroup);
+    // Breekbare kratten: met stamp-kracht + naar beneden vallend → sla je erdoorheen.
+    this.physics.add.collider(this.player, this.breakGroup, null, (player, block) => {
+      if (this.powers.stamp && player.body.velocity.y > 60 && player.body.bottom <= block.body.top + 22) {
+        this.breakBlock(block); return false; // val erdoorheen
+      }
+      return true; // anders gewoon stevig
+    });
     this.grommels.forEach((gr) => {
       this.physics.add.collider(gr, this.platforms);
       this.physics.add.overlap(this.player, gr, () => this.hitGrommel(gr));
@@ -693,6 +731,15 @@ export default class AdventureScene extends Phaser.Scene {
         this.tweens.add({ targets: this.jumpBadge, scale: 1.2, duration: 500, yoyo: true, repeat: 3 });
       }
       this.questText.setText('Nieuwe kracht: DUBBELSPRONG! Spring 2× 🦘');
+    } else if (power === 'stamp') {
+      this.powers.stamp = true;
+      if (!this.stampBadge) {
+        this.stampBadge = this.add.text(this.scale.width - 40, this.scale.height - 88, '💥', {
+          fontSize: '18px', backgroundColor: '#ffe16b', padding: { x: 3, y: 2 },
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(62);
+        this.tweens.add({ targets: this.stampBadge, scale: 1.2, duration: 500, yoyo: true, repeat: 3 });
+      }
+      this.questText.setText('Nieuwe kracht: STAMPEN! Spring op kratten 💥');
     }
   }
 
@@ -886,8 +933,9 @@ export default class AdventureScene extends Phaser.Scene {
       this.tweens.add({ targets: this.starPickup, scale: 0, angle: 200, duration: 250, ease: 'Back.in', onComplete: () => this.starPickup.destroy() });
     }
 
-    // Doel-vlag halen
-    if (!this.goal.reached && Phaser.Math.Distance.Between(p.x, p.y, this.goal.x, this.goal.y) < 46) {
+    // Doel-vlag halen (ruime rechthoek: de vlag is hoog, en je waarde/hoogte
+    // wisselt — dus niet afhankelijk maken van je precieze midden-hoogte)
+    if (!this.goal.reached && Math.abs(p.x - this.goal.x) < 48 && Math.abs(p.y - this.goal.y) < 100) {
       this.win();
     }
 

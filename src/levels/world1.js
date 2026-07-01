@@ -119,4 +119,54 @@ export const LEVEL_1_2 = {
   },
 };
 
-export const WORLD1 = [LEVEL_1_1, LEVEL_1_2];
+export const LEVEL_1_3 = {
+  id: '1-3',
+  naam: 'Drie en de Blokkade',
+
+  worldW: 1900,
+  worldH: 800,
+  killY: 790,
+  bg: { top: 0x8fd3ff, bottom: 0xa8dca0 },
+
+  start: { x: 90, y: 560 },
+  intro: 'Red Drie en sla door de kratten!',
+
+  // Bovenlaag (grond A) + ondergrondse gang. Een te hoge MUUR blokkeert het
+  // bovenpad; de enige weg is DOOR de breekbare kratten-vloer naar de gang die
+  // onder de muur doorloopt. Stampen (van Drie) is dus verplicht.
+  platforms: [
+    [0, 660, 820, 140],     // grond A (start, Drie, Grommel)
+    [1000, 440, 50, 220],   // hoge MUUR (top 440): niet overspringbaar op waarde 1
+    [820, 760, 720, 40],    // ondergrondse gang, loopt onder de muur door
+    [1540, 660, 360, 140],  // grond C (na de muur) — met de vlag
+  ],
+
+  // Breekbare kratten die de vloer vormen tussen grond A en de muur.
+  breakables: [
+    [820, 660, 60, 100],
+    [880, 660, 60, 100],
+    [940, 660, 60, 100],
+  ],
+
+  // Redding: help "Drie" (1+2 → 3). Beloning = STAMPEN (door kratten heen).
+  rescues: [
+    { x: 330, y: 636, doel: 3, blocks: [1, 2], gives: 'stamp', name: 'Drie' },
+  ],
+
+  grommels: [
+    { type: 'stomp', x: 600, y: 612, patrol: [520, 740] },
+  ],
+
+  // Ster in de gang — pak je terwijl je onder de muur door loopt.
+  star: { x: 1180, y: 724 },
+
+  goal: { x: 1780, y: 588, value: 3 },
+
+  reward: {
+    title: 'Level 1-3 gehaald! 🏆',
+    subtitle: 'Je hebt Drie gered en door de kratten gestampt!',
+    stars: 3, medal: 'adventure_1_3', medalLabel: 'Stamp-Baas',
+  },
+};
+
+export const WORLD1 = [LEVEL_1_1, LEVEL_1_2, LEVEL_1_3];
