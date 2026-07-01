@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SFX, initAudio } from '../sound.js';
 import { Voice } from '../voice.js';
-import { stopMusic } from '../music.js';
+import { startMusic } from '../music.js';
 import { confettiBurst, showReward } from '../reward.js';
 import { addStars, getStars } from '../progress.js';
 import { WORLD1, LEVEL_1_1 } from '../levels/world1.js';
@@ -54,7 +54,7 @@ export default class AdventureScene extends Phaser.Scene {
 
   create(data) {
     initAudio();
-    stopMusic();
+    startMusic('adventure'); // vrolijk avontuur-deuntje tijdens het spelen
 
     this.levelIndex = (data && data.levelIndex) || 0;
     this.level = LEVELS[this.levelIndex] || LEVEL_1_1;

@@ -1,5 +1,8 @@
-// Zachte, vrolijke achtergrondmuziek — opgebouwd met de Web Audio API,
-// dus geen mp3-bestanden nodig. Speelt een rustige, herhalende melodie.
+// Vrolijke achtergrondmuziek — opgebouwd met de Web Audio API, dus geen
+// mp3-bestanden nodig. Er zijn twee deuntjes:
+//   'menu'      — rustig, zacht (voor het hoofdmenu);
+//   'adventure' — bouncy, cartoonish chiptune met een stuiterende kick,
+//                 voor de platform-levels (Getallen-Land).
 // Aan/uit via de instellingen (progress.js) en de muziekknop.
 
 import { getAudioContext } from './sound.js';
@@ -9,17 +12,37 @@ let playing = false;
 let timer = null;
 let masterGain = null;
 let step = 0;
+let current = 'menu';
 
-// Een vrolijk, rustig deuntje in een pentatonische toonladder (klinkt altijd goed).
-// Frequenties (Hz) van de noten; 0 = stilte.
-const MELODY = [
-  523, 0, 659, 784, 587, 0, 659, 523,
-  587, 659, 784, 0, 880, 784, 659, 0,
-  523, 587, 659, 784, 880, 0, 784, 659,
-  587, 0, 523, 0, 659, 587, 523, 0,
-];
-const BASS = [131, 131, 165, 165, 147, 147, 175, 175];
-const STEP_MS = 320;
+const TUNES = {
+  // Rustig menu-deuntje (pentatonisch — klinkt altijd goed).
+  menu: {
+    stepMs: 320, melodyWave: 'triangle', melodyVol: 0.05,
+    bassWave: 'sine', bassVol: 0.04, bassEvery: 4, kick: false,
+    melody: [
+      523, 0, 659, 784, 587, 0, 659, 523,
+      587, 659, 784, 0, 880, 784, 659, 0,
+      523, 587, 659, 784, 880, 0, 784, 659,
+      587, 0, 523, 0, 659, 587, 523, 0,
+    ],
+    bass: [131, 131, 165, 165, 147, 147, 175, 175],
+  },
+  // Bouncy, vrolijk avontuur-deuntje (square-golf = cartoonish) + kick.
+  adventure: {
+    stepMs: 216, melodyWave: 'square', melodyVol: 0.04,
+    bassWave: 'triangle', bassVol: 0.05, bassEvery: 2, kick: true,
+    melody: [
+      784, 0, 784, 880, 988, 0, 880, 784,
+      659, 0, 784, 659, 587, 0, 0, 0,
+      698, 0, 698, 784, 880, 0, 784, 698,
+      587, 0, 659, 587, 523, 0, 523, 0,
+    ],
+    bass: [
+      131, 131, 165, 165, 196, 196, 165, 165,
+      147, 147, 175, 175, 131, 131, 196, 196,
+    ],
+  },
+};
 
 function playNote(freq, dur, vol, type) {
   const ctx = getAudioContext();
@@ -30,28 +53,49 @@ function playNote(freq, dur, vol, type) {
   o.type = type;
   o.frequency.value = freq;
   g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(vol, t + 0.04);
+  g.gain.linearRampToValueAtTime(vol, t + 0.03);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g); g.connect(masterGain);
   o.start(t); o.stop(t + dur + 0.05);
 }
 
+// Korte "boem" die de melodie laat stuiteren.
+function playKick() {
+  const ctx = getAudioContext();
+  if (!ctx || !masterGain) return;
+  const t = ctx.currentTime;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(150, t);
+  o.frequency.exponentialRampToValueAtTime(52, t + 0.12);
+  g.gain.setValueAtTime(0.09, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+  o.connect(g); g.connect(masterGain);
+  o.start(t); o.stop(t + 0.17);
+}
+
 function tick() {
-  // Melodie
-  const note = MELODY[step % MELODY.length];
-  if (note > 0) playNote(note, 0.35, 0.05, 'triangle');
-  // Bas (elke 4 stappen)
-  if (step % 4 === 0) {
-    const b = BASS[(step / 4) % BASS.length];
-    playNote(b, 0.6, 0.04, 'sine');
+  const T = TUNES[current] || TUNES.menu;
+  const note = T.melody[step % T.melody.length];
+  if (note > 0) playNote(note, T.melodyWave === 'square' ? 0.16 : 0.35, T.melodyVol, T.melodyWave);
+  const be = T.bassEvery || 4;
+  if (step % be === 0) {
+    const b = T.bass[(step / be) % T.bass.length];
+    if (b > 0) playNote(b, be * (T.stepMs / 1000) * 0.9, T.bassVol, T.bassWave);
   }
-  // Zacht glinster-laagje af en toe
-  if (note > 0 && step % 8 === 2) playNote(note * 2, 0.25, 0.02, 'sine');
+  if (T.kick && step % 2 === 0) playKick();
+  // vrolijk glinster-laagje af en toe
+  if (note > 0 && step % 8 === 2) playNote(note * 2, 0.22, 0.02, 'sine');
   step++;
 }
 
-export function startMusic() {
-  if (playing) return;
+// tune: 'menu' (standaard) of 'adventure'. Wisselt van deuntje als er al muziek
+// speelt maar een ander deuntje gevraagd wordt.
+export function startMusic(tune = 'menu') {
+  if (playing && current === tune) return; // draait dit deuntje al
+  stopMusic();                             // ander deuntje? herstart schoon
+  current = tune;
   if (!getSetting('music')) return; // staat uit in instellingen
   const ctx = getAudioContext();
   if (!ctx) return;
@@ -63,7 +107,7 @@ export function startMusic() {
   playing = true;
   step = 0;
   tick();
-  timer = setInterval(tick, STEP_MS);
+  timer = setInterval(tick, TUNES[current].stepMs);
 }
 
 export function stopMusic() {
@@ -73,8 +117,7 @@ export function stopMusic() {
 
 export function isMusicPlaying() { return playing; }
 
-// Schakel muziek aan/uit en onthoud niet hier (dat doet de aanroeper via setSetting).
 export function setMusicEnabled(on) {
-  if (on) startMusic();
+  if (on) startMusic(current);
   else stopMusic();
 }
