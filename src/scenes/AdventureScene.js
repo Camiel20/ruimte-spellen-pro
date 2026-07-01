@@ -540,6 +540,10 @@ export default class AdventureScene extends Phaser.Scene {
   // ============================================================ BESTURING (touch)
   buildTouchControls() {
     this.moveDir = 0;
+    // Multi-touch: standaard trackt Phaser maar 1 touch-pointer, waardoor je op
+    // iOS niet tegelijk kunt lopen én springen. Extra pointers = meerdere
+    // gelijktijdige aanrakingen (loopknop vasthouden + springtik + slepen).
+    this.input.addPointer(3);
     const y = this.scale.height - 60;
 
     const mkBtn = (x, label, on, off) => {
@@ -695,8 +699,10 @@ export default class AdventureScene extends Phaser.Scene {
     const discY = top - 9;
     c.add(this.add.circle(0, discY, 12, 0xffffff).setStrokeStyle(2.5, 0x16202b));
     c.add(this.add.text(0, discY, `${value}`, { fontFamily: 'Arial Black, Arial', fontSize: '15px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5));
-    c.setSize(w, totalH + 24);
-    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, top - 22, w, totalH + 30), Phaser.Geom.Rectangle.Contains);
+    // Ruim aanraakgebied: het HELE blok + flinke marge is grijpbaar (fijner op
+    // touch/iOS — je hoeft niet precies op een celletje te tikken).
+    c.setSize(w + 28, totalH + 52);
+    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2 - 14, top - 30, w + 28, totalH + 56), Phaser.Geom.Rectangle.Contains);
     this.input.setDraggable(c);
   }
 
