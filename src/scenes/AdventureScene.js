@@ -74,6 +74,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.buildPuzzles(L);
     this.buildDoors(L);
     this.buildBreakables(L);
+    this.buildBoss(L);
     this.buildGrommels(L);
     this.buildStar(L);
     this.buildGoal(L);
@@ -320,6 +321,87 @@ export default class AdventureScene extends Phaser.Scene {
     this.jumpsUsed = 0;
   }
 
+  // ============================================================ BAAS (Wereld-einde)
+  // Een grote Grommel-baas die de weg verspert. Je verslaat 'm GEWELDLOOS met
+  // een groter rekenraadsel in fasen (bouw 3 → 4 → 5). Elke fase kleurt hij bij;
+  // na de laatste stapt hij als vriendje opzij en opent de weg.
+  buildBoss(L) {
+    this.bossGroup = this.physics.add.staticGroup();
+    if (!L.boss) return;
+    const B = L.boss, groundTop = L.platforms[0][1];
+    const topY = 300, h = groundTop - topY, w = 90;
+    const body = this.add.rectangle(B.x, topY + h / 2, w, h, 0x000000, 0);
+    this.physics.add.existing(body, true);
+    this.bossGroup.add(body);
+
+    const art = this.drawBoss(B.x, groundTop);
+    const pz = {
+      type: 'boss', ...B, solved: false, stageIndex: 0,
+      doel: B.stages[0].doel, blocks: B.stages[0].blocks,
+      zone: new Phaser.Geom.Rectangle(B.x - 210, groundTop - 160, 190, 200),
+      prompt: 'Versla de Baas!', bossBody: body, bossArt: art,
+    };
+    art.bubbleText.setText(`${pz.doel}`);
+    pz.onSolve = () => this.defeatBoss(pz);
+    this.puzzles.push(pz);
+  }
+
+  drawBoss(x, groundY) {
+    const c = this.add.container(x, groundY - 70).setDepth(7);
+    const g = this.add.graphics();
+    g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 74, 96, 20);
+    g.fillStyle(0x8a8f96, 1); g.fillRoundedRect(-46, -70, 92, 144, 14);
+    g.fillStyle(0x6c7178, 1); g.fillRoundedRect(-46, 44, 92, 22, 14);
+    g.fillStyle(lighten(0x8a8f96, 30), 0.4); g.fillRoundedRect(-38, -60, 26, 44, 8);
+    g.lineStyle(4, 0x4a4f55, 1); g.strokeRoundedRect(-46, -70, 92, 144, 14);
+    const eL = this.add.circle(-17, -30, 13, 0xffffff).setStrokeStyle(3, 0x333);
+    const eR = this.add.circle(17, -30, 13, 0xffffff).setStrokeStyle(3, 0x333);
+    const pL = this.add.circle(-17, -27, 5, 0x222), pR = this.add.circle(17, -27, 5, 0x222);
+    const br = this.add.graphics(); br.lineStyle(4, 0x3a3f45, 1);
+    br.beginPath(); br.moveTo(-30, -48); br.lineTo(-7, -39); br.strokePath();
+    br.beginPath(); br.moveTo(30, -48); br.lineTo(7, -39); br.strokePath();
+    const m = this.add.graphics(); m.lineStyle(3, 0x3a3f45, 1); m.beginPath(); m.arc(0, 12, 14, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
+    c.add([g, eL, eR, pL, pR, br, m]);
+    c.bodyG = g; c.brow = br; c.mouth = m; c.eyes = [eL, eR];
+
+    const bub = this.add.container(0, -108);
+    const bg = this.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+    bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+    const wn = this.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+    bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+    this.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: c, y: c.y - 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    return c;
+  }
+
+  bossStageReact(pz) {
+    const c = pz.bossArt;
+    c.bubbleText.setText(`${pz.doel}`);
+    this.tweens.add({ targets: c, scaleX: 1.12, scaleY: 0.86, duration: 130, yoyo: true, repeat: 1, ease: 'Quad.out' });
+    this.sparkleAt(c.x, c.y, 12); SFX.combine(pz.doel);
+    const left = pz.stages.length - pz.stageIndex;
+    this.questText.setText(`De Baas wankelt! Nog ${left}× — bouw de ${pz.doel}`);
+  }
+
+  defeatBoss(pz) {
+    const c = pz.bossArt;
+    pz.bossBody.body.enable = false; this.bossGroup.remove(pz.bossBody, false, false);
+    const col = sig(pz.stages[pz.stages.length - 1].doel);
+    c.bodyG.clear();
+    c.bodyG.fillStyle(0x000000, 0.18); c.bodyG.fillEllipse(0, 74, 96, 20);
+    c.bodyG.fillStyle(col, 1); c.bodyG.fillRoundedRect(-46, -70, 92, 144, 14);
+    c.bodyG.fillStyle(darker(col, 28), 1); c.bodyG.fillRoundedRect(-46, 44, 92, 22, 14);
+    c.bodyG.fillStyle(lighten(col, 70), 0.5); c.bodyG.fillRoundedRect(-38, -60, 26, 44, 8);
+    c.bodyG.lineStyle(4, darker(col, 50), 1); c.bodyG.strokeRoundedRect(-46, -70, 92, 144, 14);
+    // blije wenkbrauwen + mond
+    c.brow.clear();
+    c.mouth.clear(); c.mouth.lineStyle(4, 0x16202b, 1); c.mouth.beginPath(); c.mouth.arc(0, 6, 15, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+    if (c.bubble) this.tweens.add({ targets: c.bubble, scale: 0, alpha: 0, duration: 300, ease: 'Back.in', onComplete: () => c.bubble.destroy() });
+    confettiBurst(this, 150); this.cameraPunch(0.05, 7); SFX.yay(); Voice.cue('cheer'); this.burstStars(c.x, c.y - 20, 16);
+    this.tweens.add({ targets: c, y: c.y - 30, duration: 250, yoyo: true, repeat: 3, ease: 'Sine.inOut' });
+    this.questText.setText('Baas verslagen! Ren naar de vlag! 🚩');
+  }
+
   // ============================================================ GROMMELS
   buildGrommels(L) {
     this.grommels = [];
@@ -391,6 +473,7 @@ export default class AdventureScene extends Phaser.Scene {
 
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.player, this.doorGroup);
+    this.physics.add.collider(this.player, this.bossGroup);
     // Breekbare kratten: met stamp-kracht + naar beneden vallend → sla je erdoorheen.
     this.physics.add.collider(this.player, this.breakGroup, null, (player, block) => {
       if (this.powers.stamp && player.body.velocity.y > 60 && player.body.bottom <= block.body.top + 22) {
@@ -661,9 +744,19 @@ export default class AdventureScene extends Phaser.Scene {
   checkPuzzleSolved(block) {
     const pz = this.activePuzzle;
     if (!pz || block.getData('buildBlock').value !== pz.doel) return;
-    pz.solved = true;
     this.tweens.add({ targets: block, y: block.y - 10, scale: 1.2, duration: 200, yoyo: true });
     SFX.correct(); Voice.cue('great');
+
+    // Baas: meerdere fasen (3 → 4 → 5). Pas na de laatste is hij verslagen.
+    if (pz.type === 'boss' && pz.stageIndex < pz.stages.length - 1) {
+      pz.stageIndex += 1;
+      pz.doel = pz.stages[pz.stageIndex].doel;
+      pz.blocks = pz.stages[pz.stageIndex].blocks;
+      this.time.delayedCall(450, () => { this.exitBuild(true); this.bossStageReact(pz); });
+      return;
+    }
+
+    pz.solved = true;
     this.time.delayedCall(450, () => { this.exitBuild(true); pz.onSolve(); });
   }
 

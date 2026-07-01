@@ -219,4 +219,46 @@ export const LEVEL_1_4 = {
   },
 };
 
-export const WORLD1 = [LEVEL_1_1, LEVEL_1_2, LEVEL_1_3, LEVEL_1_4];
+export const LEVEL_1_5 = {
+  id: '1-5',
+  naam: 'De Baas van Wereld 1',
+
+  worldW: 1800,
+  worldH: 800,
+  killY: 720,
+  bg: { top: 0x8fbcff, bottom: 0xb6d0a0 }, // ietsje spannender
+
+  start: { x: 90, y: 560 },
+  intro: 'Versla de grote Grommel-baas!',
+
+  // Doorlopende arena; de baas blokkeert de doorgang tot je 'm verslaat.
+  platforms: [
+    [0, 660, 1800, 140],
+  ],
+
+  grommels: [
+    { type: 'stomp', x: 500, y: 612, patrol: [360, 720] },
+  ],
+
+  // De Baas-Grommel: bouw in fasen 3 → 4 → 5 (steeds een grotere stapel) om
+  // hem geweldloos te verslaan. Daarna stapt hij als vriendje opzij.
+  boss: {
+    x: 1300,
+    name: 'Baas-Grommel',
+    stages: [
+      { doel: 3, blocks: [1, 2] },
+      { doel: 4, blocks: [1, 3] },
+      { doel: 5, blocks: [2, 3] },
+    ],
+  },
+
+  goal: { x: 1650, y: 588, value: 5 },
+
+  reward: {
+    title: 'WERELD 1 UITGESPEELD! 🏆🎉',
+    subtitle: 'Je hebt de Baas-Grommel verslagen en Wereld 1 gered!',
+    stars: 5, medal: 'world1_done', medalLabel: 'Held van Wereld 1',
+  },
+};
+
+export const WORLD1 = [LEVEL_1_1, LEVEL_1_2, LEVEL_1_3, LEVEL_1_4, LEVEL_1_5];
