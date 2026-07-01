@@ -896,6 +896,23 @@ export default class AdventureScene extends Phaser.Scene {
     else { this.playerValue -= 1; this.drawPlayer(); }
   }
 
+  // Staat de speler STEVIG op een platform (draagt het z'n volle breedte),
+  // of hangt hij op een randje boven een kuil? Alleen bij stevig staan slaan we
+  // een checkpoint op — anders zou je bij een val boven de kuil respawnen en
+  // eindeloos blijven vallen.
+  solidlyGrounded() {
+    const b = this.player.body, feetY = b.bottom, cx = b.center.x, halfSupport = b.halfWidth * 0.5;
+    for (const grp of [this.platforms, this.doorGroup, this.bossGroup]) {
+      if (!grp) continue;
+      for (const plat of grp.getChildren()) {
+        const pb = plat.body;
+        if (!pb || !pb.enable) continue;
+        if (Math.abs(pb.top - feetY) < 10 && pb.left <= cx - halfSupport && pb.right >= cx + halfSupport) return true;
+      }
+    }
+    return false;
+  }
+
   respawn() {
     this.player.body.setVelocity(0, 0);
     this.cameras.main.flash(250, 30, 40, 60);
@@ -960,7 +977,10 @@ export default class AdventureScene extends Phaser.Scene {
     if (this.mode !== 'explore' || this.won) return;
     const p = this.player, body = p.body;
     const onFloor = body.blocked.down || body.touching.down;
-    if (onFloor) { this.lastGroundAt = time; this.jumpsUsed = 0; this.checkpoint = { x: p.x, y: p.y - 4 }; }
+    if (onFloor) {
+      this.lastGroundAt = time; this.jumpsUsed = 0;
+      if (this.solidlyGrounded()) this.checkpoint = { x: p.x, y: p.y - 4 };
+    }
 
     // Horizontale beweging (touch of toetsenbord)
     let dir = this.moveDir;
