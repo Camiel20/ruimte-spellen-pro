@@ -15,6 +15,7 @@ import CityScene from './scenes/CityScene.js';
 import NumberTowerScene from './scenes/NumberTowerScene.js';
 import ZeroRocketScene from './scenes/ZeroRocketScene.js';
 import NumberLandScene from './scenes/NumberLandScene.js';
+import AdventureScene from './scenes/AdventureScene.js';
 import StatsScene from './scenes/StatsScene.js';
 import { installTracking } from './stats.js';
 
@@ -44,8 +45,14 @@ const config = {
     BalloonScene, MathScene, DiffScene,
     TraceScene, TraceMenuScene, ClickerScene, PianoScene, PlatformScene,
     AwardsScene, SettingsScene, CityScene, NumberTowerScene, ZeroRocketScene,
-    NumberLandScene, StatsScene,
+    NumberLandScene, AdventureScene, StatsScene,
   ],
 };
 
-installTracking(new Phaser.Game(config));
+const game = new Phaser.Game(config);
+installTracking(game);
+
+// Alleen tijdens ontwikkelen: game-instance beschikbaar maken voor debuggen/
+// preview (bv. window.__game.scene.start('Adventure')). Weggelaten in de
+// productie-build.
+if (import.meta.env && import.meta.env.DEV) window.__game = game;

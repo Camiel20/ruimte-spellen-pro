@@ -1,0 +1,759 @@
+import Phaser from 'phaser';
+import { SFX, initAudio } from '../sound.js';
+import { Voice } from '../voice.js';
+import { stopMusic } from '../music.js';
+import { confettiBurst, showReward } from '../reward.js';
+import { addStars, getStars } from '../progress.js';
+import { LEVEL_1_1 } from '../levels/world1.js';
+
+// ===== TEL-AVONTUUR — level-engine (vertical slice) =====
+// Data-gedreven 2D-platformer in de sfeer van Numberblocks (100% zelf getekend).
+// Deze engine leest een leveldata-object (zie src/levels/world1.js) en bouwt er
+// een speelbaar level van: lopen/springen met Arcade Physics, groeien, één
+// brug-poort (bouw-modus bevriest het lopen), één Grommel, een verstopte ster
+// en een doel-vlag. Zie SLICE-SPEC.md voor het volledige plan.
+//
+// Twee scene-standen:
+//   'explore' — Arcade Physics actief; ← → loopt, Spring springt, camera volgt.
+//   'build'   — bij een poort: physics bevroren, blokjes-overlay (slepen =
+//               samenvoegen, tik = splitsen) tot het doelgetal klaar is.
+
+const SIG = [0xe8402c, 0xf08a24, 0xf6c624, 0x57b947, 0x38b6cf, 0x9b6dd6,
+  0xec6aa9, 0x14b8a6, 0x4f63c9, 0xf25c54, 0x37c2a0, 0x6366f1];
+function sig(n) { return SIG[(Math.max(1, n) - 1) % SIG.length]; }
+function lighten(c, amt) {
+  const r = Math.min(255, ((c >> 16) & 255) + amt), g = Math.min(255, ((c >> 8) & 255) + amt), b = Math.min(255, (c & 255) + amt);
+  return (r << 16) | (g << 8) | b;
+}
+function darker(c, amt) {
+  const r = Math.max(0, ((c >> 16) & 255) - amt), g = Math.max(0, ((c >> 8) & 255) - amt), b = Math.max(0, (c & 255) - amt);
+  return (r << 16) | (g << 8) | b;
+}
+
+const CELL = 42;      // hoogte van één blok-cel
+const PW = 44;        // breedte van de speler/blokjes
+const MOVE_SPEED = 210;
+const JUMP_BASE = 600;      // sprongkracht bij waarde 1
+const JUMP_PER_LEVEL = 42;  // extra kracht per groei-stap (hoger springen)
+const COYOTE_MS = 120;      // nog net springen na de rand
+const BUFFER_MS = 130;      // tik vlak vóór de landing telt alsnog
+
+export default class AdventureScene extends Phaser.Scene {
+  constructor() { super('Adventure'); }
+
+  create(data) {
+    initAudio();
+    stopMusic();
+
+    this.level = (data && data.level) || LEVEL_1_1;
+    const L = this.level;
+
+    this.mode = 'explore';
+    this.playerValue = 1;
+    this.checkpoint = { ...L.start };
+    this.invulnUntil = 0;
+    this.lastGroundAt = -9999;
+    this.jumpBufferedAt = -9999;
+    this.gateSolved = false;
+    this.won = false;
+
+    this.cameras.main.setBounds(0, 0, L.worldW, L.worldH);
+    this.physics.world.setBounds(0, 0, L.worldW, L.worldH);
+
+    this.buildBackground(L);
+    this.buildPlatforms(L);
+    this.buildPickups(L);
+    this.buildGate(L);
+    this.buildGrommels(L);
+    this.buildStar(L);
+    this.buildGoal(L);
+    this.buildPlayer(L);
+    this.buildTouchControls();
+    this.buildHud();
+
+    this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
+    this.cameras.main.setDeadzone(140, 220);
+    this.cameras.main.fadeIn(400, 8, 16, 26);
+
+    this.cursors = this.input.keyboard.createCursorKeys();
+    this.keySpace = this.input.keyboard.addKey('SPACE');
+
+    Voice.cue('welcome');
+  }
+
+  // ============================================================ ACHTERGROND
+  buildBackground(L) {
+    const sky = this.add.graphics().setDepth(-30).setScrollFactor(0);
+    sky.fillGradientStyle(L.bg.top, L.bg.top, L.bg.bottom, L.bg.bottom, 1);
+    sky.fillRect(0, 0, this.scale.width, this.scale.height);
+
+    // Zon (licht parallax)
+    const sun = this.add.container(this.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
+    const glow = this.add.circle(0, 0, 54, 0xfff3b0, 0.35);
+    sun.add([glow, this.add.circle(0, 0, 32, 0xffe16b)]);
+    this.tweens.add({ targets: glow, scale: 1.18, alpha: 0.5, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // Wolkjes (parallax) verspreid over de wereldbreedte
+    this.clouds = [];
+    for (let i = 0; i < 8; i++) {
+      const x = (i / 8) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(70, 260);
+      const s = Phaser.Math.FloatBetween(0.7, 1.3);
+      const c = this.add.container(x, y).setDepth(-27).setScale(s).setScrollFactor(0.5);
+      const g = this.add.graphics();
+      g.fillStyle(0xffffff, 0.9);
+      [[-26, 4, 17], [-6, -8, 23], [16, 0, 20], [34, 7, 14], [4, 11, 26]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 11);
+      this.clouds.push(c);
+    }
+
+    // Verre heuvels (parallax) voor diepte
+    const hills = this.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    hills.fillStyle(darker(L.bg.bottom, 20), 0.7);
+    for (let x = -100; x < this.scale.width + 200; x += 180) hills.fillCircle(x, this.scale.height, 150);
+  }
+
+  // ============================================================ PLATFORMS / GROND
+  buildPlatforms(L) {
+    this.platforms = this.physics.add.staticGroup();
+    L.platforms.forEach(([x, y, w, h]) => {
+      const plat = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x000000, 0);
+      this.physics.add.existing(plat, true);
+      this.platforms.add(plat);
+      this.drawGround(x, y, w, h);
+    });
+  }
+
+  drawGround(x, y, w, h) {
+    const g = this.add.graphics().setDepth(-10);
+    // aarde
+    g.fillStyle(0xb07a45, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0x9c6b3f, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    // gras-toplaag
+    g.fillStyle(0x57b947, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(lighten(0x57b947, 22), 1); g.fillRect(x, y, w, 6);
+    g.fillStyle(0x3f9d3f, 1);
+    for (let bx = x + 6; bx < x + w; bx += 16) g.fillTriangle(bx, y, bx + 5, y, bx + 2.5, y - 6);
+    // klein bloemetje hier en daar
+    for (let fx = x + 40; fx < x + w - 20; fx += 130) {
+      g.fillStyle(0xff6b9d, 1); g.fillCircle(fx, y - 10, 3);
+      g.fillStyle(0xffe16b, 1); g.fillCircle(fx, y - 10, 1.4);
+    }
+  }
+
+  // ============================================================ GROEI-BOLLETJES
+  buildPickups(L) {
+    this.pickups = [];
+    (L.pickups || []).forEach((p) => {
+      const c = this.add.container(p.x, p.y).setDepth(5);
+      const glow = this.add.circle(0, 0, 15, 0xfff3b0, 0.5);
+      const ball = this.add.circle(0, 0, 10, 0xffe16b).setStrokeStyle(3, 0xf6a723);
+      const plus = this.add.text(0, 0, '+1', { fontFamily: 'Arial Black, Arial', fontSize: '13px', fontStyle: 'bold', color: '#7a4f10' }).setOrigin(0.5);
+      c.add([glow, ball, plus]);
+      c.amount = p.amount || 1; c.taken = false;
+      this.tweens.add({ targets: c, y: p.y - 8, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      this.tweens.add({ targets: glow, scale: 1.3, alpha: 0.2, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      this.pickups.push(c);
+    });
+  }
+
+  // ============================================================ BRUG-POORT
+  buildGate(L) {
+    const G = L.gate;
+    this.gate = { ...G, solved: false };
+
+    // De kloof zichtbaar maken: donkere spleet tussen de twee gronddelen.
+    const chasm = this.add.graphics().setDepth(-11);
+    chasm.fillStyle(0x2a3a2a, 1); chasm.fillRect(G.gapX, L.platforms[0][1], G.gapW, 200);
+
+    // Een bordje met het doelgetal bij de kloof.
+    const sign = this.add.container(G.gapX - 16, G.y - 74).setDepth(4);
+    const post = this.add.graphics();
+    post.fillStyle(0x9c6b3f, 1); post.fillRect(-3, 0, 6, 60);
+    post.fillStyle(0xf3e2c0, 1); post.fillRoundedRect(-24, -30, 48, 40, 8);
+    post.lineStyle(3, 0x9c6b3f, 1); post.strokeRoundedRect(-24, -30, 48, 40, 8);
+    const want = this.add.text(0, -10, `${G.doel}`, { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+    sign.add([post, want]);
+    this.tweens.add({ targets: sign, y: G.y - 80, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.gateSign = sign;
+
+    // Onzichtbare trigger-zone op grond A: hier verschijnt de ✋-knop.
+    this.gateZone = new Phaser.Geom.Rectangle(G.triggerX, L.platforms[0][1] - 120, G.triggerW, 160);
+  }
+
+  // ============================================================ GROMMELS
+  buildGrommels(L) {
+    this.grommels = [];
+    (L.grommels || []).forEach((def) => this.grommels.push(this.makeGrommel(def)));
+  }
+
+  makeGrommel(def) {
+    const c = this.add.container(def.x, def.y).setDepth(8);
+    const art = this.add.container(0, 0);
+    const g = this.add.graphics();
+    g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 20, 34, 9);
+    g.fillStyle(0x8a8f96, 1); g.fillRoundedRect(-16, -14, 32, 30, 8);
+    g.fillStyle(0x6c7178, 1); g.fillRoundedRect(-16, 8, 32, 8, 8);
+    g.fillStyle(lighten(0x8a8f96, 40), 0.5); g.fillRoundedRect(-12, -10, 9, 10, 4);
+    g.lineStyle(2.5, 0x4a4f55, 1); g.strokeRoundedRect(-16, -14, 32, 30, 8);
+    // pruilende oogjes
+    const eL = this.add.circle(-6, -3, 5, 0xffffff).setStrokeStyle(2, 0x333);
+    const eR = this.add.circle(6, -3, 5, 0xffffff).setStrokeStyle(2, 0x333);
+    const pL = this.add.circle(-6, -2, 2.2, 0x222), pR = this.add.circle(6, -2, 2.2, 0x222);
+    const mouth = this.add.graphics(); mouth.lineStyle(2, 0x3a3f45, 1);
+    mouth.beginPath(); mouth.arc(0, 10, 5, 1.15 * Math.PI, 1.85 * Math.PI); mouth.strokePath();
+    art.add([g, eL, eR, pL, pR, mouth]);
+    c.add(art);
+    c.art = art; c.def = def; c.alive = true; c.dir = 1;
+
+    this.physics.add.existing(c);
+    c.body.setSize(32, 30); c.body.setOffset(-16, -14);
+    c.body.setAllowGravity(true);
+    this.tweens.add({ targets: art, scaleY: 1.06, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    return c;
+  }
+
+  // ============================================================ STER (geheim)
+  buildStar(L) {
+    if (!L.star) { this.starPickup = null; return; }
+    const c = this.add.container(L.star.x, L.star.y).setDepth(6);
+    const glow = this.add.circle(0, 0, 18, 0xfff3b0, 0.4);
+    const st = this.add.star(0, 0, 5, 7, 15, 0xffe16b).setStrokeStyle(3, 0xf6a723);
+    c.add([glow, st]); c.taken = false;
+    this.tweens.add({ targets: c, angle: 360, duration: 6000, repeat: -1 });
+    this.tweens.add({ targets: glow, scale: 1.35, alpha: 0.15, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.starPickup = c;
+  }
+
+  // ============================================================ DOEL-VLAG
+  buildGoal(L) {
+    const c = this.add.container(L.goal.x, L.goal.y).setDepth(6);
+    // paal
+    const pole = this.add.graphics();
+    pole.fillStyle(0xcfd6dd, 1); pole.fillRect(-3, -70, 6, 150);
+    pole.fillStyle(0xffffff, 0.6); pole.fillRect(-3, -70, 2, 150);
+    c.add(pole);
+    // grote glanzende doel-getal-schijf (start grijs, kleurt bij winst)
+    const disc = this.add.circle(0, -48, 30, 0xbfc4c9).setStrokeStyle(4, 0x16202b);
+    const num = this.add.text(0, -48, `${L.goal.value}`, { fontFamily: 'Arial Black, Arial', fontSize: '34px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+    c.add([disc, num]);
+    c.disc = disc; c.value = L.goal.value; c.reached = false;
+    this.tweens.add({ targets: c, y: L.goal.y - 6, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.goal = c;
+  }
+
+  // ============================================================ SPELER (Één)
+  buildPlayer(L) {
+    const root = this.add.container(L.start.x, L.start.y).setDepth(12);
+    const art = this.add.container(0, 0);
+    root.add(art);
+    root.art = art;
+    this.physics.add.existing(root);
+    root.body.setCollideWorldBounds(true);
+    this.player = root;
+    this.drawPlayer();
+
+    this.physics.add.collider(this.player, this.platforms);
+    this.grommels.forEach((gr) => {
+      this.physics.add.collider(gr, this.platforms);
+      this.physics.add.overlap(this.player, gr, () => this.hitGrommel(gr));
+    });
+  }
+
+  drawPlayer() {
+    const v = this.playerValue;
+    const art = this.player.art;
+    art.removeAll(true);
+    const w = PW, totalH = v * CELL, top = -totalH / 2;
+
+    // cellen
+    for (let i = 0; i < v; i++) {
+      const ty = totalH / 2 - (i + 1) * CELL;
+      const color = sig(1); // Één is rood; groeien houdt de rode identiteit
+      const g = this.add.graphics();
+      g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, ty, w, CELL, 8);
+      g.fillStyle(darker(color, 28), 1); g.fillRoundedRect(-w / 2, ty + CELL - 8, w, 8, 8);
+      g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, ty, w, CELL - 8, 8);
+      g.fillStyle(lighten(color, 75), 0.5); g.fillRoundedRect(-w / 2 + 5, ty + 4, w * 0.32, CELL * 0.42, 5);
+      g.lineStyle(2.5, darker(color, 55), 0.9); g.strokeRoundedRect(-w / 2, ty, w, CELL, 8);
+      art.add(g);
+    }
+    // voetjes
+    const feet = this.add.graphics(); feet.fillStyle(darker(sig(1), 40), 1);
+    feet.fillRoundedRect(-w * 0.42, totalH / 2 - 3, w * 0.34, 11, 5);
+    feet.fillRoundedRect(w * 0.08, totalH / 2 - 3, w * 0.34, 11, 5);
+    art.add(feet);
+    // gezicht op de bovenste cel
+    const faceY = top + CELL * 0.5;
+    for (const sx of [-11, 11]) {
+      art.add(this.add.circle(sx, faceY - 2, 8, 0xffffff).setStrokeStyle(2.5, 0x16202b));
+      art.add(this.add.circle(sx, faceY - 1, 3.5, 0x16202b));
+    }
+    const m = this.add.graphics(); m.lineStyle(3, 0x16202b, 1);
+    m.beginPath(); m.arc(0, faceY + 8, 8, 0.15 * Math.PI, 0.85 * Math.PI); m.strokePath();
+    art.add(m);
+    // cijfer-schijfje
+    const discY = top - 9;
+    art.add(this.add.circle(0, discY, 13, 0xffffff).setStrokeStyle(2.5, 0x16202b));
+    art.add(this.add.text(0, discY, `${v}`, { fontFamily: 'Arial Black, Arial', fontSize: '17px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5));
+
+    // Arcade-body centreren op de container en de voeten op hun plek houden.
+    const body = this.player.body;
+    const oldBottom = body ? (this.player.y - body.height / 2 + body.height) : null;
+    body.setSize(w, totalH);
+    body.setOffset(-w / 2, -totalH / 2);
+    if (oldBottom != null) this.player.y = oldBottom - totalH / 2;
+    this.player.totalH = totalH;
+  }
+
+  growPlayer(amount) {
+    this.playerValue += amount;
+    this.drawPlayer();
+    SFX.grow(this.playerValue);
+    Voice.cue('cheer');
+    this.tweens.add({ targets: this.player.art, scaleX: 1.2, scaleY: 0.85, duration: 130, yoyo: true, ease: 'Quad.out' });
+    this.sparkleAt(this.player.x, this.player.y, 12);
+  }
+
+  // ============================================================ BESTURING (touch)
+  buildTouchControls() {
+    this.moveDir = 0;
+    const D = 60, y = this.scale.height - 60;
+
+    const mkBtn = (x, label, on, off) => {
+      const g = this.add.graphics().setScrollFactor(0).setDepth(60);
+      g.fillStyle(0x16202b, 0.34); g.fillCircle(x, y, 38);
+      g.lineStyle(3, 0xffffff, 0.5); g.strokeCircle(x, y, 38);
+      const t = this.add.text(x, y, label, { fontFamily: 'Arial', fontSize: '30px', color: '#ffffff' }).setOrigin(0.5).setScrollFactor(0).setDepth(61);
+      const hit = this.add.circle(x, y, 40, 0xffffff, 0.001).setScrollFactor(0).setDepth(62).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', on); hit.on('pointerup', off); hit.on('pointerout', off);
+      return { g, t, hit };
+    };
+
+    this.btnLeft = mkBtn(56, '◀', () => { this.moveDir = -1; }, () => { if (this.moveDir === -1) this.moveDir = 0; });
+    this.btnRight = mkBtn(150, '▶', () => { this.moveDir = 1; }, () => { if (this.moveDir === 1) this.moveDir = 0; });
+    this.btnJump = mkBtn(this.scale.width - 56, '⬆', () => { this.jumpBufferedAt = this.time.now; }, () => {});
+
+    // Context-knop ✋ (Bouw) — verschijnt alleen bij de poort. LOS geplaatst
+    // (niet in een container), want container-kinderen vangen muisklikken
+    // onbetrouwbaar. Zelfde patroon als de loop-/spring-knoppen hierboven.
+    const bx = this.scale.width - 56, by = y - 96;
+    const bgb = this.add.graphics().setScrollFactor(0).setDepth(63);
+    bgb.fillStyle(0xf6c624, 1); bgb.fillCircle(bx, by, 34); bgb.lineStyle(3, 0x16202b, 1); bgb.strokeCircle(bx, by, 34);
+    const bt = this.add.text(bx, by, '✋', { fontSize: '30px' }).setOrigin(0.5).setScrollFactor(0).setDepth(64);
+    const blabel = this.add.text(bx, by - 48, 'Bouw de brug!', {
+      fontFamily: 'Arial Black, Arial', fontSize: '13px', fontStyle: 'bold', color: '#16202b',
+      backgroundColor: '#ffe16b', padding: { x: 8, y: 4 },
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(64);
+    const bhit = this.add.circle(bx, by, 40, 0xffffff, 0.001).setScrollFactor(0).setDepth(65).setInteractive({ useHandCursor: true });
+    bhit.on('pointerdown', () => this.enterBuild());
+    this.btnBuildParts = [bgb, bt, blabel, bhit];
+    this.setBuildBtnVisible(false);
+    this.tweens.add({ targets: bt, scale: 1.14, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: blabel, y: by - 54, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  }
+
+  setBuildBtnVisible(v) {
+    if (this.btnBuildParts) this.btnBuildParts.forEach((o) => o.setVisible(v));
+  }
+
+  buildHud() {
+    const back = this.add.graphics().setScrollFactor(0).setDepth(60);
+    back.fillStyle(0x16202b, 0.42); back.fillRoundedRect(10, 12, 48, 34, 11);
+    back.fillStyle(0xffffff, 1); back.fillTriangle(38, 18, 38, 40, 22, 29); back.fillRect(38, 25, 12, 8);
+    back.setInteractive(new Phaser.Geom.Rectangle(10, 12, 48, 34), Phaser.Geom.Rectangle.Contains);
+    back.on('pointerdown', () => { SFX.click(); this.scene.start('Menu'); });
+
+    this.add.image(this.scale.width - 64, 27, 'star').setScrollFactor(0).setDepth(60).setScale(2.4);
+    this.starText = this.add.text(this.scale.width - 16, 27, `${getStars()}`, {
+      fontFamily: 'Arial Black, Arial', fontSize: '22px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(60).setStroke('#1f2d3a', 5);
+
+    const qb = this.add.graphics().setScrollFactor(0).setDepth(60);
+    qb.fillStyle(0x16202b, 0.5); qb.fillRoundedRect(this.scale.width / 2 - 120, 12, 240, 30, 12);
+    this.questText = this.add.text(this.scale.width / 2, 27, 'Steek de kloof over!', {
+      fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(61);
+  }
+
+  // ============================================================ BOUW-MODUS
+  enterBuild() {
+    if (this.mode !== 'explore' || this.gate.solved) return;
+    this.mode = 'build';
+    this.physics.pause();
+    this.player.body.setVelocity(0, 0);
+    this.setBuildBtnVisible(false);
+    [this.btnLeft, this.btnRight, this.btnJump].forEach((b) => { b.g.setVisible(false); b.t.setVisible(false); b.hit.disableInteractive(); });
+
+    const W = this.scale.width, H = this.scale.height;
+    const panel = this.add.container(0, 0).setScrollFactor(0).setDepth(120);
+    const dim = this.add.graphics(); dim.fillStyle(0x0a1420, 0.82); dim.fillRect(0, 0, W, H);
+    panel.add(dim);
+
+    const title = this.add.text(W / 2, 70, `Maak de ${this.gate.doel}!`, {
+      fontFamily: 'Arial Black, Arial', fontSize: '26px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5);
+    const hint = this.add.text(W / 2, 104, 'Sleep de blokjes samen • tik = splitsen', {
+      fontFamily: 'Arial', fontSize: '13px', color: '#9fb3c8',
+    }).setOrigin(0.5);
+    panel.add([title, hint]);
+
+    // Doel-schijf ter referentie
+    const goalDisc = this.add.circle(W / 2, 160, 26, sig(this.gate.doel)).setStrokeStyle(4, 0x16202b);
+    const goalNum = this.add.text(W / 2, 160, `${this.gate.doel}`, { fontFamily: 'Arial Black, Arial', fontSize: '28px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+    panel.add([goalDisc, goalNum]);
+
+    // Terug-knop (verlaat bouw-modus zonder op te lossen)
+    const backBtn = this.add.text(30, 34, '↩', { fontSize: '30px', color: '#ffffff' }).setInteractive({ useHandCursor: true });
+    backBtn.on('pointerdown', () => this.exitBuild());
+    panel.add(backBtn);
+
+    this.buildPanel = panel;
+    this.buildBlocks = [];
+    this.input.dragDistanceThreshold = 10;
+
+    // Losse blokjes klaarleggen (onderaan, verspreid).
+    const blocks = this.gate.blocks;
+    blocks.forEach((val, i) => {
+      const bx = W / 2 + (i - (blocks.length - 1) / 2) * 120;
+      const by = H - 200;
+      this.makeBuildBlock(val, bx, by);
+    });
+
+    // Sleep-handler alleen voor bouwblokjes. De blokjes zitten in een
+    // scrollFactor-0 overlay, dus we gebruiken de SCHERM-positie van de vinger
+    // (p.x/p.y) — niet dragX/dragY, want die zijn wereld-coördinaten en de
+    // camera staat verschoven bij de kloof (anders springt het blok weg).
+    this._dragHandler = (p, obj) => {
+      if (obj.getData && obj.getData('buildBlock')) { obj.x = p.x; obj.y = p.y; }
+    };
+    this.input.on('drag', this._dragHandler);
+  }
+
+  exitBuild(solved = false) {
+    if (this.mode !== 'build') return;
+    this.mode = 'explore';
+    if (this._dragHandler) { this.input.off('drag', this._dragHandler); this._dragHandler = null; }
+    if (this.buildPanel) { this.buildPanel.destroy(); this.buildPanel = null; }
+    this.buildBlocks = [];
+    [this.btnLeft, this.btnRight, this.btnJump].forEach((b) => { b.g.setVisible(true); b.t.setVisible(true); b.hit.setInteractive(); });
+    this.physics.resume();
+    // de ✋-knop komt vanzelf weer terug via update() als je nog bij de rand staat
+  }
+
+  makeBuildBlock(value, x, y) {
+    const c = this.add.container(x, y).setScrollFactor(0).setDepth(122);
+    c.setData('buildBlock', { value });
+    this.drawBuildBlock(c, value);
+    this.buildPanel.add(c);
+    this.buildBlocks.push(c);
+
+    c.on('pointerdown', () => { c._dragged = false; });
+    c.on('dragstart', () => { c._dragged = true; c.setDepth(140); this.tweens.add({ targets: c, scale: 1.1, duration: 100, yoyo: true, onComplete: () => c.setScale(1.06) }); SFX.pick(); });
+    c.on('dragend', () => this.dropBuildBlock(c));
+    c.on('pointerup', () => { if (!c._dragged) this.splitBuildBlock(c); });
+    c.setScale(0.3);
+    this.tweens.add({ targets: c, scale: 1, duration: 260, ease: 'Back.out' });
+    return c;
+  }
+
+  drawBuildBlock(c, value) {
+    c.removeAll(true);
+    c.setData('buildBlock', { value });
+    const w = 52, ch = Phaser.Math.Clamp(200 / value, 22, 46), totalH = value * ch, color = sig(value), top = -totalH / 2;
+    for (let i = 0; i < value; i++) {
+      const ty = totalH / 2 - (i + 1) * ch;
+      const g = this.add.graphics();
+      g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, ty, w, ch, 7);
+      g.fillStyle(darker(color, 28), 1); g.fillRoundedRect(-w / 2, ty + ch - 6, w, 6, 7);
+      g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, ty, w, ch - 6, 7);
+      g.fillStyle(lighten(color, 75), 0.5); g.fillRoundedRect(-w / 2 + 5, ty + 3, w * 0.3, ch * 0.4, 4);
+      g.lineStyle(2.5, darker(color, 55), 0.9); g.strokeRoundedRect(-w / 2, ty, w, ch, 7);
+      if (i > 0) { g.lineStyle(2, darker(color, 55), 0.5); g.beginPath(); g.moveTo(-w / 2 + 3, ty); g.lineTo(w / 2 - 3, ty); g.strokePath(); }
+      c.add(g);
+    }
+    const faceY = top + ch * 0.5;
+    for (const sx of [-11, 11]) { c.add(this.add.circle(sx, faceY - 1, 7, 0xffffff).setStrokeStyle(2.5, 0x16202b)); c.add(this.add.circle(sx, faceY, 3, 0x16202b)); }
+    const m = this.add.graphics(); m.lineStyle(3, 0x16202b, 1); m.beginPath(); m.arc(0, faceY + 8, 7, 0.15 * Math.PI, 0.85 * Math.PI); m.strokePath(); c.add(m);
+    const discY = top - 9;
+    c.add(this.add.circle(0, discY, 12, 0xffffff).setStrokeStyle(2.5, 0x16202b));
+    c.add(this.add.text(0, discY, `${value}`, { fontFamily: 'Arial Black, Arial', fontSize: '15px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5));
+    c.setSize(w, totalH + 24);
+    c.setInteractive(new Phaser.Geom.Rectangle(-w / 2, top - 22, w, totalH + 30), Phaser.Geom.Rectangle.Contains);
+    this.input.setDraggable(c);
+  }
+
+  dropBuildBlock(moving) {
+    moving.setScale(1); moving.setDepth(122);
+    let other = null, best = 9999;
+    for (const b of this.buildBlocks) {
+      if (b === moving) continue;
+      const d = Phaser.Math.Distance.Between(moving.x, moving.y, b.x, b.y);
+      if (d < 70 && d < best) { best = d; other = b; }
+    }
+    if (other) { this.mergeBuildBlocks(moving, other); return; }
+    SFX.place();
+  }
+
+  mergeBuildBlocks(moving, target) {
+    const newVal = moving.getData('buildBlock').value + target.getData('buildBlock').value;
+    this.tweens.add({
+      targets: moving, x: target.x, y: target.y, scale: 0.5, duration: 150, ease: 'Quad.in',
+      onComplete: () => {
+        this.buildBlocks = this.buildBlocks.filter((b) => b !== moving);
+        moving.destroy();
+        this.drawBuildBlock(target, newVal);
+        this.tweens.add({ targets: target, scaleX: 1.25, scaleY: 0.8, duration: 120, yoyo: true });
+        SFX.combine(newVal); Voice.number(newVal);
+        this.sparkleAt2(target.x, target.y);
+        this.checkGateSolved(target);
+      },
+    });
+  }
+
+  splitBuildBlock(c) {
+    const val = c.getData('buildBlock').value;
+    if (val <= 1) { SFX.giggle(); this.tweens.add({ targets: c, y: c.y - 16, duration: 180, yoyo: true, ease: 'Quad.out' }); return; }
+    const botV = Math.floor(val / 2), topV = Math.ceil(val / 2);
+    SFX.split();
+    this.drawBuildBlock(c, botV);
+    this.tweens.add({ targets: c, scaleX: 1.2, scaleY: 0.8, duration: 90, yoyo: true });
+    const piece = this.makeBuildBlock(topV, c.x, c.y);
+    const dir = c.x < this.scale.width / 2 ? 1 : -1;
+    this.tweens.add({ targets: piece, x: Phaser.Math.Clamp(c.x + dir * 90, 60, this.scale.width - 60), duration: 320, ease: 'Back.out' });
+    Voice.cue('whee');
+  }
+
+  checkGateSolved(block) {
+    if (block.getData('buildBlock').value !== this.gate.doel) return;
+    // Doel bereikt! Alleen als dit het enige overgebleven blok is (dus netjes 3).
+    this.gate.solved = true;
+    this.tweens.add({ targets: block, y: block.y - 10, scale: 1.2, duration: 200, yoyo: true });
+    SFX.correct(); Voice.cue('great');
+    this.time.delayedCall(450, () => { this.exitBuild(true); this.solveBridge(); });
+  }
+
+  // ============================================================ BRUG NEERLEGGEN
+  solveBridge() {
+    const G = this.gate, L = this.level;
+    this.gateSolved = true;
+    if (this.gateSign) this.tweens.add({ targets: this.gateSign, alpha: 0, y: G.y - 110, duration: 500, onComplete: () => this.gateSign.destroy() });
+
+    // Fysieke brug: statische plank over de kloof.
+    const plankTop = L.platforms[0][1] - 6;
+    const plank = this.add.rectangle(G.gapX + G.gapW / 2, plankTop + 10, G.gapW, 20, 0x000000, 0);
+    this.physics.add.existing(plank, true);
+    this.platforms.add(plank);
+    this.physics.add.collider(this.player, plank);
+    this.grommels.forEach((gr) => this.physics.add.collider(gr, plank));
+
+    // Kleurrijke planken die één voor één "inklikken" + kleur-sweep.
+    const nP = G.doel;
+    for (let i = 0; i < nP; i++) {
+      const pw = G.gapW / nP, cx = G.gapX + pw * (i + 0.5);
+      const plankG = this.add.graphics().setDepth(2);
+      const col = sig(i + 1);
+      plankG.fillStyle(col, 1); plankG.fillRoundedRect(cx - pw / 2 + 2, plankTop, pw - 4, 16, 4);
+      plankG.lineStyle(2.5, darker(col, 45), 1); plankG.strokeRoundedRect(cx - pw / 2 + 2, plankTop, pw - 4, 16, 4);
+      plankG.setScale(1, 0);
+      this.tweens.add({ targets: plankG, scaleY: 1, duration: 220, delay: i * 140, ease: 'Back.out', onComplete: () => { SFX.place(); this.sparkleAt(cx, plankTop, 6); } });
+    }
+    this.time.delayedCall(nP * 140 + 300, () => { confettiBurst(this, 100); this.cameraPunch(); SFX.yay(); });
+    this.questText.setText('Ren naar de vlag! 🚩');
+  }
+
+  // ============================================================ GROMMEL-INTERACTIE
+  hitGrommel(gr) {
+    if (!gr.alive || this.mode !== 'explore') return;
+    const p = this.player.body, gb = gr.body;
+    const falling = p.velocity.y > 20;
+    const above = p.bottom <= gb.top + 18;
+    if (falling && above) {
+      // STAMP → Grommel wordt vrolijk en kleurig
+      gr.alive = false; gr.body.enable = false;
+      this.tweens.killTweensOf(gr.art);
+      this.recolorGrommel(gr);
+      this.player.body.setVelocityY(-380); // vrolijke stuiter
+      SFX.stomp(); Voice.cue('cheer'); this.burstStars(gr.x, gr.y - 10, 8);
+      this.tweens.add({ targets: gr.art, y: -12, duration: 160, yoyo: true, ease: 'Quad.out' });
+    } else if (this.time.now > this.invulnUntil) {
+      // Van opzij geraakt → krimpen (geen game-over)
+      this.shrinkPlayer(gr);
+    }
+  }
+
+  recolorGrommel(gr) {
+    gr.art.removeAll(true);
+    const col = sig(Phaser.Math.Between(3, 7));
+    const g = this.add.graphics();
+    g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 20, 34, 9);
+    g.fillStyle(col, 1); g.fillRoundedRect(-16, -14, 32, 30, 8);
+    g.fillStyle(darker(col, 28), 1); g.fillRoundedRect(-16, 8, 32, 8, 8);
+    g.lineStyle(2.5, darker(col, 50), 1); g.strokeRoundedRect(-16, -14, 32, 30, 8);
+    const eL = this.add.circle(-6, -3, 5, 0xffffff).setStrokeStyle(2, 0x16202b);
+    const eR = this.add.circle(6, -3, 5, 0xffffff).setStrokeStyle(2, 0x16202b);
+    const pL = this.add.circle(-6, -2, 2.4, 0x16202b), pR = this.add.circle(6, -2, 2.4, 0x16202b);
+    const m = this.add.graphics(); m.lineStyle(2, 0x16202b, 1); m.beginPath(); m.arc(0, 4, 5, 0.15 * Math.PI, 0.85 * Math.PI); m.strokePath();
+    gr.art.add([g, eL, eR, pL, pR, m]);
+    this.heart(gr.x, gr.y - 24);
+    this.tweens.add({ targets: gr.art, scaleX: 1.15, scaleY: 0.85, duration: 130, yoyo: true, repeat: 2 });
+  }
+
+  shrinkPlayer(gr) {
+    this.invulnUntil = this.time.now + 1100;
+    SFX.shrink(); Voice.cue('oops');
+    const dir = this.player.x < gr.x ? -1 : 1;
+    this.player.body.setVelocity(dir * 190, -240);
+    // knipper-onkwetsbaar
+    this.tweens.add({ targets: this.player.art, alpha: 0.3, duration: 110, yoyo: true, repeat: 4, onComplete: () => this.player.art.setAlpha(1) });
+
+    if (this.playerValue <= 1) {
+      this.respawn();
+    } else {
+      this.playerValue -= 1;
+      this.drawPlayer();
+    }
+  }
+
+  respawn() {
+    this.player.body.setVelocity(0, 0);
+    this.cameras.main.flash(250, 30, 40, 60);
+    this.player.setPosition(this.checkpoint.x, this.checkpoint.y);
+    this.playerValue = Math.max(1, this.playerValue);
+    this.drawPlayer();
+  }
+
+  // ============================================================ EFFECTEN
+  cameraPunch(zoom = 0.03, shake = 5) {
+    const cam = this.cameras.main;
+    cam.shake(160, shake / 1000);
+    this.tweens.add({ targets: cam, zoom: 1 + zoom, duration: 110, yoyo: true, ease: 'Quad.out' });
+  }
+  heart(x, y) {
+    const g = this.add.graphics().setDepth(60);
+    g.fillStyle(0xff6b9d, 1); g.fillCircle(-4, 0, 5); g.fillCircle(4, 0, 5); g.fillTriangle(-9, 2, 9, 2, 0, 13);
+    g.x = x; g.y = y;
+    this.tweens.add({ targets: g, y: y - 32, alpha: 0, scale: 1.4, duration: 800, ease: 'Quad.out', onComplete: () => g.destroy() });
+  }
+  sparkleAt(x, y, n = 8) {
+    const p = this.add.particles(x, y, 'star', { speed: { min: 40, max: 150 }, angle: { min: 0, max: 360 }, scale: { start: 1.2, end: 0 }, lifespan: 650, quantity: n, tint: [0xffffff, 0xfff3b0, 0xffe16b], blendMode: 'ADD' }).setDepth(60);
+    this.time.delayedCall(700, () => p.destroy());
+  }
+  // screen-space sparkle (voor de bouw-overlay)
+  sparkleAt2(x, y) {
+    const p = this.add.particles(x, y, 'star', { speed: { min: 40, max: 150 }, angle: { min: 0, max: 360 }, scale: { start: 1.2, end: 0 }, lifespan: 600, quantity: 10, tint: [0xffffff, 0xfff3b0, 0xffe16b], blendMode: 'ADD' }).setScrollFactor(0).setDepth(130);
+    this.time.delayedCall(650, () => p.destroy());
+  }
+  burstStars(x, y, n = 10) {
+    const p = this.add.particles(x, y, 'star', { speedY: { min: -260, max: -90 }, speedX: { min: -130, max: 130 }, gravityY: 420, scale: { start: 1.6, end: 0.2 }, lifespan: 1000, quantity: n, tint: [0xf87171, 0xfbbf24, 0x4ade80, 0x60a5fa, 0xec4899], rotate: { min: 0, max: 360 } }).setDepth(60);
+    this.time.delayedCall(1100, () => p.destroy());
+  }
+
+  // ============================================================ WINNEN
+  win() {
+    if (this.won) return; this.won = true;
+    this.goal.reached = true;
+    this.goal.disc.setFillStyle(sig(this.goal.value));
+    this.tweens.add({ targets: this.goal, scale: 1.2, duration: 200, yoyo: true, repeat: 2 });
+    confettiBurst(this, 200); this.cameraPunch(0.05, 7); SFX.win(); Voice.cue('cheer');
+    this.time.delayedCall(700, () => {
+      showReward(this, {
+        title: 'Level gehaald! 🏆',
+        subtitle: 'Je hebt de brug gemaakt en de kloof overgestoken!',
+        stars: 3, medal: 'adventure_1_1', medalLabel: 'Brug-Bouwer',
+        buttonText: 'Nog een keer! 🔄',
+        onClose: () => this.scene.restart(),
+      });
+    });
+  }
+
+  // ============================================================ UPDATE
+  update(time, delta) {
+    if (this.mode !== 'explore' || this.won) return;
+    const p = this.player, body = p.body;
+    const onFloor = body.blocked.down || body.touching.down;
+    if (onFloor) this.lastGroundAt = time;
+
+    // Horizontale beweging (touch of toetsenbord)
+    let dir = this.moveDir;
+    if (this.cursors.left.isDown) dir = -1;
+    else if (this.cursors.right.isDown) dir = 1;
+    body.setVelocityX(dir * MOVE_SPEED);
+    if (dir !== 0) p.art.scaleX = dir; // kijkrichting (art flippen, body blijft)
+
+    // Springen met coyote-time + jump-buffer
+    if (Phaser.Input.Keyboard.JustDown(this.keySpace) || (this.cursors.up && Phaser.Input.Keyboard.JustDown(this.cursors.up))) {
+      this.jumpBufferedAt = time;
+    }
+    const canJump = (time - this.lastGroundAt) < COYOTE_MS;
+    if ((time - this.jumpBufferedAt) < BUFFER_MS && canJump) {
+      this.jumpBufferedAt = -9999; this.lastGroundAt = -9999;
+      body.setVelocityY(-(JUMP_BASE + (this.playerValue - 1) * JUMP_PER_LEVEL));
+      SFX.pick(); Voice.cue('jump');
+      this.tweens.add({ targets: p.art, scaleX: 0.85, scaleY: 1.18, duration: 130, yoyo: true, ease: 'Quad.out' });
+    }
+
+    // Loop-squash (voetjes-gevoel): lichte wiebel tijdens lopen op de grond
+    if (onFloor && dir !== 0) p.art.y = Math.sin(time * 0.02) * 1.5; else if (p.art.y !== 0) p.art.y *= 0.8;
+
+    // Groei-bolletjes oppakken (ruime rechthoek: ook al loop je er net onder)
+    for (const pk of this.pickups) {
+      if (pk.taken) continue;
+      if (Math.abs(p.x - pk.x) < 46 && Math.abs(p.y - pk.y) < 60) {
+        pk.taken = true; SFX.coin();
+        this.tweens.add({ targets: pk, scale: 0, duration: 200, ease: 'Back.in', onComplete: () => pk.destroy() });
+        this.growPlayer(pk.amount);
+      }
+    }
+
+    // Poort-trigger: ✋-knop tonen als je vlakbij staat (en nog niet opgelost)
+    if (!this.gate.solved) {
+      const near = Phaser.Geom.Rectangle.Contains(this.gateZone, p.x, p.y) && onFloor;
+      this.setBuildBtnVisible(near);
+      if (near) {
+        // checkpoint bij de rand: val je in de kloof, dan sta je zo weer klaar
+        this.checkpoint = { x: this.level.gate.triggerX + 20, y: 560 };
+        this.questText.setText('Tik op ✋ en bouw de brug!');
+      } else if (this.questText.text !== 'Steek de kloof over!') {
+        this.questText.setText('Steek de kloof over!');
+      }
+    }
+
+    // Ster (geheim) oppakken
+    if (this.starPickup && !this.starPickup.taken &&
+        Phaser.Math.Distance.Between(p.x, p.y, this.starPickup.x, this.starPickup.y) < 42) {
+      this.starPickup.taken = true;
+      addStars(1); this.starText.setText(`${getStars()}`);
+      this.tweens.add({ targets: this.starText, scale: 1.4, duration: 200, yoyo: true });
+      SFX.sparkle(); Voice.cue('star'); this.burstStars(this.starPickup.x, this.starPickup.y, 10);
+      this.tweens.add({ targets: this.starPickup, scale: 0, angle: 200, duration: 250, ease: 'Back.in', onComplete: () => this.starPickup.destroy() });
+    }
+
+    // Doel-vlag halen
+    if (!this.goal.reached && Phaser.Math.Distance.Between(p.x, p.y, this.goal.x, this.goal.y) < 46) {
+      this.win();
+    }
+
+    // Update checkpoint zodra je veilig aan de overkant staat
+    if (this.gateSolved && onFloor && p.x > this.level.gate.gapX + this.level.gate.gapW + 30) {
+      this.checkpoint = { ...this.level.checkpointAfterGate };
+    }
+
+    // In de kloof gevallen → zacht terug naar checkpoint
+    if (p.y > this.level.killY) this.respawn();
+
+    // Grommels laten patrouilleren
+    for (const gr of this.grommels) {
+      if (!gr.alive) continue;
+      const [lo, hi] = gr.def.patrol;
+      if (gr.x <= lo) gr.dir = 1; else if (gr.x >= hi) gr.dir = -1;
+      gr.body.setVelocityX(gr.dir * 55);
+      gr.art.scaleX = gr.dir;
+    }
+
+    // Wolken driften
+    for (const c of this.clouds) { c.x += c.driftSpeed * (delta / 1000); if (c.x > this.level.worldW + 80) c.x = -80; }
+  }
+}
