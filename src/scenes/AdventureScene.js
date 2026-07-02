@@ -87,6 +87,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.buildPlayer(L);
     this.buildTouchControls();
     this.buildHud();
+    if (import.meta.env && import.meta.env.DEV) this.buildDevLevelPicker();
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(140, 220);
@@ -193,9 +194,10 @@ export default class AdventureScene extends Phaser.Scene {
   buildPuzzles(L) {
     this.puzzles = [];
 
-    // 'brug' — leg planken over een kloof (blok-overlay tot doelgetal)
-    if (L.gate) {
-      const G = L.gate;
+    // 'brug' — leg planken over een kloof (blok-overlay tot doelgetal).
+    // Eén level mag meerdere bruggen hebben (L.gate = enkel, L.gates = lijst);
+    // elke brug is zelfstandig (eigen kloof, bordje, trigger-zone en blokjes).
+    [L.gate, ...(L.gates || [])].filter(Boolean).forEach((G) => {
       const pz = { type: 'brug', ...G, solved: false };
       const groundTop = L.platforms[0][1];
 
@@ -218,7 +220,7 @@ export default class AdventureScene extends Phaser.Scene {
       pz.prompt = 'Bouw de brug!';
       pz.onSolve = () => this.solveBridge(pz);
       this.puzzles.push(pz);
-    }
+    });
 
     // 'redding' — help een gevallen Numberblock; geeft een kracht
     (L.rescues || []).forEach((R) => {
@@ -622,6 +624,41 @@ export default class AdventureScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(61);
   }
 
+  // ============================================================ DEV: LEVEL-KIEZER
+  // Alleen in `npm run dev` (import.meta.env.DEV). Strip met knopjes onderin om
+  // direct naar elk level te springen — zo hoef je niet alles door te spelen.
+  // Verdwijnt automatisch in de productie-build (GitHub Pages).
+  buildDevLevelPicker() {
+    const W = this.scale.width;
+    const chipW = Math.min(58, (W - 20) / LEVELS.length);
+    const y = this.scale.height - 22;
+    const totalW = chipW * LEVELS.length;
+    let x = (W - totalW) / 2 + chipW / 2;
+
+    const strip = this.add.graphics().setScrollFactor(0).setDepth(90);
+    strip.fillStyle(0x16202b, 0.55);
+    strip.fillRoundedRect((W - totalW) / 2 - 6, y - 15, totalW + 12, 30, 10);
+
+    LEVELS.forEach((lvl, i) => {
+      const active = i === this.levelIndex;
+      const cx = x + i * chipW;
+      const chip = this.add.text(cx, y, lvl.id, {
+        fontFamily: 'Arial Black, Arial', fontSize: '13px', fontStyle: 'bold',
+        color: active ? '#16202b' : '#ffffff',
+        backgroundColor: active ? '#ffe16b' : '#2b3d52',
+        padding: { x: 6, y: 3 },
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(91).setInteractive({ useHandCursor: true });
+      chip.on('pointerdown', () => {
+        SFX.click();
+        this.scene.restart({ levelIndex: i });
+      });
+    });
+
+    this.add.text((W - totalW) / 2 - 6, y - 26, 'DEV', {
+      fontFamily: 'Arial Black, Arial', fontSize: '10px', fontStyle: 'bold', color: '#ffe16b',
+    }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(91);
+  }
+
   // ============================================================ BOUW-MODUS (puzzels)
   enterBuild() {
     if (this.mode !== 'explore' || !this.nearPuzzle || this.nearPuzzle.solved) return;
@@ -641,7 +678,7 @@ export default class AdventureScene extends Phaser.Scene {
     const title = this.add.text(W / 2, 70, `Maak de ${pz.doel}!`, {
       fontFamily: 'Arial Black, Arial', fontSize: '26px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
-    const hint = this.add.text(W / 2, 104, 'Sleep de blokjes op elkaar', {
+    const hint = this.add.text(W / 2, 104, 'Sleep om samen te voegen · tik 2× om te splitsen', {
       fontFamily: 'Arial', fontSize: '13px', color: '#9fb3c8',
     }).setOrigin(0.5);
     panel.add([title, hint]);
@@ -662,7 +699,7 @@ export default class AdventureScene extends Phaser.Scene {
 
     pz.blocks.forEach((val, i) => {
       const bx = W / 2 + (i - (pz.blocks.length - 1) / 2) * 120;
-      const by = H - 200;
+      const by = H - 300; // iets hoger, zodat een volle toren (t/m 10) past
       this.makeBuildBlock(val, bx, by);
     });
 
@@ -696,10 +733,18 @@ export default class AdventureScene extends Phaser.Scene {
     this.buildPanel.add(c);
     this.buildBlocks.push(c);
 
+    c._lastTap = 0;
     c.on('pointerdown', () => { c._dragged = false; });
     c.on('dragstart', (p) => { c._dragged = true; c._grabDX = c.x - p.x; c._grabDY = c.y - p.y; c.setDepth(140); this.tweens.add({ targets: c, scale: 1.1, duration: 100, yoyo: true, onComplete: () => c.setScale(1.06) }); SFX.pick(); });
     c.on('dragend', () => this.dropBuildBlock(c));
-    c.on('pointerup', () => { if (!c._dragged) this.splitBuildBlock(c); });
+    // Splitsen = 2× tikken (dubbeltik). Eén losse tik doet niks, zodat het
+    // loslaten van een sleep-samenvoeging niet per ongeluk splitst.
+    c.on('pointerup', () => {
+      if (c._dragged) return;
+      const now = this.time.now;
+      if (now - (c._lastTap || 0) < 340) { c._lastTap = 0; this.splitBuildBlock(c); }
+      else { c._lastTap = now; this.tweens.add({ targets: c, scale: 1.06, duration: 90, yoyo: true }); }
+    });
     c.setScale(0.3);
     this.tweens.add({ targets: c, scale: 1, duration: 260, ease: 'Back.out' });
     return c;
@@ -708,22 +753,27 @@ export default class AdventureScene extends Phaser.Scene {
   drawBuildBlock(c, value) {
     c.removeAll(true);
     c.setData('buildBlock', { value });
-    const w = 52, ch = Phaser.Math.Clamp(200 / value, 22, 46), totalH = value * ch, color = sig(value), top = -totalH / 2;
+    // Cellen blijven VIERKANTE kubussen: breedte == hoogte. Vol formaat (46px)
+    // t/m 10; daarboven krimpen ze samen (uniform) zodat de toren blijft passen
+    // (torenhoogte blijft dan constant ±460px) — nooit platgeknepen.
+    const cell = Phaser.Math.Clamp(460 / value, 18, 46);
+    const w = cell, ch = cell, totalH = value * ch, color = sig(value), top = -totalH / 2;
+    const s = w / 52; // schaalt de gezicht-/cijfer-details mee met de kubusgrootte
     for (let i = 0; i < value; i++) {
       const ty = totalH / 2 - (i + 1) * ch;
       const g = this.add.graphics();
       g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, ty, w, ch, 7);
-      g.fillStyle(darker(color, 28), 1); g.fillRoundedRect(-w / 2, ty + ch - 6, w, 6, 7);
-      g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, ty, w, ch - 6, 7);
-      g.fillStyle(lighten(color, 75), 0.5); g.fillRoundedRect(-w / 2 + 5, ty + 3, w * 0.3, ch * 0.4, 4);
+      g.fillStyle(darker(color, 28), 1); g.fillRoundedRect(-w / 2, ty + ch - 6 * s, w, 6 * s, 7);
+      g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, ty, w, ch - 6 * s, 7);
+      g.fillStyle(lighten(color, 75), 0.5); g.fillRoundedRect(-w / 2 + 5 * s, ty + 3 * s, w * 0.3, ch * 0.4, 4);
       g.lineStyle(2.5, darker(color, 55), 0.9); g.strokeRoundedRect(-w / 2, ty, w, ch, 7);
       if (i > 0) { g.lineStyle(2, darker(color, 55), 0.5); g.beginPath(); g.moveTo(-w / 2 + 3, ty); g.lineTo(w / 2 - 3, ty); g.strokePath(); }
       c.add(g);
     }
     const faceY = top + ch * 0.5;
-    for (const sx of [-11, 11]) { c.add(this.add.circle(sx, faceY - 1, 7, 0xffffff).setStrokeStyle(2.5, 0x16202b)); c.add(this.add.circle(sx, faceY, 3, 0x16202b)); }
-    const m = this.add.graphics(); m.lineStyle(3, 0x16202b, 1); m.beginPath(); m.arc(0, faceY + 8, 7, 0.15 * Math.PI, 0.85 * Math.PI); m.strokePath(); c.add(m);
-    const discY = top - 9;
+    for (const sx of [-11 * s, 11 * s]) { c.add(this.add.circle(sx, faceY - 1, 7 * s, 0xffffff).setStrokeStyle(2.5, 0x16202b)); c.add(this.add.circle(sx, faceY, 3 * s, 0x16202b)); }
+    const m = this.add.graphics(); m.lineStyle(3, 0x16202b, 1); m.beginPath(); m.arc(0, faceY + 8 * s, 7 * s, 0.15 * Math.PI, 0.85 * Math.PI); m.strokePath(); c.add(m);
+    const discY = top - 12;
     c.add(this.add.circle(0, discY, 12, 0xffffff).setStrokeStyle(2.5, 0x16202b));
     c.add(this.add.text(0, discY, `${value}`, { fontFamily: 'Arial Black, Arial', fontSize: '15px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5));
     // Ruim aanraakgebied: het HELE blok + flinke marge is grijpbaar (fijner op
@@ -752,6 +802,7 @@ export default class AdventureScene extends Phaser.Scene {
       onComplete: () => {
         this.buildBlocks = this.buildBlocks.filter((b) => b !== moving);
         moving.destroy();
+        target._lastTap = 0; // reset dubbeltik-teller (voorkomt per ongeluk splitsen na samenvoegen)
         this.drawBuildBlock(target, newVal);
         this.tweens.add({ targets: target, scaleX: 1.25, scaleY: 0.8, duration: 120, yoyo: true });
         SFX.combine(newVal); Voice.number(newVal);
