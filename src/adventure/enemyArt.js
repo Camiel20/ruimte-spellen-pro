@@ -303,6 +303,93 @@ export function drawAcorn(scene, x, y) {
   return c;
 }
 
+// De Meteoor-Grommel (Wereld 5): een gloeiende ruimterots met een vuurstaart
+// tot bovenin het scherm (= zichtbare blokkade). Zelfde contract als drawBoss
+// (bubble/bubbleText/brow/mouth).
+export function drawMeteorBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 78).setDepth(7);
+  const rots = 0x8a6e5a, rotsDonker = 0x5d4636, vuur = 0xf07c1f, vuurLicht = 0xffc14d;
+  // vuurstaart-zuil erachter, tot bovenin het scherm
+  const spires = scene.add.graphics();
+  spires.fillStyle(0xe8402c, 0.75);
+  spires.fillTriangle(-40, 70, -4, 70, -22, -520);
+  spires.fillTriangle(2, 70, 42, 70, 22, -450);
+  spires.fillStyle(vuur, 0.85);
+  spires.fillTriangle(-33, 70, -11, 70, -22, -470);
+  spires.fillTriangle(9, 70, 36, 70, 22, -400);
+  spires.fillStyle(vuurLicht, 0.85);
+  spires.fillTriangle(-27, 70, -17, 70, -22, -420);
+  spires.fillTriangle(17, 70, 27, 70, 22, -350);
+  c.add(spires);
+  // romp: grote ronde ruimterots met kraters
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 82, 112, 20);
+  g.fillStyle(rots, 1); g.fillCircle(0, 0, 62);
+  g.fillStyle(lighten(rots, 30), 0.5); g.fillCircle(-18, -20, 30);
+  g.fillStyle(rotsDonker, 0.85);
+  g.fillEllipse(-26, 18, 20, 14); g.fillEllipse(28, -26, 16, 12); g.fillEllipse(20, 30, 13, 9);
+  g.lineStyle(4, rotsDonker, 1); g.strokeCircle(0, 0, 62);
+  c.add(g);
+  // boos gezicht
+  const eL = scene.add.circle(-16, -12, 11, 0xffffff).setStrokeStyle(3, rotsDonker);
+  const eR = scene.add.circle(16, -12, 11, 0xffffff).setStrokeStyle(3, rotsDonker);
+  const pL = scene.add.circle(-16, -9, 4.5, 0x2c1c0e), pR = scene.add.circle(16, -9, 4.5, 0x2c1c0e);
+  const br = scene.add.graphics(); br.lineStyle(4.5, rotsDonker, 1);
+  br.beginPath(); br.moveTo(-29, -30); br.lineTo(-6, -22); br.strokePath();
+  br.beginPath(); br.moveTo(29, -30); br.lineTo(6, -22); br.strokePath();
+  const m = scene.add.graphics(); m.lineStyle(4, rotsDonker, 1); m.beginPath(); m.arc(0, 20, 12, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.bodyG = g; c.spires = spires; c.brow = br; c.mouth = m; c.eyes = [eL, eR];
+
+  // tekstwolkje naast de rots
+  const bub = scene.add.container(66, -58);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  // gloeien + heel licht zweven
+  scene.tweens.add({ targets: c, y: c.y - 7, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: spires, alpha: 0.7, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// De verslagen Meteoor-Grommel koelt af: het vuur dooft, hij lacht en krijgt
+// gele sterretjes op zijn buik — een vriendelijk maantje.
+export function happyMeteorBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear(); c.mouth.lineStyle(4, 0x5d4636, 1); c.mouth.beginPath(); c.mouth.arc(0, 14, 13, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+  scene.tweens.killTweensOf(c.spires);
+  scene.tweens.add({ targets: c.spires, alpha: 0, duration: 800 });
+  c.bodyG.fillStyle(0xffe16b, 0.95);
+  [[-30, -4], [28, 6], [-8, 36], [14, -36]].forEach(([fx, fy]) => {
+    c.bodyG.fillTriangle(fx - 5, fy, fx + 5, fy, fx, fy - 7);
+    c.bodyG.fillTriangle(fx - 5, fy - 3, fx + 5, fy - 3, fx, fy + 5);
+  });
+}
+
+// Vlammende vuurbal (de aanval van de Meteoor-Grommel) — het snelste
+// projectiel van alle bazen. Physics/beweging regelt de scene.
+export function drawFireball(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const shadow = scene.add.graphics();
+  shadow.fillStyle(0x000000, 0.14); shadow.fillEllipse(0, 0, 30, 7);
+  c.add(shadow);
+  const inner = scene.add.container(0, -15);
+  const trail = scene.add.graphics();
+  trail.fillStyle(0xf07c1f, 0.8); trail.fillEllipse(16, 0, 26, 14);
+  trail.fillStyle(0xffc14d, 0.8); trail.fillEllipse(10, 0, 16, 9);
+  inner.add(trail);
+  const g = scene.add.graphics();
+  g.fillStyle(0xe8402c, 1); g.fillCircle(0, 0, 13);
+  g.fillStyle(0xf07c1f, 1); g.fillCircle(-2, -2, 9);
+  g.fillStyle(0xffe16b, 1); g.fillCircle(-3, -3, 5);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: trail, scaleX: 1.25, alpha: 0.55, duration: 140, yoyo: true, repeat: -1 });
+  return c;
+}
+
 // Klein rollend golfje (de aanval van de Golf-Baas) — alleen het uiterlijk;
 // physics/beweging regelt de scene.
 export function drawWaveMinion(scene, x, y) {

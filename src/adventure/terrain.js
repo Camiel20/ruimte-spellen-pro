@@ -11,6 +11,47 @@ export function buildBackground(scene, L) {
   sky.fillGradientStyle(L.bg.top, L.bg.top, L.bg.bottom, L.bg.bottom, 1);
   sky.fillRect(0, 0, scene.scale.width, scene.scale.height);
 
+  if (L.terrain === 'ruimte') {
+    // RUIMTE (Wereld 5): fonkelsterren, een maan en verre planeetjes i.p.v.
+    // zon en wolken; paarse nevel-slierten driften mee als "wolken".
+    const stars = scene.add.graphics().setDepth(-28).setScrollFactor(0.15);
+    for (let i = 0; i < 70; i++) {
+      const sx = Math.random() * (scene.scale.width + 200) - 100;
+      const sy = Math.random() * 540;
+      stars.fillStyle(0xffffff, Phaser.Math.FloatBetween(0.35, 0.95));
+      stars.fillCircle(sx, sy, Math.random() < 0.15 ? 2.2 : 1.3);
+    }
+    scene.tweens.add({ targets: stars, alpha: 0.55, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    const moon = scene.add.container(scene.scale.width - 80, 100).setDepth(-27).setScrollFactor(0.25);
+    const mg = scene.add.graphics();
+    mg.fillStyle(0xfff3b0, 0.16); mg.fillCircle(0, 0, 52);
+    mg.fillStyle(0xe8e4f0, 1); mg.fillCircle(0, 0, 34);
+    mg.fillStyle(0xc9c4d8, 0.85); mg.fillCircle(-10, -6, 7); mg.fillCircle(12, 8, 5); mg.fillCircle(4, -15, 4);
+    moon.add(mg);
+    // verre planeetjes met een ring
+    [[88, 214, 14, 0xf28ba8], [300, 138, 10, 0x7fd0f0]].forEach(([px, py, r, col]) => {
+      const pg = scene.add.graphics().setDepth(-27).setScrollFactor(0.2);
+      pg.fillStyle(col, 0.9); pg.fillCircle(px, py, r);
+      pg.lineStyle(2.5, lighten(col, 40), 0.8); pg.strokeEllipse(px, py + 2, r * 2.6, r * 0.9);
+    });
+    scene.clouds = [];
+    for (let i = 0; i < 5; i++) {
+      const x = (i / 5) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(90, 300);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5).setAlpha(0.35);
+      const g = scene.add.graphics();
+      g.fillStyle(0x8f86c8, 0.7);
+      [[-30, 2, 16], [-4, -6, 22], [20, 2, 17], [40, 8, 11]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(3, 8);
+      scene.clouds.push(c);
+    }
+    const kraters = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    kraters.fillStyle(darker(L.bg.bottom, 25), 0.8);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) kraters.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
   // Zon (licht parallax)
   const sun = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
   const glow = scene.add.circle(0, 0, 54, 0xfff3b0, 0.35);
@@ -114,6 +155,33 @@ export function drawGround(scene, x, y, w, h) {
       } else {
         g.fillStyle(0x6a7078, 1); g.fillEllipse(fx - 6, y - 3, 10, 7);
         g.fillStyle(0x8a9098, 1); g.fillEllipse(fx + 5, y - 4, 12, 8);
+      }
+    }
+  } else if (scene.level.terrain === 'ruimte') {
+    // RUIMTE (Wereld 5): paarsgrijze maanrots met kraters in de toplaag,
+    // fonkelkristallen en kleine ruimte-vlaggetjes.
+    g.fillStyle(0x565273, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0x474463, 0.7);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0x8a86ad, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(0xa8a4c8, 1); g.fillRect(x, y, w, 6);
+    // kratertjes in de toplaag
+    for (let bx = x + 34; bx < x + w - 18; bx += 96) {
+      g.fillStyle(0x6e6a8f, 1); g.fillEllipse(bx, y + 11, 18, 7);
+      g.fillStyle(0x565273, 0.85); g.fillEllipse(bx, y + 10, 12, 4);
+    }
+    // om en om: fonkelkristal (zeegroen) en een klein ruimte-vlaggetje
+    let ruimte = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      ruimte = !ruimte;
+      if (ruimte) {
+        g.fillStyle(0x4fd6c2, 1);
+        g.fillTriangle(fx - 7, y, fx + 1, y, fx - 3, y - 16);
+        g.fillTriangle(fx - 1, y, fx + 8, y, fx + 4, y - 22);
+        g.fillStyle(0x9df0e2, 0.9); g.fillTriangle(fx + 1, y, fx + 6, y, fx + 4, y - 18);
+      } else {
+        g.fillStyle(0xcfd6dd, 1); g.fillRect(fx - 1, y - 20, 2, 20);
+        g.fillStyle(0xffe16b, 1); g.fillTriangle(fx + 1, y - 20, fx + 1, y - 11, fx + 13, y - 16);
       }
     }
   } else if (scene.level.terrain === 'bos') {

@@ -36,6 +36,13 @@ export function splitParts(value, k) {
 
 const sum = (a) => a.reduce((s, v) => s + v, 0);
 
+// Portalen staan PORTAL_AFSTAND uit elkaar; het sterrenhek staat er 150px
+// achter. Eén formule voor scene én validator, zodat ze nooit uit de pas lopen.
+export const PORTAL_AFSTAND = 130;
+export function portaalMuurX(P) {
+  return P.x + (P.opties.length - 1) * PORTAL_AFSTAND + 150;
+}
+
 // Controleer een level-object op ontwerpfouten die je anders pas al spelend
 // ontdekt. Geeft een lijst foutmeldingen (leeg = level is in orde).
 export function validateLevel(L) {
@@ -168,6 +175,35 @@ export function validateLevel(L) {
     if (A.endX > L.worldW) err(`achtervolging ${i + 1} loopt buiten de wereld`);
     const cover = L.platforms.some(([px, py, pw]) => py === groundTop && px <= A.spawnX && px + pw >= A.endX);
     if (!cover) err(`achtervolging ${i + 1}: geen doorlopende grond van spawn tot einde — de rots valt in een gat`);
+  });
+
+  // Maan-zones (lage zwaartekracht) binnen de wereld.
+  (L.maanZones || []).forEach((Z, i) => {
+    if (Z.x < 0 || Z.x + Z.w > L.worldW) err(`maan-zone ${i + 1} ligt buiten de wereld`);
+  });
+
+  // Raket: precies vol te tanken (vaatjes van 10) + vertrek en landing op grond.
+  if (L.raket) {
+    const R = L.raket;
+    if (!R.doel || R.doel % 10 !== 0) err('raket: doel moet een tiental zijn (bv. 100)');
+    const drums = (R.drums || []).length;
+    if (drums * 10 < (R.doel || 0)) err(`raket: ${drums} vaatjes (= ${drums * 10}) zijn samen minder dan ${R.doel} — de tank kan nooit vol`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= R.x && px + pw >= R.x);
+    if (!support) err('raket staat niet op de grond');
+    const land = L.platforms.some(([px, py, pw]) => py === groundTop && px <= R.landX && px + pw >= R.landX + 80);
+    if (!land) err(`raket: de landingsplek (x=${R.landX}) heeft geen grond`);
+  }
+
+  // Portaal-groepen: precies één som klopt, en doorlopende grond onder de
+  // hele groep (inclusief de terug- en vooruit-teleportplekken).
+  (L.portalen || []).forEach((P, i) => {
+    if (!Array.isArray(P.opties) || P.opties.length < 2) { err(`portaal-groep ${i + 1}: minstens 2 portalen nodig`); return; }
+    const goed = P.opties.filter((o) => o[0] + o[1] === P.doel).length;
+    if (goed !== 1) err(`portaal-groep ${i + 1}: ${goed} sommen maken ${P.doel} — er moet er precies één kloppen`);
+    const muurX = portaalMuurX(P);
+    if (muurX + 130 > L.worldW) err(`portaal-groep ${i + 1}: het sterrenhek valt buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= P.x - 200 && px + pw >= muurX + 130);
+    if (!support) err(`portaal-groep ${i + 1}: geen doorlopende grond rond de portalen`);
   });
 
   return errors;

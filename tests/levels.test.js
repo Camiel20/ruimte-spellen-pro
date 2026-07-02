@@ -107,4 +107,49 @@ describe('puzzellogica', () => {
     const errors = validateLevel(kapot);
     expect(errors.some((e) => e.includes('verdelen moet precies kloppen'))).toBe(true);
   });
+
+  it('validateLevel: vangt een raket-tank die nooit vol kan', () => {
+    const kapot = {
+      id: 'x-6', worldW: 3000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 1400, 140], [2400, 660, 600, 140]],
+      raket: { x: 1300, doel: 100, landX: 2500, drums: [[200, 600], [400, 600], [600, 600]] }, // 3×10 = 30 < 100
+      goal: { x: 2900, y: 588, value: 100 },
+    };
+    const errors = validateLevel(kapot);
+    expect(errors.some((e) => e.includes('tank kan nooit vol'))).toBe(true);
+    // met 10 vaatjes is het wél in orde
+    const goed = { ...kapot, raket: { ...kapot.raket, drums: Array.from({ length: 10 }, (_, i) => [150 + i * 100, 600]) } };
+    expect(validateLevel(goed)).toEqual([]);
+  });
+
+  it('validateLevel: vangt een portaal-groep zonder (of met dubbele) goede som', () => {
+    const basis = {
+      id: 'x-7', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      goal: { x: 1900, y: 588, value: 20 },
+    };
+    // geen enkele som maakt 20 → onoplosbaar
+    const geen = { ...basis, portalen: [{ x: 600, doel: 20, opties: [[10, 5], [20, 10]] }] };
+    expect(validateLevel(geen).some((e) => e.includes('precies één'))).toBe(true);
+    // twee sommen maken 20 → geen raadsel meer
+    const dubbel = { ...basis, portalen: [{ x: 600, doel: 20, opties: [[10, 10], [15, 5]] }] };
+    expect(validateLevel(dubbel).some((e) => e.includes('precies één'))).toBe(true);
+    // precies één goede som → in orde
+    const goed = { ...basis, portalen: [{ x: 600, doel: 20, opties: [[10, 10], [15, 10]] }] };
+    expect(validateLevel(goed)).toEqual([]);
+  });
+
+  it('validateLevel: vangt een maan-zone buiten de wereld', () => {
+    const kapot = {
+      id: 'x-8', worldW: 1000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 1000, 140]],
+      maanZones: [{ x: 800, w: 400 }], // steekt 200px buiten de wereld
+      goal: { x: 900, y: 588, value: 3 },
+    };
+    const errors = validateLevel(kapot);
+    expect(errors.some((e) => e.includes('maan-zone'))).toBe(true);
+  });
 });
