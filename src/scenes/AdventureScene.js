@@ -72,7 +72,10 @@ export default class AdventureScene extends Phaser.Scene {
 
     this.mode = 'explore';
     this.playerValue = L.startValue || 1;
-    this.checkpoint = { ...L.start };
+    // Checkpoint bewaart de VOETEN-positie (bottom), niet het midden: de
+    // spelerhoogte verandert (groeien/krimpen) en met een midden-positie kwam
+    // een gegroeide speler tot z'n knieën in de grond terecht → val-lus.
+    this.checkpoint = { x: L.start.x, bottom: L.start.y + ((L.startValue || 1) * CELL) / 2 };
     this.invulnUntil = 0;
     this.lastGroundAt = -9999;
     this.jumpBufferedAt = -9999;
@@ -96,6 +99,9 @@ export default class AdventureScene extends Phaser.Scene {
 
     this.cameras.main.setBounds(0, 0, L.worldW, L.worldH);
     this.physics.world.setBounds(0, 0, L.worldW, L.worldH);
+    // Onderkant OPEN: anders "staat" een lange speler (waarde 4-5) op de
+    // onzichtbare wereldbodem in zee, nét boven killY → geen respawn.
+    this.physics.world.setBoundsCollision(true, true, true, false);
 
     this.buildBackground(L);
     this.buildWater(L);
@@ -1298,11 +1304,18 @@ export default class AdventureScene extends Phaser.Scene {
   }
 
   respawn() {
-    this.player.body.setVelocity(0, 0);
     this.cameras.main.flash(250, 30, 40, 60);
-    this.player.setPosition(this.checkpoint.x, this.checkpoint.y);
+    // Eerst het lijf op maat (waarde kan veranderd zijn), DAN plaatsen met de
+    // voeten net boven de checkpoint-vloer — zo sta je nooit ín de grond
+    // (diepe overlap kan Arcade Physics niet scheiden → je zakte erdoorheen).
     this.playerValue = Math.max(1, this.playerValue);
     this.drawPlayer();
+    this.player.setPosition(this.checkpoint.x, this.checkpoint.bottom - this.player.totalH / 2 - 2);
+    // body.reset synct de physics-body (incl. vorige-positie) met de nieuwe
+    // plek en zet de snelheid op nul — geen rare separatie-sprong na teleport.
+    this.player.body.reset(this.player.x, this.player.y);
+    this.jumpsUsed = 0;
+    this.invulnUntil = this.time.now + 800; // even op adem komen na een val
   }
 
   // ============================================================ EFFECTEN
@@ -1367,7 +1380,7 @@ export default class AdventureScene extends Phaser.Scene {
     const onFloor = body.blocked.down || body.touching.down;
     if (onFloor) {
       this.lastGroundAt = time; this.jumpsUsed = 0;
-      if (this.solidlyGrounded()) this.checkpoint = { x: p.x, y: p.y - 4 };
+      if (this.solidlyGrounded()) this.checkpoint = { x: p.x, bottom: body.bottom };
     }
 
     // Horizontale beweging (touch of toetsenbord)
@@ -1459,8 +1472,10 @@ export default class AdventureScene extends Phaser.Scene {
       this.win();
     }
 
-    // In een kloof gevallen → zacht terug naar checkpoint
-    if (p.y > this.level.killY) this.respawn();
+    // In een kloof gevallen → zacht terug naar checkpoint. Check op de
+    // VOETEN: het midden van een lange speler (waarde 4-5) komt anders nooit
+    // onder de grens uit.
+    if (body.bottom > this.level.killY) this.respawn();
 
     // Grommels patrouilleren
     for (const gr of this.grommels) {

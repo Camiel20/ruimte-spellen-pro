@@ -52,7 +52,23 @@ export function validateLevel(L) {
   const groundTop = L.platforms[0][1];
   if (L.killY != null && L.killY <= groundTop) err(`killY (${L.killY}) ligt op/boven de grond (${groundTop}) — speler sterft op de grond`);
   if (!L.start) err('level mist een startpositie');
-  else if (L.start.x < 0 || L.start.x > L.worldW) err('start ligt buiten de wereld');
+  else {
+    if (L.start.x < 0 || L.start.x > L.worldW) err('start ligt buiten de wereld');
+    // Er moet een platform ONDER de startpositie liggen, anders val je meteen.
+    const support = L.platforms.some(([px, py, pw]) => px <= L.start.x && px + pw >= L.start.x && py >= L.start.y);
+    if (!support) err(`start (x=${L.start.x}) heeft geen platform eronder — speler valt meteen`);
+  }
+
+  // Grommels moeten hun HELE patrouille op een platform kunnen lopen (marge =
+  // halve lijfbreedte), anders wandelen ze de zee/kloof in en vallen ze weg.
+  (L.grommels || []).forEach((gr, i) => {
+    if (!gr.patrol || gr.patrol.length !== 2) { err(`grommel ${i + 1} mist een patrol [lo, hi]`); return; }
+    const [lo, hi] = gr.patrol;
+    if (lo >= hi) err(`grommel ${i + 1}: patrol lo (${lo}) >= hi (${hi})`);
+    const supported = L.platforms.some(([px, py, pw]) =>
+      py >= gr.y && py <= gr.y + 140 && px <= lo - 16 && px + pw >= hi + 16);
+    if (!supported) err(`grommel ${i + 1}: patrouille ${lo}..${hi} loopt (deels) buiten een platform — hij wandelt de kloof in`);
+  });
 
   if (!L.goal) err('level mist een doel-vlag');
   else if (L.goal.x < 0 || L.goal.x > L.worldW) err(`vlag (x=${L.goal.x}) ligt buiten de wereld (breedte ${L.worldW})`);

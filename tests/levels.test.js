@@ -45,6 +45,29 @@ describe('puzzellogica', () => {
     expect(splitParts(2, 1)).toEqual([1, 1]);
   });
 
+  it('validateLevel: vangt een grommel die de kloof in wandelt', () => {
+    const kapot = {
+      id: 'x-2', worldW: 1000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 400, 140], [760, 660, 240, 140]],
+      grommels: [{ type: 'stomp', x: 300, y: 612, patrol: [200, 500] }], // 500 > rand 400
+      goal: { x: 900, y: 588, value: 3 },
+    };
+    const errors = validateLevel(kapot);
+    expect(errors.some((e) => e.includes('kloof in'))).toBe(true);
+  });
+
+  it('validateLevel: vangt een start zonder grond eronder', () => {
+    const kapot = {
+      id: 'x-3', worldW: 1000, worldH: 800, killY: 720,
+      start: { x: 500, y: 500 }, // boven het gat tussen de platforms
+      platforms: [[0, 660, 400, 140], [760, 660, 240, 140]],
+      goal: { x: 900, y: 588, value: 3 },
+    };
+    const errors = validateLevel(kapot);
+    expect(errors.some((e) => e.includes('geen platform eronder'))).toBe(true);
+  });
+
   it('validateLevel: vangt een onoplosbare brug', () => {
     const kapot = {
       id: 'x-1', worldW: 1000, worldH: 800, killY: 720,
