@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { SFX } from '../sound.js';
 import { getLevelRecord, getAdventureCurrent, getStars } from '../progress.js';
+import { sig } from '../adventure/palette.js';
 import { WORLD1 } from '../levels/world1.js';
 import { WORLD2 } from '../levels/world2.js';
 
@@ -18,8 +19,6 @@ const WORLDS = [
   { levels: WORLD2, naam: 'Wereld 2 · De Kust', top: 0x8fd3ff, bottom: 0xf3e2b0 },
 ];
 
-const SIG = [0xe8402c, 0xf08a24, 0xf6c624, 0x57b947, 0x38b6cf, 0xec6aa9, 0x9b6dd6, 0x6b7b8a, 0x4f63c9];
-const sig = (v) => SIG[(v - 1 + 9 * 10) % 9];
 
 const HEADER_H = 88;   // vaste balk bovenin
 const FOOTER_H = 96;   // vaste balk onderin (verder spelen)

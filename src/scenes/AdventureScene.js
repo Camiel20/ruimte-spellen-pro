@@ -5,6 +5,11 @@ import { startMusic } from '../music.js';
 import { confettiBurst, showReward } from '../reward.js';
 import { addStars, getStars, markLevelDone, setAdventureCurrent, getAdventureCurrent } from '../progress.js';
 import { findPair, splitParts } from '../adventure/logic.js';
+import { sig, lighten, darker } from '../adventure/palette.js';
+import { drawCubeStack, addNumberDisc, addFeet, makeSleepingFriend, drawAwakeFriendInto } from '../adventure/art.js';
+import { buildBackground, buildWater, buildPlatforms } from '../adventure/terrain.js';
+import { drawGrommelArt, recolorGrommelArt, drawBoss, drawWaveBoss, drawSprayWall, drawWaveMinion, recolorBossHappy } from '../adventure/enemyArt.js';
+import { CELL, PW, MOVE_SPEED, JUMP_BASE, JUMP_PER_LEVEL, COYOTE_MS, BUFFER_MS } from '../adventure/constants.js';
 import { WORLD1, LEVEL_1_1 } from '../levels/world1.js';
 import { WORLD2 } from '../levels/world2.js';
 
@@ -29,26 +34,6 @@ const LEVELS = [...WORLD1, ...WORLD2];
 //   'explore' — Arcade Physics actief; ← → loopt, Spring springt, camera volgt.
 //   'build'   — bij een puzzel: physics bevroren, blokjes-overlay (slepen =
 //               samenvoegen, tik = splitsen) tot het doelgetal klaar is.
-
-const SIG = [0xe8402c, 0xf08a24, 0xf6c624, 0x57b947, 0x38b6cf, 0x9b6dd6,
-  0xec6aa9, 0x14b8a6, 0x4f63c9, 0xf25c54, 0x37c2a0, 0x6366f1];
-function sig(n) { return SIG[(Math.max(1, n) - 1) % SIG.length]; }
-function lighten(c, amt) {
-  const r = Math.min(255, ((c >> 16) & 255) + amt), g = Math.min(255, ((c >> 8) & 255) + amt), b = Math.min(255, (c & 255) + amt);
-  return (r << 16) | (g << 8) | b;
-}
-function darker(c, amt) {
-  const r = Math.max(0, ((c >> 16) & 255) - amt), g = Math.max(0, ((c >> 8) & 255) - amt), b = Math.max(0, (c & 255) - amt);
-  return (r << 16) | (g << 8) | b;
-}
-
-const CELL = 42;      // hoogte van één blok-cel
-const PW = 44;        // breedte van de speler/blokjes
-const MOVE_SPEED = 210;
-const JUMP_BASE = 600;      // sprongkracht bij waarde 1
-const JUMP_PER_LEVEL = 42;  // extra kracht per groei-stap (hoger springen)
-const COYOTE_MS = 120;      // nog net springen na de rand
-const BUFFER_MS = 130;      // tik vlak vóór de landing telt alsnog
 
 export default class AdventureScene extends Phaser.Scene {
   constructor() { super('Adventure'); }
@@ -103,9 +88,9 @@ export default class AdventureScene extends Phaser.Scene {
     // onzichtbare wereldbodem in zee, nét boven killY → geen respawn.
     this.physics.world.setBoundsCollision(true, true, true, false);
 
-    this.buildBackground(L);
-    this.buildWater(L);
-    this.buildPlatforms(L);
+    buildBackground(this, L);
+    buildWater(this, L);
+    buildPlatforms(this, L);
     this.buildPickups(L);
     this.buildPuzzles(L);
     this.buildDoors(L);
@@ -130,105 +115,6 @@ export default class AdventureScene extends Phaser.Scene {
   }
 
   // ============================================================ ACHTERGROND
-  buildBackground(L) {
-    const sky = this.add.graphics().setDepth(-30).setScrollFactor(0);
-    sky.fillGradientStyle(L.bg.top, L.bg.top, L.bg.bottom, L.bg.bottom, 1);
-    sky.fillRect(0, 0, this.scale.width, this.scale.height);
-
-    // Zon (licht parallax)
-    const sun = this.add.container(this.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
-    const glow = this.add.circle(0, 0, 54, 0xfff3b0, 0.35);
-    sun.add([glow, this.add.circle(0, 0, 32, 0xffe16b)]);
-    this.tweens.add({ targets: glow, scale: 1.18, alpha: 0.5, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-
-    // Wolkjes (parallax) verspreid over de wereldbreedte
-    this.clouds = [];
-    for (let i = 0; i < 8; i++) {
-      const x = (i / 8) * L.worldW + Phaser.Math.Between(-40, 40);
-      const y = Phaser.Math.Between(70, 260);
-      const s = Phaser.Math.FloatBetween(0.7, 1.3);
-      const c = this.add.container(x, y).setDepth(-27).setScale(s).setScrollFactor(0.5);
-      const g = this.add.graphics();
-      g.fillStyle(0xffffff, 0.9);
-      [[-26, 4, 17], [-6, -8, 23], [16, 0, 20], [34, 7, 14], [4, 11, 26]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
-      c.add(g);
-      c.driftSpeed = Phaser.Math.FloatBetween(4, 11);
-      this.clouds.push(c);
-    }
-
-    // Verre heuvels (parallax) voor diepte
-    const hills = this.add.graphics().setDepth(-26).setScrollFactor(0.35);
-    hills.fillStyle(darker(L.bg.bottom, 20), 0.7);
-    for (let x = -100; x < this.scale.width + 200; x += 180) hills.fillCircle(x, this.scale.height, 150);
-  }
-
-  // ============================================================ WATER (visueel)
-  buildWater(L) {
-    (L.water || []).forEach(([x, y, w, h]) => {
-      const g = this.add.graphics().setDepth(-14);
-      g.fillStyle(0x3fa9e0, 1); g.fillRect(x, y, w, h);
-      g.fillStyle(0x7fd0f0, 0.5);
-      for (let wx = x; wx < x + w; wx += 42) g.fillEllipse(wx + 21, y + 12, 26, 8);
-      g.fillStyle(0xffffff, 0.25);
-      for (let wx = x; wx < x + w; wx += 60) g.fillEllipse(wx + 30, y + 26, 18, 5);
-      this.tweens.add({ targets: g, alpha: 0.82, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    });
-  }
-
-  // ============================================================ PLATFORMS / GROND
-  buildPlatforms(L) {
-    this.platforms = this.physics.add.staticGroup();
-    L.platforms.forEach(([x, y, w, h]) => {
-      const plat = this.add.rectangle(x + w / 2, y + h / 2, w, h, 0x000000, 0);
-      this.physics.add.existing(plat, true);
-      this.platforms.add(plat);
-      this.drawGround(x, y, w, h);
-    });
-  }
-
-  drawGround(x, y, w, h) {
-    const g = this.add.graphics().setDepth(-10);
-    if (this.level.terrain === 'zand') {
-      // STRAND: warm zand met een lichte toplaag, schelpjes en zeesterren.
-      g.fillStyle(0xe3bd76, 1); g.fillRect(x, y + 12, w, h - 12);
-      g.fillStyle(0xd2ab64, 0.6);
-      for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
-      g.fillStyle(0xf3dc9a, 1); g.fillRect(x, y, w, 16);
-      g.fillStyle(0xfae9b8, 1); g.fillRect(x, y, w, 6);
-      // schelpje (wit waaiertje) en zeester (roze) om en om
-      let toggle = false;
-      for (let fx = x + 44; fx < x + w - 24; fx += 120) {
-        toggle = !toggle;
-        if (toggle) {
-          g.fillStyle(0xfff6e8, 1); g.slice(fx, y - 2, 6, Math.PI, 0, false); g.fillPath();
-          g.lineStyle(1.5, 0xd2ab64, 1);
-          g.beginPath(); g.moveTo(fx, y - 2); g.lineTo(fx - 3, y - 7); g.strokePath();
-          g.beginPath(); g.moveTo(fx, y - 2); g.lineTo(fx + 3, y - 7); g.strokePath();
-        } else {
-          g.fillStyle(0xf28ba8, 1);
-          for (let a = 0; a < 5; a++) {
-            const ang = -Math.PI / 2 + a * (2 * Math.PI / 5);
-            g.fillEllipse(fx + Math.cos(ang) * 4, y - 5 + Math.sin(ang) * 4, 4, 4);
-          }
-          g.fillCircle(fx, y - 5, 3);
-        }
-      }
-    } else {
-      // GRAS (Wereld 1): aarde + groene toplaag met sprietjes en bloemetjes.
-      g.fillStyle(0xb07a45, 1); g.fillRect(x, y + 12, w, h - 12);
-      g.fillStyle(0x9c6b3f, 0.6);
-      for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
-      g.fillStyle(0x57b947, 1); g.fillRect(x, y, w, 16);
-      g.fillStyle(lighten(0x57b947, 22), 1); g.fillRect(x, y, w, 6);
-      g.fillStyle(0x3f9d3f, 1);
-      for (let bx = x + 6; bx < x + w; bx += 16) g.fillTriangle(bx, y, bx + 5, y, bx + 2.5, y - 6);
-      for (let fx = x + 40; fx < x + w - 20; fx += 130) {
-        g.fillStyle(0xff6b9d, 1); g.fillCircle(fx, y - 10, 3);
-        g.fillStyle(0xffe16b, 1); g.fillCircle(fx, y - 10, 1.4);
-      }
-    }
-  }
-
   // ============================================================ GROEI-BOLLETJES
   buildPickups(L) {
     this.pickups = [];
@@ -280,7 +166,7 @@ export default class AdventureScene extends Phaser.Scene {
     // 'redding' — help een gevallen Numberblock; geeft een kracht
     (L.rescues || []).forEach((R) => {
       const pz = { type: 'redding', ...R, solved: false };
-      pz.friend = this.drawSleepingFriend(R.x, R.y, R.doel);
+      pz.friend = makeSleepingFriend(this, R.x, R.y, R.doel);
       pz.zone = new Phaser.Geom.Rectangle(R.x - 55, R.y - 130, 110, 170);
       pz.prompt = `Help ${R.name || 'het vriendje'}!`;
       pz.onSolve = () => this.reviveFriend(pz);
@@ -289,32 +175,6 @@ export default class AdventureScene extends Phaser.Scene {
   }
 
   // Een grijs, "uit elkaar gevallen" vriendje dat op redding wacht.
-  drawSleepingFriend(x, y, value) {
-    const c = this.add.container(x, y).setDepth(6);
-    const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 26, 46, 11);
-    g.fillStyle(0x9aa0a6, 1); g.fillRoundedRect(-20, -18, 40, 42, 8);
-    g.fillStyle(0x7f858c, 1); g.fillRoundedRect(-20, 14, 40, 10, 8);
-    g.lineStyle(2.5, 0x565b61, 1); g.strokeRoundedRect(-20, -18, 40, 42, 8);
-    // droevige oogjes + traan
-    const eL = this.add.circle(-8, -4, 6, 0xffffff).setStrokeStyle(2, 0x444);
-    const eR = this.add.circle(8, -4, 6, 0xffffff).setStrokeStyle(2, 0x444);
-    const pL = this.add.circle(-8, -3, 2.4, 0x333), pR = this.add.circle(8, -3, 2.4, 0x333);
-    const m = this.add.graphics(); m.lineStyle(2, 0x565b61, 1); m.beginPath(); m.arc(0, 12, 6, 1.1 * Math.PI, 1.9 * Math.PI); m.strokePath();
-    // wens-wolkje met doelgetal
-    const bub = this.add.container(0, -52);
-    const bg = this.add.graphics();
-    bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
-    bg.fillRoundedRect(-22, -20, 44, 34, 10); bg.strokeRoundedRect(-22, -20, 44, 34, 10);
-    bg.fillTriangle(-5, 12, 5, 12, 0, 22);
-    const wn = this.add.text(0, -3, `${value}`, { fontFamily: 'Arial Black, Arial', fontSize: '22px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
-    bub.add([bg, wn]);
-    this.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    c.add([g, eL, eR, pL, pR, m, bub]);
-    c.bubble = bub;
-    return c;
-  }
-
   // ============================================================ DEUREN ('wees N')
   buildDoors(L) {
     this.doors = [];
@@ -416,9 +276,9 @@ export default class AdventureScene extends Phaser.Scene {
 
     // Elke wereld z'n eigen baas-art: 'golf' = blauwe golf (Wereld 2),
     // anders de klassieke grijze Grommel-baas (Wereld 1).
-    const art = B.look === 'golf' ? this.drawWaveBoss(B.x, groundTop) : this.drawBoss(B.x, groundTop);
+    const art = B.look === 'golf' ? drawWaveBoss(this, B.x, groundTop) : drawBoss(this, B.x, groundTop);
     // Bij de Golf-Baas is de hoge blokkade zichtbaar als opspattende waterzuil.
-    if (B.look === 'golf') art.sprayWall = this.drawSprayWall(B.x, groundTop);
+    if (B.look === 'golf') art.sprayWall = drawSprayWall(this, B.x, groundTop);
     const pz = {
       type: 'boss', ...B, solved: false, stageIndex: 0,
       doel: B.stages[0].doel, blocks: B.stages[0].blocks,
@@ -428,96 +288,6 @@ export default class AdventureScene extends Phaser.Scene {
     art.bubbleText.setText(`${pz.doel}`);
     pz.onSolve = () => this.defeatBoss(pz);
     this.puzzles.push(pz);
-  }
-
-  drawBoss(x, groundY) {
-    const c = this.add.container(x, groundY - 70).setDepth(7);
-    const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 74, 96, 20);
-    g.fillStyle(0x8a8f96, 1); g.fillRoundedRect(-46, -70, 92, 144, 14);
-    g.fillStyle(0x6c7178, 1); g.fillRoundedRect(-46, 44, 92, 22, 14);
-    g.fillStyle(lighten(0x8a8f96, 30), 0.4); g.fillRoundedRect(-38, -60, 26, 44, 8);
-    g.lineStyle(4, 0x4a4f55, 1); g.strokeRoundedRect(-46, -70, 92, 144, 14);
-    const eL = this.add.circle(-17, -30, 13, 0xffffff).setStrokeStyle(3, 0x333);
-    const eR = this.add.circle(17, -30, 13, 0xffffff).setStrokeStyle(3, 0x333);
-    const pL = this.add.circle(-17, -27, 5, 0x222), pR = this.add.circle(17, -27, 5, 0x222);
-    const br = this.add.graphics(); br.lineStyle(4, 0x3a3f45, 1);
-    br.beginPath(); br.moveTo(-30, -48); br.lineTo(-7, -39); br.strokePath();
-    br.beginPath(); br.moveTo(30, -48); br.lineTo(7, -39); br.strokePath();
-    const m = this.add.graphics(); m.lineStyle(3, 0x3a3f45, 1); m.beginPath(); m.arc(0, 12, 14, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
-    c.add([g, eL, eR, pL, pR, br, m]);
-    c.bodyG = g; c.brow = br; c.mouth = m; c.eyes = [eL, eR];
-
-    const bub = this.add.container(0, -108);
-    const bg = this.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
-    bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
-    const wn = this.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
-    bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
-    this.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.tweens.add({ targets: c, y: c.y - 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    return c;
-  }
-
-  // De Golf-Baas (Wereld 2): een grote blauwe golf met schuimkuif en boze
-  // oogjes. Zelfde contract als drawBoss (bubble/bubbleText/brow/mouth).
-  drawWaveBoss(x, groundY) {
-    const c = this.add.container(x, groundY - 70).setDepth(7);
-    const deep = 0x1f7fc4, mid = 0x2e9adf, edge = 0x176b9e;
-    const g = this.add.graphics();
-    // schaduw
-    g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 74, 112, 20);
-    // romp: hoge golf, bovenkant rond, krul naar links (de kant van de speler)
-    g.fillStyle(mid, 1); g.fillRoundedRect(-52, -78, 104, 152, { tl: 46, tr: 52, bl: 10, br: 10 });
-    g.fillCircle(-48, -58, 18); // overhangende krul
-    // donkere onderrand (diep water)
-    g.fillStyle(deep, 1); g.fillRoundedRect(-52, 46, 104, 28, { tl: 0, tr: 0, bl: 10, br: 10 });
-    // licht-strepen: golvend water
-    g.fillStyle(lighten(mid, 55), 0.55);
-    g.fillRoundedRect(-38, -50, 30, 9, 4); g.fillRoundedRect(-4, -28, 34, 8, 4); g.fillRoundedRect(-34, -4, 26, 8, 4);
-    g.lineStyle(4, edge, 1); g.strokeRoundedRect(-52, -78, 104, 152, { tl: 46, tr: 52, bl: 10, br: 10 });
-    // schuimkuif over de top + spetters
-    const foam = this.add.graphics();
-    foam.fillStyle(0xeafaff, 1);
-    [[-44, -64, 13], [-24, -78, 15], [0, -84, 16], [24, -78, 14], [44, -64, 12], [-56, -46, 9], [-62, -32, 7]]
-      .forEach(([fx, fy, r]) => foam.fillCircle(fx, fy, r));
-    foam.fillStyle(0xbfe8ff, 0.9); foam.fillCircle(-66, -14, 4); foam.fillCircle(60, -40, 4); foam.fillCircle(54, -10, 3);
-    // boos gezicht
-    const eL = this.add.circle(-16, -26, 12, 0xffffff).setStrokeStyle(3, edge);
-    const eR = this.add.circle(16, -26, 12, 0xffffff).setStrokeStyle(3, edge);
-    const pL = this.add.circle(-16, -23, 5, 0x123246), pR = this.add.circle(16, -23, 5, 0x123246);
-    const br = this.add.graphics(); br.lineStyle(5, edge, 1);
-    br.beginPath(); br.moveTo(-30, -46); br.lineTo(-6, -38); br.strokePath();
-    br.beginPath(); br.moveTo(30, -46); br.lineTo(6, -38); br.strokePath();
-    const m = this.add.graphics(); m.lineStyle(4, edge, 1); m.beginPath(); m.arc(0, 10, 13, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
-    c.add([g, foam, eL, eR, pL, pR, br, m]);
-    c.bodyG = g; c.foam = foam; c.brow = br; c.mouth = m; c.eyes = [eL, eR];
-
-    // tekstwolkje met het doelgetal (iets hoger: de kuif is hoog)
-    const bub = this.add.container(0, -124);
-    const bg = this.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
-    bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
-    const wn = this.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
-    bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
-    this.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    // deinen als de zee + glinsterend schuim
-    this.tweens.add({ targets: c, y: c.y - 9, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.tweens.add({ targets: c, angle: 2, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.tweens.add({ targets: foam, alpha: 0.75, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    return c;
-  }
-
-  // Doorschijnende zuil van opspattend water boven de Golf-Baas: maakt
-  // zichtbaar dat je er niet overheen kunt springen (de blokkade is schermhoog).
-  drawSprayWall(x, groundTop) {
-    const g = this.add.graphics().setDepth(6);
-    const topY = 46, h = (groundTop - 128) - topY;
-    g.fillStyle(0x8fd3f2, 0.22); g.fillRoundedRect(x - 30, topY, 60, h + 24, 26);
-    g.fillStyle(0xbfe8ff, 0.35);
-    for (let yy = topY + 18; yy < topY + h; yy += 44) g.fillCircle(x - 12 + (Math.floor(yy / 44) % 2) * 24, yy, 7);
-    g.fillStyle(0xeafaff, 0.5);
-    for (let yy = topY + 36; yy < topY + h; yy += 62) g.fillCircle(x + 8 - (Math.floor(yy / 62) % 2) * 20, yy, 4);
-    this.tweens.add({ targets: g, alpha: 0.6, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    return g;
   }
 
   bossStageReact(pz) {
@@ -542,13 +312,7 @@ export default class AdventureScene extends Phaser.Scene {
   // ============================================================ GOLVEN (Golf-Baas-aanval)
   spawnBossWave(pz) {
     const groundTop = this.level.platforms[0][1];
-    const c = this.add.container(pz.bossArt.x - 84, groundTop).setDepth(8);
-    const g = this.add.graphics();
-    g.fillStyle(0x2e9adf, 1); g.fillRoundedRect(-24, -30, 48, 32, { tl: 20, tr: 20, bl: 4, br: 4 });
-    g.fillStyle(0x1f7fc4, 1); g.fillRoundedRect(-24, -8, 48, 10, { tl: 0, tr: 0, bl: 4, br: 4 });
-    g.fillStyle(0xeafaff, 1); g.fillCircle(-14, -28, 8); g.fillCircle(0, -32, 9); g.fillCircle(14, -28, 8);
-    g.fillStyle(lighten(0x2e9adf, 55), 0.6); g.fillRoundedRect(-14, -20, 18, 6, 3);
-    c.add(g);
+    const c = drawWaveMinion(this, pz.bossArt.x - 84, groundTop);
     this.physics.add.existing(c);
     c.body.setAllowGravity(false);
     c.body.setSize(44, 30); c.body.setOffset(-22, -30);
@@ -588,16 +352,8 @@ export default class AdventureScene extends Phaser.Scene {
         this.tweens.add({ targets: c.sprayWall, alpha: 0, duration: 700, onComplete: () => c.sprayWall.destroy() });
       }
     } else {
-      const col = sig(pz.stages[pz.stages.length - 1].doel);
-      c.bodyG.clear();
-      c.bodyG.fillStyle(0x000000, 0.18); c.bodyG.fillEllipse(0, 74, 96, 20);
-      c.bodyG.fillStyle(col, 1); c.bodyG.fillRoundedRect(-46, -70, 92, 144, 14);
-      c.bodyG.fillStyle(darker(col, 28), 1); c.bodyG.fillRoundedRect(-46, 44, 92, 22, 14);
-      c.bodyG.fillStyle(lighten(col, 70), 0.5); c.bodyG.fillRoundedRect(-38, -60, 26, 44, 8);
-      c.bodyG.lineStyle(4, darker(col, 50), 1); c.bodyG.strokeRoundedRect(-46, -70, 92, 144, 14);
-      // blije wenkbrauwen + mond
-      c.brow.clear();
-      c.mouth.clear(); c.mouth.lineStyle(4, 0x16202b, 1); c.mouth.beginPath(); c.mouth.arc(0, 6, 15, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+      // blije kleur + lach voor de klassieke Grommel-baas
+      recolorBossHappy(this, c, sig(pz.stages[pz.stages.length - 1].doel));
     }
     if (c.bubble) this.tweens.add({ targets: c.bubble, scale: 0, alpha: 0, duration: 300, ease: 'Back.in', onComplete: () => c.bubble.destroy() });
     confettiBurst(this, 150); this.cameraPunch(0.05, 7); SFX.yay(); Voice.cue('cheer'); this.burstStars(c.x, c.y - 20, 16);
@@ -614,18 +370,7 @@ export default class AdventureScene extends Phaser.Scene {
   makeGrommel(def) {
     const c = this.add.container(def.x, def.y).setDepth(8);
     const art = this.add.container(0, 0);
-    const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 20, 34, 9);
-    g.fillStyle(0x8a8f96, 1); g.fillRoundedRect(-16, -14, 32, 30, 8);
-    g.fillStyle(0x6c7178, 1); g.fillRoundedRect(-16, 8, 32, 8, 8);
-    g.fillStyle(lighten(0x8a8f96, 40), 0.5); g.fillRoundedRect(-12, -10, 9, 10, 4);
-    g.lineStyle(2.5, 0x4a4f55, 1); g.strokeRoundedRect(-16, -14, 32, 30, 8);
-    const eL = this.add.circle(-6, -3, 5, 0xffffff).setStrokeStyle(2, 0x333);
-    const eR = this.add.circle(6, -3, 5, 0xffffff).setStrokeStyle(2, 0x333);
-    const pL = this.add.circle(-6, -2, 2.2, 0x222), pR = this.add.circle(6, -2, 2.2, 0x222);
-    const mouth = this.add.graphics(); mouth.lineStyle(2, 0x3a3f45, 1);
-    mouth.beginPath(); mouth.arc(0, 10, 5, 1.15 * Math.PI, 1.85 * Math.PI); mouth.strokePath();
-    art.add([g, eL, eR, pL, pR, mouth]);
+    drawGrommelArt(this, art);
     c.add(art);
     c.art = art; c.def = def; c.alive = true; c.dir = 1;
 
@@ -694,39 +439,15 @@ export default class AdventureScene extends Phaser.Scene {
     const v = this.playerValue;
     const art = this.player.art;
     art.removeAll(true);
-    const w = PW, totalH = v * CELL, top = -totalH / 2;
-
-    for (let i = 0; i < v; i++) {
-      const ty = totalH / 2 - (i + 1) * CELL;
-      const color = sig(1); // Één is rood; groeien houdt de rode identiteit
-      const g = this.add.graphics();
-      g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, ty, w, CELL, 8);
-      g.fillStyle(darker(color, 28), 1); g.fillRoundedRect(-w / 2, ty + CELL - 8, w, 8, 8);
-      g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, ty, w, CELL - 8, 8);
-      g.fillStyle(lighten(color, 75), 0.5); g.fillRoundedRect(-w / 2 + 5, ty + 4, w * 0.32, CELL * 0.42, 5);
-      g.lineStyle(2.5, darker(color, 55), 0.9); g.strokeRoundedRect(-w / 2, ty, w, CELL, 8);
-      art.add(g);
-    }
-    const feet = this.add.graphics(); feet.fillStyle(darker(sig(1), 40), 1);
-    feet.fillRoundedRect(-w * 0.42, totalH / 2 - 3, w * 0.34, 11, 5);
-    feet.fillRoundedRect(w * 0.08, totalH / 2 - 3, w * 0.34, 11, 5);
-    art.add(feet);
-    const faceY = top + CELL * 0.5;
-    for (const sx of [-11, 11]) {
-      art.add(this.add.circle(sx, faceY - 2, 8, 0xffffff).setStrokeStyle(2.5, 0x16202b));
-      art.add(this.add.circle(sx, faceY - 1, 3.5, 0x16202b));
-    }
-    const m = this.add.graphics(); m.lineStyle(3, 0x16202b, 1);
-    m.beginPath(); m.arc(0, faceY + 8, 8, 0.15 * Math.PI, 0.85 * Math.PI); m.strokePath();
-    art.add(m);
-    const discY = top - 9;
-    art.add(this.add.circle(0, discY, 13, 0xffffff).setStrokeStyle(2.5, 0x16202b));
-    art.add(this.add.text(0, discY, `${v}`, { fontFamily: 'Arial Black, Arial', fontSize: '17px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5));
+    // Eén is rood; groeien houdt de rode identiteit.
+    const { top, totalH } = drawCubeStack(this, art, v, { w: PW, cell: CELL, color: sig(1) });
+    addFeet(this, art, darker(sig(1), 40), PW, totalH);
+    addNumberDisc(this, art, v, top - 9, 13, '17px');
 
     const body = this.player.body;
     const oldBottom = body ? (this.player.y - body.height / 2 + body.height) : null;
-    body.setSize(w, totalH);
-    body.setOffset(-w / 2, -totalH / 2);
+    body.setSize(PW, totalH);
+    body.setOffset(-PW / 2, -totalH / 2);
     if (oldBottom != null) this.player.y = oldBottom - totalH / 2;
     this.player.totalH = totalH;
   }
@@ -980,26 +701,13 @@ export default class AdventureScene extends Phaser.Scene {
     // t/m 10; daarboven krimpen ze samen (uniform) zodat de toren blijft passen
     // (torenhoogte blijft dan constant ±460px) — nooit platgeknepen.
     const cell = Phaser.Math.Clamp(460 / value, 18, 46);
-    const w = cell, ch = cell, totalH = value * ch, color = sig(value), top = -totalH / 2;
-    c._cell = ch; c._w = w; c._totalH = totalH; // voor splits-keuze (celgrens onder de vinger)
-    const s = w / 52; // schaalt de gezicht-/cijfer-details mee met de kubusgrootte
-    for (let i = 0; i < value; i++) {
-      const ty = totalH / 2 - (i + 1) * ch;
-      const g = this.add.graphics();
-      g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, ty, w, ch, 7);
-      g.fillStyle(darker(color, 28), 1); g.fillRoundedRect(-w / 2, ty + ch - 6 * s, w, 6 * s, 7);
-      g.fillStyle(color, 1); g.fillRoundedRect(-w / 2, ty, w, ch - 6 * s, 7);
-      g.fillStyle(lighten(color, 75), 0.5); g.fillRoundedRect(-w / 2 + 5 * s, ty + 3 * s, w * 0.3, ch * 0.4, 4);
-      g.lineStyle(2.5, darker(color, 55), 0.9); g.strokeRoundedRect(-w / 2, ty, w, ch, 7);
-      if (i > 0) { g.lineStyle(2, darker(color, 55), 0.5); g.beginPath(); g.moveTo(-w / 2 + 3, ty); g.lineTo(w / 2 - 3, ty); g.strokePath(); }
-      c.add(g);
-    }
-    const faceY = top + ch * 0.5;
-    for (const sx of [-11 * s, 11 * s]) { c.add(this.add.circle(sx, faceY - 1, 7 * s, 0xffffff).setStrokeStyle(2.5, 0x16202b)); c.add(this.add.circle(sx, faceY, 3 * s, 0x16202b)); }
-    const m = this.add.graphics(); m.lineStyle(3, 0x16202b, 1); m.beginPath(); m.arc(0, faceY + 8 * s, 7 * s, 0.15 * Math.PI, 0.85 * Math.PI); m.strokePath(); c.add(m);
-    const discY = top - 12;
-    c.add(this.add.circle(0, discY, 12, 0xffffff).setStrokeStyle(2.5, 0x16202b));
-    c.add(this.add.text(0, discY, `${value}`, { fontFamily: 'Arial Black, Arial', fontSize: '15px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5));
+    const w = cell, s = w / 52; // s schaalt gezicht-/cijfer-details mee
+    c._cell = cell; c._w = w; c._totalH = value * cell; // voor splits-keuze (celgrens onder de vinger)
+    const { top, totalH } = drawCubeStack(this, c, value, {
+      w, cell, color: sig(value),
+      eyeR: 7 * s, eyeX: 11 * s, pupilR: 3 * s, mouthR: 7 * s,
+    });
+    addNumberDisc(this, c, value, top - 12, 12, '15px');
     // Ruim aanraakgebied: het HELE blok + flinke marge is grijpbaar (fijner op
     // touch/iOS — je hoeft niet precies op een celletje te tikken).
     c.setSize(w + 28, totalH + 52);
@@ -1191,23 +899,9 @@ export default class AdventureScene extends Phaser.Scene {
 
   // ============================================================ VRIENDJE REDDEN → KRACHT
   reviveFriend(pz) {
-    const f = pz.friend, col = sig(pz.doel);
+    const f = pz.friend;
     if (f.bubble) this.tweens.add({ targets: f.bubble, scale: 0, alpha: 0, duration: 250, ease: 'Back.in', onComplete: () => f.bubble.destroy() });
-    // kleur terug + blij
-    f.removeAll(true);
-    const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 26, 46, 11);
-    g.fillStyle(col, 1); g.fillRoundedRect(-20, -18, 40, 42, 8);
-    g.fillStyle(darker(col, 28), 1); g.fillRoundedRect(-20, 14, 40, 10, 8);
-    g.fillStyle(lighten(col, 70), 0.5); g.fillRoundedRect(-15, -14, 11, 14, 4);
-    g.lineStyle(2.5, darker(col, 50), 1); g.strokeRoundedRect(-20, -18, 40, 42, 8);
-    const eL = this.add.circle(-8, -4, 6, 0xffffff).setStrokeStyle(2, 0x16202b);
-    const eR = this.add.circle(8, -4, 6, 0xffffff).setStrokeStyle(2, 0x16202b);
-    const pL = this.add.circle(-8, -3, 2.6, 0x16202b), pR = this.add.circle(8, -3, 2.6, 0x16202b);
-    const m = this.add.graphics(); m.lineStyle(2.5, 0x16202b, 1); m.beginPath(); m.arc(0, 4, 6, 0.12 * Math.PI, 0.88 * Math.PI); m.strokePath();
-    const disc = this.add.circle(0, -30, 11, 0xffffff).setStrokeStyle(2.5, 0x16202b);
-    const num = this.add.text(0, -30, `${pz.doel}`, { fontFamily: 'Arial Black, Arial', fontSize: '13px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
-    f.add([g, eL, eR, pL, pR, m, disc, num]);
+    drawAwakeFriendInto(this, f, pz.doel, sig(pz.doel)); // kleur terug + blij
     confettiBurst(this, 100); this.cameraPunch(); SFX.yay(); Voice.cue('cheer');
     this.burstStars(f.x, f.y - 10, 12);
     this.tweens.add({ targets: f, y: f.y - 24, duration: 220, yoyo: true, repeat: 2, ease: 'Sine.inOut' });
@@ -1259,18 +953,7 @@ export default class AdventureScene extends Phaser.Scene {
   }
 
   recolorGrommel(gr) {
-    gr.art.removeAll(true);
-    const col = sig(Phaser.Math.Between(3, 7));
-    const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 20, 34, 9);
-    g.fillStyle(col, 1); g.fillRoundedRect(-16, -14, 32, 30, 8);
-    g.fillStyle(darker(col, 28), 1); g.fillRoundedRect(-16, 8, 32, 8, 8);
-    g.lineStyle(2.5, darker(col, 50), 1); g.strokeRoundedRect(-16, -14, 32, 30, 8);
-    const eL = this.add.circle(-6, -3, 5, 0xffffff).setStrokeStyle(2, 0x16202b);
-    const eR = this.add.circle(6, -3, 5, 0xffffff).setStrokeStyle(2, 0x16202b);
-    const pL = this.add.circle(-6, -2, 2.4, 0x16202b), pR = this.add.circle(6, -2, 2.4, 0x16202b);
-    const m = this.add.graphics(); m.lineStyle(2, 0x16202b, 1); m.beginPath(); m.arc(0, 4, 5, 0.15 * Math.PI, 0.85 * Math.PI); m.strokePath();
-    gr.art.add([g, eL, eR, pL, pR, m]);
+    recolorGrommelArt(this, gr.art, sig(Phaser.Math.Between(3, 7)));
     this.heart(gr.x, gr.y - 24);
     this.tweens.add({ targets: gr.art, scaleX: 1.15, scaleY: 0.85, duration: 130, yoyo: true, repeat: 2 });
   }
