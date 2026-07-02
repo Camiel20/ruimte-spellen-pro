@@ -138,6 +138,171 @@ export function drawSprayWall(scene, x, groundTop) {
   return g;
 }
 
+// De Boom-Grommel (Wereld 3): een boze boom met een kruin tot bovenin het
+// scherm — zo zie je vanzelf dat je er niet overheen kunt springen.
+// Zelfde contract als drawBoss (bubble/bubbleText/brow/mouth).
+export function drawTreeBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 90).setDepth(7);
+  const bark = 0x8a5a33, barkEdge = 0x5a3a1e, leaf = 0x3f9d3f, leafDark = 0x2f7d33;
+  const g = scene.add.graphics();
+  // schaduw + stam + wortels
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 92, 120, 20);
+  g.fillStyle(bark, 1);
+  g.fillRoundedRect(-28, -60, 56, 150, 12);
+  g.fillTriangle(-46, 90, -10, 90, -18, 40);
+  g.fillTriangle(46, 90, 10, 90, 18, 40);
+  g.fillStyle(barkEdge, 0.5); g.fillRoundedRect(-6, -40, 8, 70, 4); // groef
+  g.lineStyle(4, barkEdge, 1); g.strokeRoundedRect(-28, -60, 56, 150, 12);
+  c.add(g);
+  // KRUIN: bladerbollen stapelen tot bovenin (= zichtbare blokkade)
+  const foliage = scene.add.graphics();
+  foliage.fillStyle(leafDark, 1);
+  [[0, -160, 66], [-46, -240, 52], [46, -250, 54], [0, -330, 58], [-34, -410, 46], [30, -440, 48], [0, -500, 44]]
+    .forEach(([fx, fy, r]) => foliage.fillCircle(fx, fy, r));
+  foliage.fillStyle(leaf, 1);
+  [[0, -170, 54], [-40, -248, 42], [42, -258, 44], [0, -338, 48], [-30, -416, 37], [26, -446, 39], [0, -506, 35]]
+    .forEach(([fx, fy, r]) => foliage.fillCircle(fx, fy, r));
+  c.add(foliage);
+  // boos gezicht op de stam
+  const eL = scene.add.circle(-12, -26, 10, 0xffffff).setStrokeStyle(3, barkEdge);
+  const eR = scene.add.circle(12, -26, 10, 0xffffff).setStrokeStyle(3, barkEdge);
+  const pL = scene.add.circle(-12, -23, 4, 0x2c1c0e), pR = scene.add.circle(12, -23, 4, 0x2c1c0e);
+  const br = scene.add.graphics(); br.lineStyle(4, barkEdge, 1);
+  br.beginPath(); br.moveTo(-24, -42); br.lineTo(-4, -35); br.strokePath();
+  br.beginPath(); br.moveTo(24, -42); br.lineTo(4, -35); br.strokePath();
+  const m = scene.add.graphics(); m.lineStyle(4, barkEdge, 1); m.beginPath(); m.arc(0, 2, 11, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.bodyG = g; c.foliage = foliage; c.brow = br; c.mouth = m; c.eyes = [eL, eR];
+
+  // tekstwolkje naast de stam (de kruin zit erboven)
+  const bub = scene.add.container(64, -66);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  // zachtjes wiegen in de wind
+  scene.tweens.add({ targets: c, angle: 1.2, duration: 1900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// De verslagen Boom-Grommel wordt lief: lach + roze bloesem in de kruin.
+export function happyTreeBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear(); c.mouth.lineStyle(4, 0x5a3a1e, 1); c.mouth.beginPath(); c.mouth.arc(0, -4, 12, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+  c.foliage.fillStyle(0xffb7d0, 1);
+  [[-30, -180, 7], [26, -210, 6], [-48, -280, 7], [40, -300, 6], [-10, -360, 7], [20, -430, 6], [-26, -470, 6], [4, -520, 7]]
+    .forEach(([fx, fy, r]) => c.foliage.fillCircle(fx, fy, r));
+}
+
+// De Kristal-Grommel (Wereld 4): een boze kristal-reus met torenhoge
+// kristal-pieken erachter (= zichtbare blokkade tot bovenin het scherm).
+// Zelfde contract als drawBoss (bubble/bubbleText/brow/mouth).
+export function drawCrystalBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 80).setDepth(7);
+  const paars = 0x9b6dd6, licht = 0xc9aef0, edge = 0x5d3f8c;
+  // pieken-muur erachter, tot bovenin het scherm
+  const spires = scene.add.graphics();
+  spires.fillStyle(edge, 0.85);
+  spires.fillTriangle(-44, 80, -8, 80, -26, -520);
+  spires.fillTriangle(6, 80, 46, 80, 26, -460);
+  spires.fillStyle(paars, 0.9);
+  spires.fillTriangle(-36, 80, -14, 80, -25, -480);
+  spires.fillTriangle(12, 80, 40, 80, 26, -420);
+  spires.fillStyle(licht, 0.8);
+  spires.fillTriangle(-28, 80, -22, 80, -25, -440);
+  spires.fillTriangle(22, 80, 30, 80, 26, -380);
+  c.add(spires);
+  // romp: grote kristal (zeshoekig)
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 84, 110, 20);
+  g.fillStyle(paars, 1);
+  g.beginPath();
+  g.moveTo(0, -78); g.lineTo(44, -40); g.lineTo(44, 50); g.lineTo(0, 82); g.lineTo(-44, 50); g.lineTo(-44, -40);
+  g.closePath(); g.fillPath();
+  g.fillStyle(licht, 0.55);
+  g.fillTriangle(0, -78, 44, -40, 8, -30);
+  g.fillTriangle(-44, -40, -20, -50, -30, 10);
+  g.lineStyle(4, edge, 1);
+  g.beginPath();
+  g.moveTo(0, -78); g.lineTo(44, -40); g.lineTo(44, 50); g.lineTo(0, 82); g.lineTo(-44, 50); g.lineTo(-44, -40);
+  g.closePath(); g.strokePath();
+  c.add(g);
+  // boos gezicht
+  const eL = scene.add.circle(-15, -18, 11, 0xffffff).setStrokeStyle(3, edge);
+  const eR = scene.add.circle(15, -18, 11, 0xffffff).setStrokeStyle(3, edge);
+  const pL = scene.add.circle(-15, -15, 4.5, 0x2c1650), pR = scene.add.circle(15, -15, 4.5, 0x2c1650);
+  const br = scene.add.graphics(); br.lineStyle(4.5, edge, 1);
+  br.beginPath(); br.moveTo(-28, -36); br.lineTo(-5, -28); br.strokePath();
+  br.beginPath(); br.moveTo(28, -36); br.lineTo(5, -28); br.strokePath();
+  const m = scene.add.graphics(); m.lineStyle(4, edge, 1); m.beginPath(); m.arc(0, 14, 12, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.bodyG = g; c.spires = spires; c.brow = br; c.mouth = m; c.eyes = [eL, eR];
+
+  // tekstwolkje naast de kristal
+  const bub = scene.add.container(66, -60);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  // fonkelen + heel licht zweven
+  scene.tweens.add({ targets: c, y: c.y - 6, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: spires, alpha: 0.75, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// De verslagen Kristal-Grommel gaat stralen: lach + regenboog-fonkels.
+export function happyCrystalBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear(); c.mouth.lineStyle(4, 0x5d3f8c, 1); c.mouth.beginPath(); c.mouth.arc(0, 8, 13, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+  const kleuren = [0xf87171, 0xfbbf24, 0x4ade80, 0x60a5fa, 0xec4899];
+  c.bodyG.fillStyle(0xffffff, 0.9);
+  [[-20, -40], [18, -52], [30, 20], [-32, 30], [4, 60]].forEach(([fx, fy], i) => {
+    c.bodyG.fillStyle(kleuren[i % kleuren.length], 0.9);
+    c.bodyG.fillCircle(fx, fy, 5);
+  });
+}
+
+// Tollende kristal-scherf (de aanval van de Kristal-Grommel) — sneller dan
+// golf/eikel. Physics/beweging regelt de scene.
+export function drawCrystalShard(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const shadow = scene.add.graphics();
+  shadow.fillStyle(0x000000, 0.14); shadow.fillEllipse(0, 0, 30, 7);
+  c.add(shadow);
+  const inner = scene.add.container(0, -16);
+  const g = scene.add.graphics();
+  g.fillStyle(0x9b6dd6, 1);
+  g.fillTriangle(0, -16, 13, 0, 0, 16); g.fillTriangle(0, -16, -13, 0, 0, 16);
+  g.fillStyle(0xc9aef0, 0.9); g.fillTriangle(0, -12, 8, 0, 0, 12);
+  g.lineStyle(2.5, 0x5d3f8c, 1);
+  g.beginPath(); g.moveTo(0, -16); g.lineTo(13, 0); g.lineTo(0, 16); g.lineTo(-13, 0); g.closePath(); g.strokePath();
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: -360, duration: 550, repeat: -1 }); // snel tollen
+  return c;
+}
+
+// Rollende eikel (de aanval van de Boom-Grommel) — zelfde gedrag als het
+// golfje, ander uiterlijk. Physics/beweging regelt de scene.
+export function drawAcorn(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const shadow = scene.add.graphics();
+  shadow.fillStyle(0x000000, 0.14); shadow.fillEllipse(0, 0, 30, 7);
+  c.add(shadow);
+  const inner = scene.add.container(0, -15);
+  const g = scene.add.graphics();
+  g.fillStyle(0xb07a45, 1); g.fillEllipse(0, 1, 24, 26);
+  g.fillStyle(0x6e4a26, 1); g.slice(0, -5, 13, Math.PI, 0, false); g.fillPath();
+  g.fillRoundedRect(-2, -19, 4, 7, 2); // steeltje
+  g.fillStyle(0xd9a86a, 0.6); g.fillEllipse(-5, 2, 6, 12); // glansje
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: -360, duration: 800, repeat: -1 }); // tollen
+  return c;
+}
+
 // Klein rollend golfje (de aanval van de Golf-Baas) — alleen het uiterlijk;
 // physics/beweging regelt de scene.
 export function drawWaveMinion(scene, x, y) {

@@ -89,6 +89,57 @@ export function drawGround(scene, x, y, w, h) {
         g.fillCircle(fx, y - 5, 3);
       }
     }
+  } else if (scene.level.terrain === 'berg') {
+    // BERG (Wereld 4): grijze rots met een lichte rand, kiezels en kristallen.
+    g.fillStyle(0x7d838c, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0x6a7078, 0.7);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0x9aa0a6, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(0xb9bfc6, 1); g.fillRect(x, y, w, 6);
+    // scheurtjes in de rotsrand
+    g.lineStyle(2, 0x6a7078, 0.7);
+    for (let bx = x + 24; bx < x + w - 10; bx += 64) {
+      g.beginPath(); g.moveTo(bx, y + 4); g.lineTo(bx + 8, y + 13); g.strokePath();
+    }
+    // om en om: paars kristal en kiezelsteentjes
+    let berg = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      berg = !berg;
+      if (berg) {
+        g.fillStyle(0x9b6dd6, 1);
+        g.fillTriangle(fx - 8, y, fx - 1, y, fx - 5, y - 18);
+        g.fillTriangle(fx - 2, y, fx + 8, y, fx + 3, y - 26);
+        g.fillStyle(0xc9aef0, 0.9);
+        g.fillTriangle(fx + 1, y, fx + 5, y, fx + 3, y - 22);
+      } else {
+        g.fillStyle(0x6a7078, 1); g.fillEllipse(fx - 6, y - 3, 10, 7);
+        g.fillStyle(0x8a9098, 1); g.fillEllipse(fx + 5, y - 4, 12, 8);
+      }
+    }
+  } else if (scene.level.terrain === 'bos') {
+    // BOS (Wereld 3): donkere aarde + mos-toplaag, paddenstoelen en boompjes.
+    g.fillStyle(0x6e4a2c, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0x5d3e24, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0x3f8d3f, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(0x57a94f, 1); g.fillRect(x, y, w, 6);
+    g.fillStyle(0x2f7d33, 1);
+    for (let bx = x + 6; bx < x + w; bx += 16) g.fillTriangle(bx, y, bx + 5, y, bx + 2.5, y - 6);
+    // om en om: paddenstoel en dennenboompje
+    let bos = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      bos = !bos;
+      if (bos) {
+        g.fillStyle(0xf5efe2, 1); g.fillRoundedRect(fx - 3, y - 12, 6, 12, 2);
+        g.fillStyle(0xe8402c, 1); g.slice(fx, y - 11, 9, Math.PI, 0, false); g.fillPath();
+        g.fillStyle(0xffffff, 1); g.fillCircle(fx - 3, y - 14, 1.6); g.fillCircle(fx + 3, y - 15, 1.6);
+      } else {
+        g.fillStyle(0x8a5a33, 1); g.fillRect(fx - 3, y - 16, 6, 16);
+        g.fillStyle(0x2f7d33, 1);
+        g.fillTriangle(fx - 14, y - 12, fx + 14, y - 12, fx, y - 34);
+        g.fillTriangle(fx - 11, y - 24, fx + 11, y - 24, fx, y - 44);
+      }
+    }
   } else {
     // GRAS (Wereld 1): aarde + groene toplaag met sprietjes en bloemetjes.
     g.fillStyle(0xb07a45, 1); g.fillRect(x, y + 12, w, h - 12);

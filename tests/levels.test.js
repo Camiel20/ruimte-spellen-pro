@@ -3,10 +3,7 @@
 // dwars door een kloof) op het moment dat je ze maakt — niet pas al spelend.
 import { describe, it, expect } from 'vitest';
 import { validateLevel, canMakeTarget, findPair, splitParts } from '../src/adventure/logic.js';
-import { WORLD1 } from '../src/levels/world1.js';
-import { WORLD2 } from '../src/levels/world2.js';
-
-const LEVELS = [...WORLD1, ...WORLD2];
+import { LEVELS } from '../src/levels/index.js';
 
 describe('leveldata', () => {
   it('heeft unieke level-ids', () => {
@@ -68,15 +65,46 @@ describe('puzzellogica', () => {
     expect(errors.some((e) => e.includes('geen platform eronder'))).toBe(true);
   });
 
-  it('validateLevel: vangt een onoplosbare brug', () => {
+  it('validateLevel: vangt een geef-plaat die kan vastlopen', () => {
+    const kapot = {
+      id: 'x-4', worldW: 1000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 1000, 140]],
+      pickups: [{ x: 100, y: 600, amount: 1 }], // maar 1 bolletje vóór de plaat
+      plates: [{ x: 400, doel: 3 }],
+      goal: { x: 900, y: 588, value: 3 },
+    };
+    const errors = validateLevel(kapot);
+    expect(errors.some((e) => e.includes('vastlopen'))).toBe(true);
+    // mét een regen-bolletje is het wél haalbaar
+    const goed = { ...kapot, pickups: [{ x: 100, y: 600, amount: 1, regen: true }] };
+    expect(validateLevel(goed)).toEqual([]);
+  });
+
+  it('validateLevel: vangt een onoplosbare brug (samen te weinig)', () => {
     const kapot = {
       id: 'x-1', worldW: 1000, worldH: 800, killY: 720,
       start: { x: 50, y: 500 },
       platforms: [[0, 660, 400, 140], [760, 660, 240, 140]],
-      gate: { gapX: 400, gapW: 360, y: 650, doel: 10, blocks: [6, 6], triggerX: 300, triggerW: 100 },
+      gate: { gapX: 400, gapW: 360, y: 650, doel: 10, blocks: [1, 2], triggerX: 300, triggerW: 100 },
       goal: { x: 900, y: 588, value: 10 },
     };
     const errors = validateLevel(kapot);
-    expect(errors.some((e) => e.includes('niet te maken'))).toBe(true);
+    expect(errors.some((e) => e.includes('onoplosbaar'))).toBe(true);
+    // [6,6] → 10 is WÉL oplosbaar (samenvoegen tot 12, dan splitsen op 10+2)
+    const splitsbaar = { ...kapot, gate: { ...kapot.gate, blocks: [6, 6] } };
+    expect(validateLevel(splitsbaar)).toEqual([]);
+  });
+
+  it('validateLevel: vangt een trein die niet precies te verdelen is', () => {
+    const kapot = {
+      id: 'x-5', worldW: 1000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 400, 140], [760, 660, 240, 140]],
+      gate: { type: 'trein', gapX: 400, gapW: 360, y: 650, wagons: [4, 6], blocks: [8], triggerX: 300, triggerW: 100 },
+      goal: { x: 900, y: 588, value: 10 },
+    };
+    const errors = validateLevel(kapot);
+    expect(errors.some((e) => e.includes('verdelen moet precies kloppen'))).toBe(true);
   });
 });

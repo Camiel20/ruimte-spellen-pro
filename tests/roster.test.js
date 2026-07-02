@@ -1,10 +1,7 @@
 // Dorps-roster: pure afleiding "wie is gered" uit leveldata + voortgang.
 import { describe, it, expect } from 'vitest';
 import { ROSTER, rescuedFrom, rescueInfo } from '../src/adventure/roster.js';
-import { WORLD1 } from '../src/levels/world1.js';
-import { WORLD2 } from '../src/levels/world2.js';
-
-const LEVELS = [...WORLD1, ...WORLD2];
+import { LEVELS } from '../src/levels/index.js';
 
 const FAKE = [
   { id: 'a-1', rescues: [{ doel: 2, name: 'Twee' }] },
@@ -30,14 +27,13 @@ describe('roster', () => {
     expect(rescueInfo(FAKE, 9)).toBeNull();
   });
 
-  it('echte leveldata: elk roster-getal is te redden, ben je zelf, of is bewust "komt later"', () => {
+  it('echte leveldata: ELK roster-getal is te redden (of ben je zelf)', () => {
     const later = [];
     for (const n of ROSTER) {
       if (n === 1) continue; // jijzelf
       if (!rescueInfo(LEVELS, n)) later.push(n);
     }
-    // Nu nog niet te redden: 8 en 10 (haakjes voor Wereld 3+). Voeg je een
-    // redding toe, dan hoort dit lijstje te krimpen — pas de test dan aan.
-    expect(later).toEqual([8, 10]);
+    // Sinds Wereld 3 (Acht in 3-1, Tien in 3-2) is iedereen te redden.
+    expect(later).toEqual([]);
   });
 });

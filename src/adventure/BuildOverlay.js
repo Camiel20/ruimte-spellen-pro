@@ -25,6 +25,65 @@ export default class BuildOverlay {
     this.hintRings = [];
     this.hintTimer = null;
     this.dragHandler = null;
+    this.wagonSlots = [];
+    this.wagonLoco = null;
+  }
+
+  // Treintje met wagon-doelen: elk wagonnetje wil precies zijn getal.
+  buildWagons(pz, panel) {
+    const s = this.s, W = s.scale.width;
+    this.wagonSlots = [];
+    const n = pz.wagons.length;
+    const startX = W / 2 - ((n - 1) / 2) * 118 + 30;
+    // locomotiefje vooraan (rijdt weg als alle wagons vol zijn)
+    const loco = s.add.container(startX - 128, 258);
+    const lg = s.add.graphics();
+    lg.fillStyle(0x16202b, 1); lg.fillCircle(-18, 24, 9); lg.fillCircle(16, 24, 9);
+    lg.fillStyle(0xe8402c, 1); lg.fillRoundedRect(-36, -18, 66, 40, 8);
+    lg.fillStyle(0xb93227, 1); lg.fillRoundedRect(6, -44, 26, 28, 5); // cabine
+    lg.fillStyle(0x5b6168, 1); lg.fillRoundedRect(-30, -40, 14, 24, 4); // schoorsteen
+    lg.fillStyle(0xffe16b, 1); lg.fillCircle(-32, 0, 6); // lamp
+    lg.lineStyle(3, 0x16202b, 1); lg.strokeRoundedRect(-36, -18, 66, 40, 8);
+    loco.add(lg);
+    panel.add(loco);
+    this.wagonLoco = loco;
+    pz.wagons.forEach((doel, i) => {
+      const x = startX + i * 118, y = 258;
+      const c = s.add.container(x, y);
+      const g = s.add.graphics();
+      g.fillStyle(0x5b6168, 1); g.fillRect(-58, 14, 16, 6); // koppelstang
+      g.fillStyle(0x16202b, 1); g.fillCircle(-24, 26, 9); g.fillCircle(24, 26, 9); // wielen
+      g.fillStyle(sig(doel), 0.35); g.fillRoundedRect(-44, -20, 88, 44, 8); // lege bak
+      g.lineStyle(3.5, 0x16202b, 1); g.strokeRoundedRect(-44, -20, 88, 44, 8);
+      c.add(g);
+      const disc = s.add.circle(0, -40, 14, 0xffffff).setStrokeStyle(3, 0x16202b);
+      const num = s.add.text(0, -40, `${doel}`, { fontFamily: 'Arial Black, Arial', fontSize: '16px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+      c.add([disc, num]);
+      panel.add(c);
+      this.wagonSlots.push({ doel, x, y, filled: false, art: c });
+    });
+  }
+
+  fillWagon(slot, block) {
+    const s = this.s;
+    slot.filled = true;
+    this.blocks = this.blocks.filter((b) => b !== block);
+    this.cancelSplitHold(block);
+    block.disableInteractive();
+    SFX.correct(); Voice.number(slot.doel);
+    // het blok "stapt in" de wagon (krimpt tot wagon-formaat)
+    s.tweens.add({ targets: block, x: slot.x, y: slot.y - 16, scale: Math.min(0.9, 52 / block._totalH), duration: 280, ease: 'Back.out' });
+    s.tweens.add({ targets: slot.art, scaleX: 1.12, scaleY: 0.9, duration: 120, yoyo: true });
+    s.sparkleAt2(slot.x, slot.y);
+    if (this.wagonSlots.every((sl) => sl.filled)) {
+      const pz = this.activePuzzle;
+      pz.solved = true;
+      SFX.yay(); Voice.cue('great');
+      // tsjoeke-tsjoek: de volle trein rijdt het beeld uit
+      const rijders = [this.wagonLoco, ...this.wagonSlots.map((sl) => sl.art), block];
+      rijders.forEach((a) => { if (a) s.tweens.add({ targets: a, x: a.x + 640, duration: 950, delay: 380, ease: 'Sine.in' }); });
+      s.time.delayedCall(800, () => { this.exit(true); pz.onSolve(); });
+    }
   }
 
   enter() {
@@ -40,24 +99,45 @@ export default class BuildOverlay {
     [s.btnLeft, s.btnRight, s.btnJump].forEach((b) => { b.g.setVisible(false); b.t.setVisible(false); b.hit.disableInteractive(); });
 
     const W = s.scale.width, H = s.scale.height;
-    const panel = s.add.container(0, 0).setScrollFactor(0).setDepth(120);
-    const dim = s.add.graphics(); dim.fillStyle(0x0a1420, 0.82); dim.fillRect(0, 0, W, H);
-    panel.add(dim);
 
-    const title = s.add.text(W / 2, 70, `Maak de ${pz.doel}!`, {
+    // IN DE WERELD bouwen: geen donker quiz-scherm meer — de camera glijdt
+    // naar de puzzelplek en de blokjes staan op de échte grond van het level.
+    // (Zo vóelt rekenen als onderdeel van het avontuur, niet als een popup.)
+    const cam = s.cameras.main;
+    cam.stopFollow();
+    s.tweens.add({
+      targets: cam,
+      scrollX: Phaser.Math.Clamp(pz.zone.centerX - W / 2, 0, s.level.worldW - W),
+      duration: 420, ease: 'Sine.inOut',
+    });
+    this.groundY = s.level.platforms[0][1] - 4; // bouwvloer (schermhoogte == wereldhoogte)
+
+    const panel = s.add.container(0, 0).setScrollFactor(0).setDepth(120);
+    // klein info-banner bovenin (i.p.v. het hele scherm dimmen)
+    const banner = s.add.graphics();
+    banner.fillStyle(0x0a1420, 0.55); banner.fillRoundedRect(10, 44, W - 20, 152, 18);
+    panel.add(banner);
+
+    const title = s.add.text(W / 2, 70, pz.wagons ? 'Verdeel over de trein!' : `Maak de ${pz.doel}!`, {
       fontFamily: 'Arial Black, Arial', fontSize: '26px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
-    const hint = s.add.text(W / 2, 104, 'Sleep op elkaar = samen · houd vast = splitsen', {
-      fontFamily: 'Arial', fontSize: '13px', color: '#9fb3c8',
+    const hint = s.add.text(W / 2, 104, pz.wagons
+      ? 'Splits (houd vast) en sleep het goede stuk op elk wagonnetje'
+      : 'Sleep op elkaar = samen · houd vast = splitsen', {
+      fontFamily: 'Arial', fontSize: '13px', color: '#cfe0ee',
     }).setOrigin(0.5);
     panel.add([title, hint]);
 
     Voice.number(pz.doel); // doelgetal klinkt — óók begrijpelijk zonder te lezen
-    const goalDisc = s.add.circle(W / 2, 160, 26, sig(pz.doel)).setStrokeStyle(4, 0x16202b);
-    const goalNum = s.add.text(W / 2, 160, `${pz.doel}`, { fontFamily: 'Arial Black, Arial', fontSize: '28px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
-    panel.add([goalDisc, goalNum]);
+    if (pz.wagons) {
+      this.buildWagons(pz, panel);
+    } else {
+      const goalDisc = s.add.circle(W / 2, 160, 26, sig(pz.doel)).setStrokeStyle(4, 0x16202b);
+      const goalNum = s.add.text(W / 2, 160, `${pz.doel}`, { fontFamily: 'Arial Black, Arial', fontSize: '28px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+      panel.add([goalDisc, goalNum]);
+    }
 
-    const backBtn = s.add.text(30, 34, '↩', { fontSize: '30px', color: '#ffffff' }).setInteractive({ useHandCursor: true });
+    const backBtn = s.add.text(34, 68, '↩', { fontSize: '30px', color: '#ffffff' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     backBtn.on('pointerdown', () => this.exit());
     panel.add(backBtn);
 
@@ -72,9 +152,12 @@ export default class BuildOverlay {
     s.input.dragDistanceThreshold = 8;
 
     pz.blocks.forEach((val, i) => {
-      const bx = W / 2 + (i - (pz.blocks.length - 1) / 2) * 120;
-      const by = H - 300; // iets hoger, zodat een volle toren (t/m 10) past
-      this.makeBlock(val, bx, by);
+      // Trein: blokken aan de zijkanten (de wagons staan in het midden).
+      const bx = pz.wagons
+        ? (i % 2 === 0 ? 96 : W - 96)
+        : W / 2 + (i - (pz.blocks.length - 1) / 2) * 120;
+      const c = this.makeBlock(val, bx, this.groundY - 180); // valt zo op de grond
+      this.settle(c);
     });
 
     // Sleep-handler: SCHERM-positie van de vinger (blokjes zitten in een
@@ -94,11 +177,14 @@ export default class BuildOverlay {
     const s = this.s;
     if (s.mode !== 'build') return;
     s.mode = 'explore';
+    s.cameras.main.startFollow(s.player, true, 0.12, 0.12); // camera terug naar de speler
     if (this.hintTimer) { this.hintTimer.remove(false); this.hintTimer = null; }
     this.clearHintRings();
     if (this.dragHandler) { s.input.off('drag', this.dragHandler); this.dragHandler = null; }
     if (this.panel) { this.panel.destroy(); this.panel = null; }
     this.blocks = [];
+    this.wagonSlots = [];
+    this.wagonLoco = null;
     [s.btnLeft, s.btnRight, s.btnJump].forEach((b) => { b.g.setVisible(true); b.t.setVisible(true); b.hit.setInteractive(); });
     s.physics.resume();
   }
@@ -150,6 +236,23 @@ export default class BuildOverlay {
 
   drop(moving) {
     moving.setScale(1); moving.setDepth(122);
+    // Trein: eerst kijken of het blok op een wagonnetje wordt gelegd.
+    const pz = this.activePuzzle;
+    if (pz && pz.wagons) {
+      for (const slot of this.wagonSlots) {
+        if (slot.filled) continue;
+        if (Phaser.Math.Distance.Between(moving.x, moving.y, slot.x, slot.y) < 90) {
+          if (moving.getData('buildBlock').value === slot.doel) {
+            this.fillWagon(slot, moving);
+          } else {
+            SFX.wrong(); Voice.cue('oops');
+            this.s.tweens.add({ targets: slot.art, x: slot.x + 6, duration: 60, yoyo: true, repeat: 3 });
+            this.settle(moving);
+          }
+          return;
+        }
+      }
+    }
     let other = null, best = 9999;
     for (const b of this.blocks) {
       if (b === moving) continue;
@@ -158,6 +261,12 @@ export default class BuildOverlay {
     }
     if (other) { this.merge(moving, other); return; }
     SFX.place();
+    this.settle(moving); // zachtjes terug op de grond
+  }
+
+  // Blok landt met z'n voetjes op de bouwvloer (de echte grond van het level).
+  settle(c) {
+    this.s.tweens.add({ targets: c, y: this.groundY - c._totalH / 2, duration: 240, ease: 'Quad.out' });
   }
 
   merge(moving, target) {
@@ -171,6 +280,7 @@ export default class BuildOverlay {
         this.cancelSplitHold(target);
         this.clearHintRings();
         this.drawBlock(target, newVal);
+        this.settle(target); // de nieuwe (hogere) toren komt netjes op de grond
         s.tweens.add({ targets: target, scaleX: 1.25, scaleY: 0.8, duration: 120, yoyo: true });
         s.sparkleAt2(target.x, target.y);
 
@@ -203,6 +313,7 @@ export default class BuildOverlay {
   showHint() {
     const s = this.s;
     if (s.mode !== 'build' || !this.activePuzzle || this.activePuzzle.solved) return;
+    if (this.activePuzzle.wagons) return; // trein heeft (nog) geen automatische hint
     this.clearHintRings();
     const doel = this.activePuzzle.doel, bs = this.blocks;
     const pair = findPair(bs.map((b) => b.getData('buildBlock').value), doel);
@@ -273,10 +384,12 @@ export default class BuildOverlay {
     const [botV, topV] = splitParts(val, k);
     SFX.split();
     this.drawBlock(c, botV);
+    this.settle(c);
     s.tweens.add({ targets: c, scaleX: 1.2, scaleY: 0.8, duration: 90, yoyo: true });
-    const piece = this.makeBlock(topV, c.x, c.y - 30);
+    const piece = this.makeBlock(topV, c.x, c.y - 40);
     const dir = c.x < s.scale.width / 2 ? 1 : -1;
     s.tweens.add({ targets: piece, x: Phaser.Math.Clamp(c.x + dir * 90, 60, s.scale.width - 60), duration: 320, ease: 'Back.out' });
+    this.settle(piece);
     Voice.cue('whee');
     this.clearHintRings(); // blokken zijn veranderd → oude hint klopt niet meer
 
@@ -292,7 +405,8 @@ export default class BuildOverlay {
   checkSolved(block) {
     const s = this.s;
     const pz = this.activePuzzle;
-    if (!pz || block.getData('buildBlock').value !== pz.doel) return;
+    if (!pz || pz.wagons) return; // trein lost alleen op via de wagons
+    if (block.getData('buildBlock').value !== pz.doel) return;
     s.tweens.add({ targets: block, y: block.y - 10, scale: 1.2, duration: 200, yoyo: true });
     SFX.correct(); Voice.cue('great');
 

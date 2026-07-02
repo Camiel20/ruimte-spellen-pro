@@ -145,15 +145,20 @@ export const LEVEL_2_3 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true, // krachten van Wereld 1 blijven
   startStamp: true,
-  intro: 'Maak samen 10!',
+  intro: 'Spring over de wolkjes — en maak samen 10!',
 
-  // Zand-eilanden met stapstenen ertussen; daarna een brug-poort over zee.
+  // Zand-eilanden met TEL-WOLKEN ertussen (verdwijn-platforms op ritme!);
+  // daarna een brug-poort over zee.
   platforms: [
     [0, 660, 600, 140],     // zand A (start)
-    [690, 660, 150, 40],    // stapsteen 1
-    [930, 660, 150, 40],    // stapsteen 2
     [1170, 660, 500, 140],  // zand B
     [2030, 660, 370, 140],  // zand C (na de brug) — met de vlag
+  ],
+
+  // Wolkjes boven zee: om-en-om aan/uit — spring op het goede moment!
+  telWolken: [
+    [690, 640, 150, 0],
+    [930, 640, 150, 1700],
   ],
 
   // Water (alleen visueel) onder het stapsteen-gedeelte.

@@ -81,13 +81,22 @@ export function validateLevel(L) {
     if (p.x < 0 || p.x > L.worldW) err(`groei-bolletje ${i} ligt buiten de wereld`);
   });
 
-  // Alle bruggen (enkel of lijst) — zelfde vorm als in AdventureScene.
+  // Alle poorten over kloven (brug of trein) — zelfde vorm als in AdventureScene.
+  // NB: in het spel mag je ook SPLITSEN, dus een doel is haalbaar zodra de
+  // blokjes er samen genoeg zijn (som ≥ doel) — subset-som is geen eis.
   const gates = [L.gate, ...(L.gates || [])].filter(Boolean);
   gates.forEach((G, i) => {
-    const naam = `brug ${i + 1}`;
-    if (G.doel == null || !Array.isArray(G.blocks)) { err(`${naam} mist doel/blocks`); return; }
-    if (sum(G.blocks) < G.doel) err(`${naam}: blokjes (${G.blocks.join('+')}=${sum(G.blocks)}) zijn samen minder dan het doel ${G.doel} — onoplosbaar`);
-    else if (!canMakeTarget(G.blocks, G.doel)) err(`${naam}: doel ${G.doel} is niet te maken uit [${G.blocks.join(', ')}] zonder splitsen`);
+    const naam = `${G.type === 'trein' ? 'trein' : 'brug'} ${i + 1}`;
+    if (G.type === 'trein') {
+      if (!Array.isArray(G.wagons) || G.wagons.length < 2) err(`${naam} heeft minstens 2 wagons nodig`);
+      else if (G.wagons.some((w) => !w || w < 1)) err(`${naam}: elke wagon wil minstens 1`);
+      else if (sum(G.wagons) !== sum(G.blocks || [])) {
+        err(`${naam}: wagons (${sum(G.wagons)}) ≠ blokjes (${sum(G.blocks || [])}) — verdelen moet precies kloppen`);
+      }
+    } else {
+      if (G.doel == null || !Array.isArray(G.blocks)) { err(`${naam} mist doel/blocks`); return; }
+      if (sum(G.blocks) < G.doel) err(`${naam}: blokjes (${G.blocks.join('+')}=${sum(G.blocks)}) zijn samen minder dan het doel ${G.doel} — onoplosbaar`);
+    }
     if (G.gapX + G.gapW > L.worldW) err(`${naam}: kloof steekt buiten de wereld`);
     if (G.triggerX >= G.gapX) err(`${naam}: trigger (x=${G.triggerX}) ligt niet vóór de kloof (x=${G.gapX})`);
     // Geen grond-platform dwars door de kloof.
@@ -100,7 +109,7 @@ export function validateLevel(L) {
 
   (L.rescues || []).forEach((R, i) => {
     if (R.doel == null || !Array.isArray(R.blocks)) { err(`redding ${i + 1} mist doel/blocks`); return; }
-    if (!canMakeTarget(R.blocks, R.doel)) err(`redding ${i + 1} (${R.name || '?'}): doel ${R.doel} niet te maken uit [${R.blocks.join(', ')}]`);
+    if (sum(R.blocks) < R.doel) err(`redding ${i + 1} (${R.name || '?'}): blokjes zijn samen minder dan ${R.doel} — onoplosbaar`);
     if (R.x < 0 || R.x > L.worldW) err(`redding ${i + 1} ligt buiten de wereld`);
   });
 
@@ -109,15 +118,57 @@ export function validateLevel(L) {
     if (D.x < 0 || D.x > L.worldW) err(`deur ${i + 1} ligt buiten de wereld`);
   });
 
+  // Tel-wolken (verdwijn-platforms) binnen de wereld.
+  (L.telWolken || []).forEach(([x, y, w], i) => {
+    if (x < 0 || x + w > L.worldW) err(`tel-wolk ${i + 1} ligt buiten de wereld`);
+  });
+
+  // Geef-platen: haalbaar (genoeg groei vóór de plaat) + goed geplaatst.
+  (L.plates || []).forEach((P, i) => {
+    if (P.doel == null || P.doel < 1) { err(`plaat ${i + 1} mist een geldig doel`); return; }
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= P.x && px + pw >= P.x);
+    if (!support) err(`plaat ${i + 1} staat niet op de grond`);
+    const before = (L.pickups || []).filter((p) => p.x < P.x);
+    const regen = before.some((p) => p.regen);
+    const sum = before.reduce((s, p) => s + (p.amount || 1), 0);
+    if (!regen && sum < P.doel) {
+      err(`plaat ${i + 1}: vraagt ${P.doel}, maar er zijn maar ${sum} groei-bolletjes vóór de plaat — kan vastlopen (tip: regen: true)`);
+    }
+    if (L.goal && L.goal.x < P.x + 96) err(`plaat ${i + 1}: de vlag staat vóór de slagboom`);
+  });
+
+  // Missie-levels hebben hun missie-doelen nodig.
+  if (L.missie === 'grommels' && !(L.grommels || []).length) {
+    err("missie 'grommels' zonder grommels in het level");
+  }
+
   if (L.boss) {
     const B = L.boss;
     if (B.x < 0 || B.x > L.worldW) err('baas staat buiten de wereld');
     if (!Array.isArray(B.stages) || B.stages.length === 0) err('baas heeft geen fasen');
     (B.stages || []).forEach((S, i) => {
-      if (!canMakeTarget(S.blocks || [], S.doel)) err(`baas-fase ${i + 1}: doel ${S.doel} niet te maken uit [${(S.blocks || []).join(', ')}]`);
+      if (sum(S.blocks || []) < S.doel) err(`baas-fase ${i + 1}: blokjes zijn samen minder dan ${S.doel} — onoplosbaar`);
     });
     if (L.goal && L.goal.x < B.x) err('vlag staat vóór de baas — baas is te omzeilen');
   }
+
+  // Antwoord-muren (spring tegen het juiste blok: meer/minder).
+  (L.vraagMuren || []).forEach((V, i) => {
+    if (!['meer', 'minder'].includes(V.kies)) err(`vraagmuur ${i + 1}: kies moet 'meer' of 'minder' zijn`);
+    if (!Array.isArray(V.opties) || V.opties.length !== 2) err(`vraagmuur ${i + 1}: precies 2 opties nodig`);
+    else if (V.opties[0] === V.opties[1]) err(`vraagmuur ${i + 1}: opties zijn gelijk — geen goed antwoord mogelijk`);
+    if (V.x < 0 || V.x > L.worldW) err(`vraagmuur ${i + 1} staat buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= V.x - 220 && px + pw >= V.x);
+    if (!support) err(`vraagmuur ${i + 1}: geen doorlopende grond vóór de muur (aanloop + blokken)`);
+  });
+
+  // Achtervolgingen (rollende rots): volgorde + grond onder het hele stuk.
+  (L.achtervolgingen || []).forEach((A, i) => {
+    if (!(A.spawnX < A.triggerX && A.triggerX < A.endX)) err(`achtervolging ${i + 1}: verwacht spawnX < triggerX < endX`);
+    if (A.endX > L.worldW) err(`achtervolging ${i + 1} loopt buiten de wereld`);
+    const cover = L.platforms.some(([px, py, pw]) => py === groundTop && px <= A.spawnX && px + pw >= A.endX);
+    if (!cover) err(`achtervolging ${i + 1}: geen doorlopende grond van spawn tot einde — de rots valt in een gat`);
+  });
 
   return errors;
 }

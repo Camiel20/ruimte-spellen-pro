@@ -2,8 +2,7 @@ import Phaser from 'phaser';
 import { SFX } from '../sound.js';
 import { getLevelRecord, getAdventureCurrent, getStars } from '../progress.js';
 import { sig } from '../adventure/palette.js';
-import { WORLD1 } from '../levels/world1.js';
-import { WORLD2 } from '../levels/world2.js';
+import { WORLDS } from '../levels/index.js';
 
 // ===== WERELDKAART =====
 // Het level-overzicht van Getallen-Land: een kronkelpad met een stip per
@@ -13,11 +12,6 @@ import { WORLD2 } from '../levels/world2.js';
 // - op slot  → grijze kubus met slotje (niet klikbaar)
 // Tik op een open level = spelen. Grote "Verder spelen"-knop onderin.
 // Geen tekst nodig om te snappen waar je bent — voortgang is zichtbaar als pad.
-
-const WORLDS = [
-  { levels: WORLD1, naam: 'Wereld 1 · De Vallei', top: 0x8fd3ff, bottom: 0x8ed36b },
-  { levels: WORLD2, naam: 'Wereld 2 · De Kust', top: 0x8fd3ff, bottom: 0xf3e2b0 },
-];
 
 
 const HEADER_H = 88;   // vaste balk bovenin

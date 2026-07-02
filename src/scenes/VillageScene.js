@@ -6,10 +6,7 @@ import { getLevelRecord } from '../progress.js';
 import { sig, darker } from '../adventure/palette.js';
 import { drawAwakeFriendInto } from '../adventure/art.js';
 import { ROSTER, rescuedFrom, rescueInfo } from '../adventure/roster.js';
-import { WORLD1 } from '../levels/world1.js';
-import { WORLD2 } from '../levels/world2.js';
-
-const LEVELS = [...WORLD1, ...WORLD2];
+import { LEVELS } from '../levels/index.js';
 
 // ===== HET GETALLEN-DORPJE =====
 // De verzamel-hub: elk gered vriendje (afgeleid uit je level-voortgang, zie

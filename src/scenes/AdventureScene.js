@@ -8,14 +8,9 @@ import { sig, lighten, darker } from '../adventure/palette.js';
 import BuildOverlay from '../adventure/BuildOverlay.js';
 import { drawCubeStack, addNumberDisc, addFeet, makeSleepingFriend, drawAwakeFriendInto } from '../adventure/art.js';
 import { buildBackground, buildWater, buildPlatforms } from '../adventure/terrain.js';
-import { drawGrommelArt, recolorGrommelArt, drawBoss, drawWaveBoss, drawSprayWall, drawWaveMinion, recolorBossHappy } from '../adventure/enemyArt.js';
+import { drawGrommelArt, recolorGrommelArt, drawBoss, drawWaveBoss, drawSprayWall, drawWaveMinion, recolorBossHappy, drawTreeBoss, happyTreeBoss, drawAcorn, drawCrystalBoss, happyCrystalBoss, drawCrystalShard } from '../adventure/enemyArt.js';
 import { CELL, PW, MOVE_SPEED, JUMP_BASE, JUMP_PER_LEVEL, COYOTE_MS, BUFFER_MS } from '../adventure/constants.js';
-import { WORLD1, LEVEL_1_1 } from '../levels/world1.js';
-import { WORLD2 } from '../levels/world2.js';
-
-// Alle levels achter elkaar (Wereld 1 → Wereld 2 → ...); de level-ketting
-// loopt gewoon door via de index.
-const LEVELS = [...WORLD1, ...WORLD2];
+import { LEVELS } from '../levels/index.js';
 
 // ===== TEL-AVONTUUR — level-engine =====
 // Data-gedreven 2D-platformer in de sfeer van Numberblocks (100% zelf getekend).
@@ -51,7 +46,7 @@ export default class AdventureScene extends Phaser.Scene {
       const idx = cur ? LEVELS.findIndex((l) => l.id === cur) : -1;
       this.levelIndex = idx >= 0 ? idx : 0;
     }
-    this.level = LEVELS[this.levelIndex] || LEVEL_1_1;
+    this.level = LEVELS[this.levelIndex] || LEVELS[0];
     setAdventureCurrent(this.level.id); // onthoud waar we zijn (ook na app-sluiten)
     const L = this.level;
 
@@ -86,9 +81,13 @@ export default class AdventureScene extends Phaser.Scene {
     buildBackground(this, L);
     buildWater(this, L);
     buildPlatforms(this, L);
+    this.buildTelWolken(L);
     this.buildPickups(L);
     this.buildPuzzles(L);
     this.buildDoors(L);
+    this.buildPlates(L);
+    this.buildVraagMuren(L);
+    this.buildAchtervolgingen(L);
     this.buildBreakables(L);
     this.buildBoss(L);
     this.buildGrommels(L);
@@ -119,11 +118,226 @@ export default class AdventureScene extends Phaser.Scene {
       const ball = this.add.circle(0, 0, 10, 0xffe16b).setStrokeStyle(3, 0xf6a723);
       const plus = this.add.text(0, 0, '+1', { fontFamily: 'Arial Black, Arial', fontSize: '13px', fontStyle: 'bold', color: '#7a4f10' }).setOrigin(0.5);
       c.add([glow, ball, plus]);
-      c.amount = p.amount || 1; c.taken = false;
+      c.amount = p.amount || 1; c.taken = false; c.regen = !!p.regen; // regen = magisch: groeit terug
       this.tweens.add({ targets: c, y: p.y - 8, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       this.tweens.add({ targets: glow, scale: 1.3, alpha: 0.2, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       this.pickups.push(c);
     });
+  }
+
+  // ============================================================ TEL-WOLKEN
+  // Platforms die op een vast ritme verdwijnen en verschijnen (met knipper-
+  // waarschuwing): spring op het goede moment! Nieuw level-werkwoord: timing.
+  buildTelWolken(L) {
+    this.telWolken = [];
+    (L.telWolken || []).forEach(([x, y, w, offset = 0]) => {
+      const plat = this.add.rectangle(x + w / 2, y + 10, w, 20, 0x000000, 0);
+      this.physics.add.existing(plat, true);
+      plat._noCheckpoint = true; // nooit een checkpoint op een verdwijn-wolk!
+      this.platforms.add(plat);
+      const art = this.add.container(x + w / 2, y + 8).setDepth(-9);
+      const g = this.add.graphics();
+      const r = 15;
+      g.fillStyle(0xffffff, 1);
+      for (let cx = -w / 2 + r; cx <= w / 2 - r + 1; cx += r * 1.3) g.fillCircle(cx, 0, r);
+      g.fillCircle(-w / 2 + r * 1.6, -9, r * 0.85); g.fillCircle(w / 2 - r * 1.6, -9, r * 0.85);
+      g.fillStyle(0xdfeeff, 0.8);
+      for (let cx = -w / 2 + r; cx <= w / 2 - r + 1; cx += r * 1.3) g.fillCircle(cx, 5, r * 0.7);
+      art.add(g);
+      this.telWolken.push({ plat, art, offset });
+    });
+  }
+
+  updateTelWolken() {
+    const CYCLE = 3400, ON = 2300, WARN = 700; // 2,3s aan (laatste 0,7s knipperen), 1,1s weg
+    for (const wl of this.telWolken) {
+      const t = (this.time.now + wl.offset) % CYCLE;
+      const on = t < ON;
+      wl.plat.body.enable = on;
+      if (!on) wl.art.setAlpha(0.12);
+      else if (t > ON - WARN) wl.art.setAlpha(Math.floor(t / 130) % 2 ? 0.35 : 0.95);
+      else wl.art.setAlpha(0.95);
+    }
+  }
+
+  // ============================================================ GEEF-PLATEN
+  // Gouden plaat + slagboom: GEEF een deel van jezelf (bv. 3 blokjes) om de
+  // weg te openen — aftrekken met je eigen lijf als materiaal (GDD-werkwoord
+  // "splitsen/achterlaten"). Het gegeven stapeltje wordt een blij mini-vriendje.
+  buildPlates(L) {
+    this.plates = [];
+    (L.plates || []).forEach((P) => {
+      const groundTop = L.platforms[0][1];
+      const bx = P.x + 96;
+      // schermhoge blokkade (niet overheen te springen)…
+      const body = this.add.rectangle(bx, (40 + groundTop) / 2, 40, groundTop - 40, 0x000000, 0);
+      this.physics.add.existing(body, true);
+      this.doorGroup.add(body);
+      // …zichtbaar gemaakt met een fonkel-zuil + slagboom
+      const shimmer = this.add.graphics().setDepth(3);
+      shimmer.fillStyle(0xfff3b0, 0.18); shimmer.fillRoundedRect(bx - 20, 46, 40, groundTop - 106, 18);
+      shimmer.fillStyle(0xffe16b, 0.5);
+      for (let yy = 70; yy < groundTop - 80; yy += 52) shimmer.fillCircle(bx - 8 + (Math.floor(yy / 52) % 2) * 16, yy, 4);
+      this.tweens.add({ targets: shimmer, alpha: 0.5, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      const post = this.add.graphics().setDepth(4);
+      post.fillStyle(0x9c6b3f, 1); post.fillRoundedRect(bx + 10, groundTop - 78, 10, 78, 4);
+      const beam = this.add.container(bx + 15, groundTop - 72).setDepth(4);
+      const bg = this.add.graphics();
+      bg.fillStyle(0xe8402c, 1); bg.fillRoundedRect(-86, -7, 92, 14, 7);
+      bg.fillStyle(0xffffff, 1); bg.fillRoundedRect(-64, -7, 18, 14, 7); bg.fillRoundedRect(-28, -7, 18, 14, 7);
+      beam.add(bg);
+      // de plaat zelf + gevraagd getal + zwevend hartje
+      const plate = this.add.graphics().setDepth(2);
+      plate.fillStyle(0xb98d12, 1); plate.fillEllipse(P.x, groundTop + 3, 84, 18);
+      plate.fillStyle(0xffe16b, 1); plate.fillEllipse(P.x, groundTop, 84, 16);
+      plate.lineStyle(3, 0xb98d12, 1); plate.strokeEllipse(P.x, groundTop, 84, 16);
+      const disc = this.add.circle(P.x, groundTop - 46, 15, 0xffffff).setStrokeStyle(3, 0x16202b).setDepth(4);
+      const num = this.add.text(P.x, groundTop - 46, `${P.doel}`, { fontFamily: 'Arial Black, Arial', fontSize: '17px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5).setDepth(4);
+      const hart = this.add.graphics().setDepth(4);
+      hart.fillStyle(0xff6b9d, 1); hart.fillCircle(-4, 0, 5); hart.fillCircle(4, 0, 5); hart.fillTriangle(-9, 2, 9, 2, 0, 13);
+      hart.x = P.x; hart.y = groundTop - 78;
+      this.tweens.add({ targets: hart, y: groundTop - 86, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      this.plates.push({ ...P, body, beam, shimmer, hart, given: false, groundTop });
+    });
+  }
+
+  givePlate(pl) {
+    pl.given = true;
+    const n = pl.doel, was = this.playerValue;
+    this.playerValue -= n;
+    this.drawPlayer();
+    SFX.split(); Voice.number(n);
+    // het gegeven stapeltje wordt een blij mini-vriendje op de plaat
+    const c = this.add.container(pl.x, 0).setDepth(5);
+    const { totalH } = drawCubeStack(this, c, n, { w: 26, cell: 26, color: sig(n), eyeR: 4.5, eyeX: 5.5, pupilR: 2, mouthR: 4.5, faceStroke: 2 });
+    c.y = pl.groundTop - totalH / 2;
+    addNumberDisc(this, c, n, -totalH / 2 - 10, 9, '11px');
+    this.tweens.add({ targets: c, y: c.y - 14, duration: 220, yoyo: true, repeat: 2, ease: 'Sine.inOut' });
+    this.heart(pl.x, pl.groundTop - totalH - 26);
+    // slagboom omhoog + blokkade weg
+    pl.body.body.enable = false;
+    this.tweens.add({ targets: pl.beam, angle: -78, duration: 500, ease: 'Back.out' });
+    this.tweens.add({ targets: [pl.shimmer, pl.hart], alpha: 0, duration: 500, onComplete: () => { pl.shimmer.destroy(); pl.hart.destroy(); } });
+    SFX.yay(); Voice.cue('cheer'); this.burstStars(pl.x, pl.groundTop - 60, 10);
+    this.cameraPunch();
+    this.questText.setText(`Dank je wel! ${was} − ${n} = ${this.playerValue} — de weg is open! 🚩`);
+  }
+
+  // ============================================================ ANTWOORD-BLOKKEN
+  // Een muur met een vraag ("waar is MEER?") en twee zweefblokken met getallen:
+  // spring en SLA het juiste blok van onderen (kopstoot!) → de muur zakt weg.
+  // Fout blok = schudden + oeps; gewoon nog eens proberen. Werkwoord: vergelijken.
+  buildVraagMuren(L) {
+    this.vraagMuren = [];
+    this.antwoordGroup = this.physics.add.staticGroup();
+    (L.vraagMuren || []).forEach((V) => {
+      const groundTop = L.platforms[0][1];
+      const goedIdx = V.kies === 'meer'
+        ? (V.opties[0] > V.opties[1] ? 0 : 1)
+        : (V.opties[0] < V.opties[1] ? 0 : 1);
+      // schermhoge blokkade + zichtbare rotsmuur
+      const body = this.add.rectangle(V.x, (40 + groundTop) / 2, 46, groundTop - 40, 0x000000, 0);
+      this.physics.add.existing(body, true);
+      this.doorGroup.add(body);
+      const art = this.add.container(V.x, 0).setDepth(4);
+      const g = this.add.graphics();
+      g.fillStyle(0x7d838c, 1); g.fillRoundedRect(-23, 120, 46, groundTop - 118, 10);
+      g.fillStyle(0x9aa0a6, 1); g.fillRoundedRect(-23, 120, 46, 14, 6);
+      g.lineStyle(3, 0x5b6168, 1); g.strokeRoundedRect(-23, 120, 46, groundTop - 118, 10);
+      const bord = this.add.container(0, 96);
+      const bg = this.add.graphics();
+      bg.fillStyle(0xf3e2c0, 1); bg.lineStyle(3, 0x9c6b3f, 1);
+      bg.fillRoundedRect(-56, -20, 112, 40, 10); bg.strokeRoundedRect(-56, -20, 112, 40, 10);
+      const vt = this.add.text(0, 0, V.kies === 'meer' ? 'MEER?' : 'MINDER?', {
+        fontFamily: 'Arial Black, Arial', fontSize: '17px', fontStyle: 'bold', color: '#16202b',
+      }).setOrigin(0.5);
+      bord.add([bg, vt]);
+      art.add([g, bord]);
+      // twee antwoord-blokken vóór de muur
+      const blokken = V.opties.map((val, i) => {
+        const bx = V.x - 190 + i * 105, by = 410;
+        const blok = this.add.rectangle(bx, by, 56, 52, 0x000000, 0);
+        this.physics.add.existing(blok, true);
+        this.antwoordGroup.add(blok);
+        const bc = this.add.container(bx, by).setDepth(5);
+        const bgra = this.add.graphics();
+        bgra.fillStyle(0xf6c624, 1); bgra.fillRoundedRect(-28, -26, 56, 52, 10);
+        bgra.fillStyle(0xffe16b, 1); bgra.fillRoundedRect(-24, -22, 48, 20, 8);
+        bgra.lineStyle(3.5, 0xb98d12, 1); bgra.strokeRoundedRect(-28, -26, 56, 52, 10);
+        const num = this.add.text(0, 0, `${val}`, { fontFamily: 'Arial Black, Arial', fontSize: '24px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+        bc.add([bgra, num]);
+        blok._art = bc; blok._idx = i;
+        return blok;
+      });
+      const vm = { ...V, body, art, blokken, goedIdx, opgelost: false, lastHit: 0, cuePlayed: false };
+      blokken.forEach((b) => { b._vm = vm; });
+      this.vraagMuren.push(vm);
+    });
+  }
+
+  hitAntwoord(vm, blok) {
+    const bc = blok._art;
+    if (blok._idx === vm.goedIdx) {
+      vm.opgelost = true;
+      SFX.correct(); Voice.cue('great');
+      this.tweens.add({ targets: bc, y: bc.y - 18, duration: 120, yoyo: true, ease: 'Quad.out' });
+      const flash = this.add.graphics().setDepth(6);
+      flash.fillStyle(0x2fae4e, 0.5); flash.fillRoundedRect(bc.x - 28, bc.y - 26, 56, 52, 10);
+      this.tweens.add({ targets: flash, alpha: 0, duration: 600, onComplete: () => flash.destroy() });
+      // de muur zakt in de grond
+      vm.body.body.enable = false;
+      this.tweens.add({ targets: vm.art, y: 480, alpha: 0.2, duration: 700, ease: 'Quad.in' });
+      confettiBurst(this, 90); this.cameraPunch(); SFX.yay();
+      this.burstStars(vm.x, 400, 10);
+      this.questText.setText('Goed gekozen! De muur zakt weg! 🚩');
+    } else {
+      SFX.wrong(); Voice.cue('oops');
+      this.tweens.add({ targets: bc, x: bc.x + 6, duration: 60, yoyo: true, repeat: 3 });
+      const flash = this.add.graphics().setDepth(6);
+      flash.fillStyle(0xe8402c, 0.45); flash.fillRoundedRect(bc.x - 28, bc.y - 26, 56, 52, 10);
+      this.tweens.add({ targets: flash, alpha: 0, duration: 500, onComplete: () => flash.destroy() });
+      this.questText.setText(vm.kies === 'meer' ? 'Oeps — welk getal is MEER?' : 'Oeps — welk getal is MINDER?');
+    }
+  }
+
+  // ============================================================ ACHTERVOLGING
+  // Een rollende rotsbal komt achter je aan: RENNEN! Raak = krimpen en de
+  // rots spat uiteen (opnieuw proberen bij de trigger); haal het einde en
+  // hij spat vanzelf. Werkwoord: rennen/durven.
+  buildAchtervolgingen(L) {
+    this.chases = (L.achtervolgingen || []).map((A) => ({ ...A, actief: false, klaar: false, rots: null }));
+  }
+
+  startChase(ch) {
+    ch.actief = true;
+    const groundTop = this.level.platforms[0][1];
+    const c = this.add.container(ch.spawnX, groundTop - 30).setDepth(9);
+    const g = this.add.graphics();
+    g.fillStyle(0x6a7078, 1); g.fillCircle(0, 0, 28);
+    g.fillStyle(0x7d838c, 1); g.fillCircle(-6, -6, 20);
+    g.lineStyle(3, 0x4a4f55, 1); g.strokeCircle(0, 0, 28);
+    g.fillStyle(0x4a4f55, 0.8); g.fillCircle(8, 4, 5); g.fillCircle(-10, 8, 4); g.fillCircle(2, -12, 4);
+    c.add(g);
+    c._g = g;
+    this.tweens.add({ targets: g, angle: 360, duration: 700, repeat: -1 });
+    this.physics.add.existing(c);
+    c.body.setAllowGravity(false);
+    c.body.setSize(56, 56); c.body.setOffset(-28, -28);
+    c.body.setVelocityX(ch.speed || 185);
+    ch.rots = c;
+    SFX.stomp(); this.cameraPunch(0.02, 6); Voice.cue('oops');
+    this.questText.setText('RENNEN! 🪨');
+  }
+
+  crashChase(ch, geraakt) {
+    if (ch.rots) {
+      this.burstStars(ch.rots.x, ch.rots.y, 12); SFX.stomp();
+      this.tweens.killTweensOf(ch.rots._g);
+      ch.rots.destroy();
+    }
+    ch.rots = null;
+    ch.actief = false;
+    ch.klaar = !geraakt; // gehaald → klaar; geraakt → opnieuw bij de trigger
   }
 
   // ============================================================ PUZZELS (brug + redding)
@@ -131,10 +345,12 @@ export default class AdventureScene extends Phaser.Scene {
     this.puzzles = [];
 
     // 'brug' — leg planken over een kloof (blok-overlay tot doelgetal).
-    // Eén level mag meerdere bruggen hebben (L.gate = enkel, L.gates = lijst);
-    // elke brug is zelfstandig (eigen kloof, bordje, trigger-zone en blokjes).
+    // 'trein' — VERDEEL de blokken precies over de wagons (splitsen!).
+    // Eén level mag meerdere poorten hebben (L.gate = enkel, L.gates = lijst);
+    // elke poort is zelfstandig (eigen kloof, bordje, trigger-zone en blokjes).
     [L.gate, ...(L.gates || [])].filter(Boolean).forEach((G) => {
-      const pz = { type: 'brug', ...G, solved: false };
+      const pz = { type: G.type || 'brug', ...G, solved: false };
+      if (pz.type === 'trein') pz.doel = (G.wagons || []).reduce((s, w) => s + w, 0); // voor planken + titel
       const groundTop = L.platforms[0][1];
 
       // De kloof zichtbaar maken: donkere spleet.
@@ -142,18 +358,21 @@ export default class AdventureScene extends Phaser.Scene {
       chasm.fillStyle(G.water ? 0x3fa9e0 : 0x2a3a2a, 1); chasm.fillRect(G.gapX, groundTop, G.gapW, 200);
       if (G.water) { chasm.fillStyle(0x7fd0f0, 0.5); for (let wx = G.gapX; wx < G.gapX + G.gapW; wx += 42) chasm.fillEllipse(wx + 21, groundTop + 12, 26, 8); }
 
-      // Bordje met het doelgetal.
+      // Bordje: het doelgetal (brug) of de wagon-verdeling (trein).
       const sign = this.add.container(G.gapX - 16, G.y - 74).setDepth(4);
       const post = this.add.graphics();
       post.fillStyle(0x9c6b3f, 1); post.fillRect(-3, 0, 6, 60);
-      post.fillStyle(0xf3e2c0, 1); post.fillRoundedRect(-24, -30, 48, 40, 8);
-      post.lineStyle(3, 0x9c6b3f, 1); post.strokeRoundedRect(-24, -30, 48, 40, 8);
-      const want = this.add.text(0, -10, `${G.doel}`, { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+      const bordW = pz.type === 'trein' ? 76 : 48;
+      post.fillStyle(0xf3e2c0, 1); post.fillRoundedRect(-bordW / 2, -30, bordW, 40, 8);
+      post.lineStyle(3, 0x9c6b3f, 1); post.strokeRoundedRect(-bordW / 2, -30, bordW, 40, 8);
+      const want = this.add.text(0, -10, pz.type === 'trein' ? (G.wagons || []).join('+') : `${G.doel}`, {
+        fontFamily: 'Arial Black, Arial', fontSize: pz.type === 'trein' ? '20px' : '30px', fontStyle: 'bold', color: '#16202b',
+      }).setOrigin(0.5);
       sign.add([post, want]);
       this.tweens.add({ targets: sign, y: G.y - 80, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       pz.sign = sign;
       pz.zone = new Phaser.Geom.Rectangle(G.triggerX, groundTop - 120, G.triggerW, 160);
-      pz.prompt = 'Bouw de brug!';
+      pz.prompt = pz.type === 'trein' ? 'Vul de trein!' : 'Bouw de brug!';
       pz.onSolve = () => this.solveBridge(pz);
       this.puzzles.push(pz);
     });
@@ -269,9 +488,13 @@ export default class AdventureScene extends Phaser.Scene {
     this.physics.add.existing(body, true);
     this.bossGroup.add(body);
 
-    // Elke wereld z'n eigen baas-art: 'golf' = blauwe golf (Wereld 2),
-    // anders de klassieke grijze Grommel-baas (Wereld 1).
-    const art = B.look === 'golf' ? drawWaveBoss(this, B.x, groundTop) : drawBoss(this, B.x, groundTop);
+    // Elke wereld z'n eigen baas-art: 'golf' = blauwe golf (W2), 'boom' =
+    // Boom-Grommel (W3), 'kristal' = Kristal-Grommel (W4), anders de
+    // klassieke grijze Grommel-baas (W1).
+    const art = B.look === 'golf' ? drawWaveBoss(this, B.x, groundTop)
+      : B.look === 'boom' ? drawTreeBoss(this, B.x, groundTop)
+        : B.look === 'kristal' ? drawCrystalBoss(this, B.x, groundTop)
+          : drawBoss(this, B.x, groundTop);
     // Bij de Golf-Baas is de hoge blokkade zichtbaar als opspattende waterzuil.
     if (B.look === 'golf') art.sprayWall = drawSprayWall(this, B.x, groundTop);
     const pz = {
@@ -293,9 +516,10 @@ export default class AdventureScene extends Phaser.Scene {
     const left = pz.stages.length - pz.stageIndex;
     this.questText.setText(`De Baas wankelt! Nog ${left}× — bouw de ${pz.doel}`);
 
-    // Golf-Baas: hij slaat terug! Na fase 1 één golf, daarna twee — spring
-    // eroverheen. Zolang de golven rollen kun je niet bouwen (cooldown).
-    if (pz.look === 'golf') {
+    // Golf-Baas/Boom-Grommel: hij slaat terug! Na fase 1 één projectiel
+    // (golf/eikel), daarna twee — spring eroverheen. Zolang ze rollen kun je
+    // niet bouwen (cooldown).
+    if (pz.look === 'golf' || pz.look === 'boom' || pz.look === 'kristal') {
       const n = Math.min(pz.stageIndex, 2);
       pz.cooldownUntil = this.time.now + 420 + n * 950 + 800;
       for (let i = 0; i < n; i++) {
@@ -307,16 +531,19 @@ export default class AdventureScene extends Phaser.Scene {
   // ============================================================ GOLVEN (Golf-Baas-aanval)
   spawnBossWave(pz) {
     const groundTop = this.level.platforms[0][1];
-    const c = drawWaveMinion(this, pz.bossArt.x - 84, groundTop);
+    const c = pz.look === 'boom' ? drawAcorn(this, pz.bossArt.x - 84, groundTop)
+      : pz.look === 'kristal' ? drawCrystalShard(this, pz.bossArt.x - 84, groundTop)
+        : drawWaveMinion(this, pz.bossArt.x - 84, groundTop);
     this.physics.add.existing(c);
     c.body.setAllowGravity(false);
     c.body.setSize(44, 30); c.body.setOffset(-22, -30);
-    c.body.setVelocityX(-175);
+    c.body.setVelocityX(pz.look === 'kristal' ? -215 : -175); // kristal = sneller (W4-niveau!)
     c.stopX = Math.max(60, pz.bossArt.x - 820); // dooft vanzelf uit na ±800px
     this.tweens.add({ targets: c, scaleY: 1.12, duration: 260, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.bossWaves.push(c);
     SFX.split(); this.sparkleAt(c.x, groundTop - 22, 6);
-    this.questText.setText('Pas op — een golf! Spring! 🌊');
+    this.questText.setText(pz.look === 'boom' ? 'Pas op — een eikel! Spring! 🌰'
+      : pz.look === 'kristal' ? 'Pas op — een kristal! Spring! 💎' : 'Pas op — een golf! Spring! 🌊');
   }
 
   splashWave(i) {
@@ -346,6 +573,12 @@ export default class AdventureScene extends Phaser.Scene {
         this.tweens.killTweensOf(c.sprayWall);
         this.tweens.add({ targets: c.sprayWall, alpha: 0, duration: 700, onComplete: () => c.sprayWall.destroy() });
       }
+    } else if (pz.look === 'boom') {
+      // de boom wordt lief: lach + roze bloesem; hij blijft vriendelijk staan
+      happyTreeBoss(this, c);
+    } else if (pz.look === 'kristal') {
+      // de kristal gaat stralen: lach + regenboog-fonkels
+      happyCrystalBoss(this, c);
     } else {
       // blije kleur + lach voor de klassieke Grommel-baas
       recolorBossHappy(this, c, sig(pz.stages[pz.stages.length - 1].doel));
@@ -401,6 +634,34 @@ export default class AdventureScene extends Phaser.Scene {
     c.disc = disc; c.value = L.goal.value; c.reached = false;
     this.tweens.add({ targets: c, y: L.goal.y - 6, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.goal = c;
+
+    // Missie-level ('grommels'): de vlag zit op SLOT tot alle Grommels zijn
+    // teruggekleurd — een jacht-level i.p.v. een bouw-level.
+    this.goalLocked = L.missie === 'grommels';
+    if (this.goalLocked) {
+      const lock = this.add.graphics();
+      lock.fillStyle(0x565b61, 1); lock.fillRoundedRect(-9, -6, 18, 14, 3);
+      lock.lineStyle(3.5, 0x565b61, 1); lock.beginPath(); lock.arc(0, -7, 7, Math.PI, 2 * Math.PI); lock.strokePath();
+      lock.y = -96;
+      c.add(lock);
+      c.lock = lock;
+    }
+  }
+
+  // Alle Grommels blij? → slot van de vlag af (missie-levels).
+  checkGrommelMissie() {
+    if (!this.goalLocked || this.level.missie !== 'grommels') return;
+    const left = this.grommels.filter((g) => g.alive).length;
+    if (left > 0) {
+      this.questText.setText(`Goed zo! Nog ${left} Grommel${left === 1 ? '' : 's'} te gaan 🎨`);
+      return;
+    }
+    this.goalLocked = false;
+    SFX.fanfare(); Voice.cue('cheer'); confettiBurst(this, 120);
+    if (this.goal.lock) this.tweens.add({ targets: this.goal.lock, alpha: 0, scale: 2, duration: 400, onComplete: () => this.goal.lock.destroy() });
+    this.goal.disc.setFillStyle(sig(this.goal.value));
+    this.tweens.add({ targets: this.goal, scale: 1.15, duration: 200, yoyo: true, repeat: 2 });
+    this.questText.setText('Alle Grommels blij! Ren naar de vlag! 🚩');
   }
 
   // ============================================================ SPELER (Één)
@@ -417,6 +678,15 @@ export default class AdventureScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.player, this.doorGroup);
     this.physics.add.collider(this.player, this.bossGroup);
+    // Antwoord-blokken: raak het blok van ONDEREN (kopstoot) → antwoord gekozen.
+    this.physics.add.collider(this.player, this.antwoordGroup, (pl, blok) => {
+      const vm = blok._vm;
+      if (!vm || vm.opgelost || this.time.now < vm.lastHit + 500) return;
+      if (pl.body.top >= blok.body.bottom - 12) {
+        vm.lastHit = this.time.now;
+        this.hitAntwoord(vm, blok);
+      }
+    });
     // Breekbare kratten: met stamp-kracht + naar beneden vallend → sla je erdoorheen.
     this.physics.add.collider(this.player, this.breakGroup, null, (player, block) => {
       if (this.powers.stamp && player.body.velocity.y > 60 && player.body.bottom <= block.body.top + 22) {
@@ -673,6 +943,7 @@ export default class AdventureScene extends Phaser.Scene {
       this.jumpsUsed = 0; // stampen geeft je je sprongen terug
       SFX.stomp(); Voice.cue('cheer'); this.burstStars(gr.x, gr.y - 10, 8);
       this.tweens.add({ targets: gr.art, y: -12, duration: 160, yoyo: true, ease: 'Quad.out' });
+      this.checkGrommelMissie(); // missie-levels: telt af naar de vlag
     } else if (this.time.now > this.invulnUntil) {
       this.shrinkPlayer(gr);
     }
@@ -706,6 +977,7 @@ export default class AdventureScene extends Phaser.Scene {
       for (const plat of grp.getChildren()) {
         const pb = plat.body;
         if (!pb || !pb.enable) continue;
+        if (plat._noCheckpoint) continue; // geen checkpoint op een verdwijn-wolk
         if (Math.abs(pb.top - feetY) < 10 && pb.left <= cx - halfSupport && pb.right >= cx + halfSupport) return true;
       }
     }
@@ -819,12 +1091,22 @@ export default class AdventureScene extends Phaser.Scene {
     // Loop-squash
     if (onFloor && dir !== 0) p.art.y = Math.sin(time * 0.02) * 1.5; else if (p.art.y !== 0) p.art.y *= 0.8;
 
-    // Groei-bolletjes oppakken
+    // Groei-bolletjes oppakken (regen-bolletjes groeien na een paar tellen
+    // terug — anti-vastloper bij de geef-platen)
     for (const pk of this.pickups) {
       if (pk.taken) continue;
       if (Math.abs(p.x - pk.x) < 46 && Math.abs(p.y - pk.y) < 60) {
         pk.taken = true; SFX.coin();
-        this.tweens.add({ targets: pk, scale: 0, duration: 200, ease: 'Back.in', onComplete: () => pk.destroy() });
+        if (pk.regen) {
+          this.tweens.add({ targets: pk, scale: 0, duration: 200, ease: 'Back.in' });
+          this.time.delayedCall(5000, () => {
+            if (!pk.active) return;
+            pk.taken = false; SFX.sparkle();
+            this.tweens.add({ targets: pk, scale: 1, duration: 260, ease: 'Back.out' });
+          });
+        } else {
+          this.tweens.add({ targets: pk, scale: 0, duration: 200, ease: 'Back.in', onComplete: () => pk.destroy() });
+        }
         this.growPlayer(pk.amount);
       }
     }
@@ -865,6 +1147,43 @@ export default class AdventureScene extends Phaser.Scene {
       }
     }
 
+    // Geef-platen: sta op de plaat met genoeg blokjes → geef, en de weg opent
+    for (const pl of this.plates) {
+      if (pl.given) continue;
+      if (Math.abs(p.x - pl.x) < 42 && onFloor) {
+        if (!pl.cuePlayed) { pl.cuePlayed = true; Voice.number(pl.doel); }
+        if (this.playerValue > pl.doel) this.givePlate(pl);
+        else this.questText.setText(`Geef ${pl.doel} blokjes — word eerst groter! (pak bolletjes)`);
+      }
+    }
+
+    // Tel-wolken aan/uit op het ritme
+    this.updateTelWolken();
+
+    // Vraagmuren: hint bij aankomst (eenmalig cue)
+    for (const vm of this.vraagMuren) {
+      if (vm.opgelost) continue;
+      if (Math.abs(p.x - (vm.x - 140)) < 170) {
+        if (!vm.cuePlayed) { vm.cuePlayed = true; Voice.cue('greet'); }
+        this.questText.setText(`Spring tegen het blok met ${vm.kies.toUpperCase()}! ⬆`);
+      }
+    }
+
+    // Achtervolgingen: rollende rotsen
+    for (const ch of this.chases) {
+      if (ch.actief && ch.rots) {
+        if (time > this.invulnUntil && Math.abs(p.x - ch.rots.x) < 44 && Math.abs(p.y - ch.rots.y) < 90) {
+          this.shrinkPlayer(ch.rots);
+          this.crashChase(ch, true);
+        } else if (ch.rots.x > ch.endX) {
+          this.crashChase(ch, false);
+          this.questText.setText('Gehaald! De rots is stuk! 🎉');
+        }
+      } else if (!ch.actief && !ch.klaar && p.x > ch.triggerX && p.x < ch.endX - 80) {
+        this.startChase(ch);
+      }
+    }
+
     // Ster oppakken (ruime rechthoek: pak 'm ook al scheer je er in een boog langs)
     if (this.starPickup && !this.starPickup.taken &&
         Math.abs(p.x - this.starPickup.x) < 50 && Math.abs(p.y - this.starPickup.y) < 62) {
@@ -878,7 +1197,17 @@ export default class AdventureScene extends Phaser.Scene {
     // Doel-vlag halen (ruime rechthoek: de vlag is hoog, en je waarde/hoogte
     // wisselt — dus niet afhankelijk maken van je precieze midden-hoogte)
     if (!this.goal.reached && Math.abs(p.x - this.goal.x) < 48 && Math.abs(p.y - this.goal.y) < 100) {
-      this.win();
+      if (this.goalLocked) {
+        // missie nog niet af → vriendelijke herinnering (niet elke frame)
+        if (!this._lockHintAt || time > this._lockHintAt) {
+          this._lockHintAt = time + 1800;
+          SFX.oops();
+          this.questText.setText('Eerst alle Grommels terugkleuren! 🎨');
+          this.tweens.add({ targets: this.goal, angle: 4, duration: 70, yoyo: true, repeat: 3 });
+        }
+      } else {
+        this.win();
+      }
     }
 
     // In een kloof gevallen → zacht terug naar checkpoint. Check op de
