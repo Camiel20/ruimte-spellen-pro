@@ -254,6 +254,17 @@ export default class WorldMapScene extends Phaser.Scene {
       this.scene.start('Adventure', target ? { levelIndex: this.levelIndexOf(target.lvl.id) } : {});
     });
     this.tweens.add({ targets: btxt, scale: 1.05, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // Dorpje-knop (linksonder): bezoek je geredde vriendjes.
+    const vg = this.add.graphics().setScrollFactor(0).setDepth(50);
+    vg.fillStyle(0x000000, 0.25); vg.fillRoundedRect(27, by - bh / 2 + 4, 58, 58, 16);
+    vg.fillStyle(0xf6c624, 1); vg.fillRoundedRect(24, by - bh / 2, 58, 58, 16);
+    vg.lineStyle(4, 0xb98d12, 1); vg.strokeRoundedRect(24, by - bh / 2, 58, 58, 16);
+    const vt = this.add.text(53, by, '🏘️', { fontSize: '26px' }).setOrigin(0.5).setScrollFactor(0).setDepth(51);
+    const vhit = this.add.rectangle(53, by, 66, 66, 0xffffff, 0.001)
+      .setScrollFactor(0).setDepth(52).setInteractive({ useHandCursor: true });
+    vhit.on('pointerdown', () => { SFX.click(); this.scene.start('Village'); });
+    this.tweens.add({ targets: vt, angle: 6, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   }
 
   enableScroll(contentH, H) {
