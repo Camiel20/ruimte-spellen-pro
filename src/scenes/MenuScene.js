@@ -17,6 +17,35 @@ export default class MenuScene extends Phaser.Scene {
     this.buildGrid(width);
     this.buildControls(width);
     this.scheduleShootingStar(width, height);
+
+    // Eénmalig bij opstarten: "Welkom terug, <naam> 🙂" (niet telkens je uit
+    // een spel terugkeert — vlag in de registry geldt per app-sessie).
+    if (!this.registry.get('welcomed')) {
+      this.registry.set('welcomed', true);
+      this.showWelcomeBack(width, height);
+    }
+  }
+
+  showWelcomeBack(width, height) {
+    const name = getSetting('childName') || 'Adrian';
+    const banner = this.add.container(width / 2, height * 0.42).setDepth(100).setAlpha(0);
+
+    const bg = this.add.graphics();
+    bg.fillStyle(0x1f2d3a, 0.92); bg.fillRoundedRect(-190, -46, 380, 92, 20);
+    bg.lineStyle(4, 0xffe16b, 1); bg.strokeRoundedRect(-190, -46, 380, 92, 20);
+    const txt = this.add.text(0, 0, `Welkom terug,\n${name} 🙂`, {
+      fontFamily: 'Arial Black, Arial', fontSize: '26px', fontStyle: 'bold',
+      color: '#ffffff', align: 'center', lineSpacing: 4,
+    }).setOrigin(0.5).setStroke('#0e1430', 5);
+    banner.add([bg, txt]);
+    banner.setScale(0.6);
+
+    SFX.click();
+    this.tweens.add({ targets: banner, alpha: 1, scale: 1, duration: 420, ease: 'Back.out' });
+    this.tweens.add({
+      targets: banner, alpha: 0, scale: 0.9, delay: 2000, duration: 500, ease: 'Quad.in',
+      onComplete: () => banner.destroy(),
+    });
   }
 
   buildBackground(width, height) {
@@ -106,7 +135,7 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '✏️', name: 'Schrijven',        color: 0xf97316, go: () => this.scene.start('TraceMenu') },
       { icon: '🎈', name: 'Ballon Merge',     color: 0xa855f7, go: () => this.scene.start('Balloon') },
       { icon: '🪐', name: 'Planeet Tikker',   color: 0xeab308, go: () => this.scene.start('Clicker') },
-      { icon: '🦸', name: 'Getallen-Land',     color: 0xe8402c, go: () => this.scene.start('Adventure') },
+      { icon: '🦸', name: 'Getallen-Land',     color: 0xe8402c, go: () => this.scene.start('WorldMap') },
       { icon: '🎹', name: 'Regenboog Piano',  color: 0xec4899, go: () => this.scene.start('Piano') },
       { icon: '🚗', name: 'Stad Rijden',      color: 0x22c55e, go: () => this.scene.start('City') },
       { icon: '🧱', name: 'Getallen Toren',   color: 0x14b8a6, go: () => this.scene.start('NumberTower') },

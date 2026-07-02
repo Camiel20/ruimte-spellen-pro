@@ -8,7 +8,6 @@ import TraceScene from './scenes/TraceScene.js';
 import TraceMenuScene from './scenes/TraceMenuScene.js';
 import ClickerScene from './scenes/ClickerScene.js';
 import PianoScene from './scenes/PianoScene.js';
-import PlatformScene from './scenes/PlatformScene.js';
 import AwardsScene from './scenes/AwardsScene.js';
 import SettingsScene from './scenes/SettingsScene.js';
 import CityScene from './scenes/CityScene.js';
@@ -16,6 +15,7 @@ import NumberTowerScene from './scenes/NumberTowerScene.js';
 import ZeroRocketScene from './scenes/ZeroRocketScene.js';
 import NumberLandScene from './scenes/NumberLandScene.js';
 import AdventureScene from './scenes/AdventureScene.js';
+import WorldMapScene from './scenes/WorldMapScene.js';
 import StatsScene from './scenes/StatsScene.js';
 import { installTracking } from './stats.js';
 
@@ -43,9 +43,9 @@ const config = {
   scene: [
     BootScene, MenuScene,
     BalloonScene, MathScene, DiffScene,
-    TraceScene, TraceMenuScene, ClickerScene, PianoScene, PlatformScene,
+    TraceScene, TraceMenuScene, ClickerScene, PianoScene,
     AwardsScene, SettingsScene, CityScene, NumberTowerScene, ZeroRocketScene,
-    NumberLandScene, AdventureScene, StatsScene,
+    NumberLandScene, AdventureScene, WorldMapScene, StatsScene,
   ],
 };
 
@@ -56,3 +56,9 @@ installTracking(game);
 // preview (bv. window.__game.scene.start('Adventure')). Weggelaten in de
 // productie-build.
 if (import.meta.env && import.meta.env.DEV) window.__game = game;
+
+// Offline spelen (vliegtuig/auto): service worker cachet alles wat geladen is.
+// Alleen in productie — tijdens ontwikkelen zou de cache HMR in de weg zitten.
+if (!import.meta.env.DEV && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}

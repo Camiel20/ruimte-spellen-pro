@@ -1,13 +1,23 @@
 // Centraal voortgangssysteem voor alle spellen.
-// Bewaart sterren, medailles, topscores en instellingen in localStorage,
-// zodat alles bewaard blijft tussen sessies.
+// Bewaart sterren, medailles, topscores, per-level voortgang en instellingen
+// in localStorage, zodat alles bewaard blijft tussen sessies.
+//
+// v2: - versieveld + migratie (v1 → v2)
+//     - DEEP merge met DEFAULT (v1 had een ondiepe merge: nieuwe settings-keys
+//       verdwenen voor bestaande spelers)
+//     - per-level records (levels['1-2'] = { done, star }) voor de wereldkaart
+//     - adventure.current = level-id waar je gebleven bent ("verder spelen")
 
-const KEY = 'rsp_progress_v1';
+const KEY = 'rsp_progress_v2';
+const OLD_KEY = 'rsp_progress_v1';
 
 const DEFAULT = {
+  version: 2,
   stars: 0,                 // totaal verzamelde sterren over alle spellen
-  medals: {},               // bv. { balloon: true, math_easy: true }
+  medals: {},               // bv. { balloon: true, adventure_1_1: true }
   high: {},                 // topscores per spel
+  levels: {},               // per level-id: { done: true, star: true }
+  adventure: { current: null }, // level-id waar het avontuur verder gaat
   settings: {
     music: true,            // achtergrondmuziek aan/uit
     difficulty: 'normaal',  // makkelijk / normaal / moeilijk (globaal)
@@ -15,14 +25,49 @@ const DEFAULT = {
   },
 };
 
+// Diepe merge: 'saved' wint, maar keys die alleen in 'base' bestaan blijven
+// bestaan (zodat nieuwe velden/instellingen automatisch hun default krijgen).
+function deepMerge(base, saved) {
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) {
+    return saved === undefined ? clone(base) : saved;
+  }
+  const out = clone(base) || {};
+  for (const k of Object.keys(saved)) {
+    const b = base && typeof base === 'object' ? base[k] : undefined;
+    out[k] = (b && typeof b === 'object' && !Array.isArray(b)) ? deepMerge(b, saved[k]) : saved[k];
+  }
+  return out;
+}
+
+function clone(v) { return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); }
+
+// v1 → v2: sterren/medailles/scores/instellingen mee; behaalde avontuur-levels
+// afleiden uit de medailles (adventure_1_2 → level '1-2' gehaald).
+function migrateV1(v1) {
+  const d = deepMerge(DEFAULT, v1);
+  d.version = 2;
+  d.levels = d.levels || {};
+  for (const id of Object.keys(v1.medals || {})) {
+    const m = /^adventure_(\d+)_(\d+)$/.exec(id);
+    if (m) d.levels[`${m[1]}-${m[2]}`] = { done: true };
+  }
+  return d;
+}
+
 let data = load();
 
 function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return Object.assign({}, DEFAULT, JSON.parse(raw));
+    if (raw) return deepMerge(DEFAULT, JSON.parse(raw));
+    const old = localStorage.getItem(OLD_KEY);
+    if (old) {
+      const d = migrateV1(JSON.parse(old));
+      try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {}
+      return d;
+    }
   } catch (e) {}
-  return JSON.parse(JSON.stringify(DEFAULT));
+  return clone(DEFAULT);
 }
 
 function save() {
@@ -44,6 +89,20 @@ export function giveMedal(id) {
 }
 export function getMedalCount() { return data.medals ? Object.keys(data.medals).length : 0; }
 
+// --- Per-level voortgang (avontuur / wereldkaart) ---
+export function getLevelRecord(id) { return (data.levels && data.levels[id]) || null; }
+export function markLevelDone(id, extra = {}) {
+  if (!data.levels) data.levels = {};
+  data.levels[id] = Object.assign({}, data.levels[id], { done: true }, extra);
+  save();
+}
+export function getAdventureCurrent() { return (data.adventure && data.adventure.current) || null; }
+export function setAdventureCurrent(id) {
+  if (!data.adventure) data.adventure = {};
+  data.adventure.current = id;
+  save();
+}
+
 // --- Topscores ---
 export function getHigh(game) { return (data.high && data.high[game]) || 0; }
 export function saveHigh(game, score) {
@@ -57,7 +116,10 @@ export function saveHigh(game, score) {
 }
 
 // --- Instellingen ---
-export function getSetting(key) { return data.settings ? data.settings[key] : DEFAULT.settings[key]; }
+export function getSetting(key) {
+  const v = data.settings ? data.settings[key] : undefined;
+  return v === undefined ? DEFAULT.settings[key] : v;
+}
 export function setSetting(key, value) {
   if (!data.settings) data.settings = Object.assign({}, DEFAULT.settings);
   data.settings[key] = value;
@@ -66,7 +128,8 @@ export function setSetting(key, value) {
 
 // Voor een schone start (debug / "wis voortgang")
 export function resetProgress() {
-  data = JSON.parse(JSON.stringify(DEFAULT));
+  data = clone(DEFAULT);
   save();
+  try { localStorage.removeItem(OLD_KEY); } catch (e) {}
   try { localStorage.removeItem('rsp_clicker'); } catch (e) {}
 }
