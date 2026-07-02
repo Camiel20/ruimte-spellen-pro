@@ -31,10 +31,24 @@
     /* het canvas erft touch-action niet van body → expliciet, zodat slepen
        op iOS niet als scroll/zoom wordt afgepakt */
     #game canvas { touch-action: none; -webkit-user-select: none; user-select: none; }
+    /* Telefoon in landscape: het spel is portret (480×800) en wordt dan een
+       postzegel. Vriendelijk vragen om te draaien. iPads (hoog scherm) blijven
+       gewoon spelen dankzij de max-height-grens. */
+    #rotate-hint {
+      display: none; position: fixed; inset: 0; z-index: 99;
+      background: #0b0d1a; color: #fff; text-align: center;
+      font-family: Arial, sans-serif; font-size: 26px; font-weight: bold;
+      padding-top: 26vh; line-height: 1.6;
+    }
+    #rotate-hint span { font-size: 56px; display: block; }
+    @media (orientation: landscape) and (max-height: 500px) {
+      #rotate-hint { display: block; }
+    }
   </style>
 </head>
 <body>
   <div id="game"></div>
+  <div id="rotate-hint"><span>📱↻</span>Draai je telefoon rechtop!</div>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
