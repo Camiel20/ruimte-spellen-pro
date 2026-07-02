@@ -3,7 +3,8 @@ import { SFX, initAudio } from '../sound.js';
 import { Voice } from '../voice.js';
 import { startMusic } from '../music.js';
 import { confettiBurst, showReward } from '../reward.js';
-import { addStars, getStars } from '../progress.js';
+import { addStars, getStars, markLevelDone, setAdventureCurrent, getAdventureCurrent } from '../progress.js';
+import { findPair, splitParts } from '../adventure/logic.js';
 import { WORLD1, LEVEL_1_1 } from '../levels/world1.js';
 import { WORLD2 } from '../levels/world2.js';
 
@@ -56,8 +57,17 @@ export default class AdventureScene extends Phaser.Scene {
     initAudio();
     startMusic('adventure'); // vrolijk avontuur-deuntje tijdens het spelen
 
-    this.levelIndex = (data && data.levelIndex) || 0;
+    // Welk level? Expliciet meegegeven (wereldkaart/level-ketting) wint;
+    // anders hervatten waar je gebleven was ("verder spelen"); anders 1-1.
+    if (data && data.levelIndex != null) {
+      this.levelIndex = data.levelIndex;
+    } else {
+      const cur = getAdventureCurrent();
+      const idx = cur ? LEVELS.findIndex((l) => l.id === cur) : -1;
+      this.levelIndex = idx >= 0 ? idx : 0;
+    }
     this.level = LEVELS[this.levelIndex] || LEVEL_1_1;
+    setAdventureCurrent(this.level.id); // onthoud waar we zijn (ook na app-sluiten)
     const L = this.level;
 
     this.mode = 'explore';
@@ -69,6 +79,20 @@ export default class AdventureScene extends Phaser.Scene {
     this.jumpsUsed = 0;
     this.powers = { doubleJump: !!L.startDoubleJump, stamp: !!L.startStamp };
     this.won = false;
+
+    // Phaser HERGEBRUIKT scene-instanties: alles wat vorige potjes op `this`
+    // zetten leeft nog (als kapotte referenties). Expliciet resetten, anders
+    // weigert bv. confirmExit ("dialoog staat al open") na één keer gebruiken.
+    this.exitPanel = null;
+    this.buildPanel = null;
+    this.activePuzzle = null;
+    this.nearPuzzle = null;
+    this.hintRings = [];
+    this._hintTimer = null;
+    this._dragHandler = null;
+    this.jumpBadge = null;
+    this.stampBadge = null;
+    this.buildBlocks = [];
 
     this.cameras.main.setBounds(0, 0, L.worldW, L.worldH);
     this.physics.world.setBounds(0, 0, L.worldW, L.worldH);
@@ -158,19 +182,44 @@ export default class AdventureScene extends Phaser.Scene {
 
   drawGround(x, y, w, h) {
     const g = this.add.graphics().setDepth(-10);
-    // aarde
-    g.fillStyle(0xb07a45, 1); g.fillRect(x, y + 12, w, h - 12);
-    g.fillStyle(0x9c6b3f, 0.6);
-    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
-    // gras-toplaag
-    g.fillStyle(0x57b947, 1); g.fillRect(x, y, w, 16);
-    g.fillStyle(lighten(0x57b947, 22), 1); g.fillRect(x, y, w, 6);
-    g.fillStyle(0x3f9d3f, 1);
-    for (let bx = x + 6; bx < x + w; bx += 16) g.fillTriangle(bx, y, bx + 5, y, bx + 2.5, y - 6);
-    // klein bloemetje hier en daar
-    for (let fx = x + 40; fx < x + w - 20; fx += 130) {
-      g.fillStyle(0xff6b9d, 1); g.fillCircle(fx, y - 10, 3);
-      g.fillStyle(0xffe16b, 1); g.fillCircle(fx, y - 10, 1.4);
+    if (this.level.terrain === 'zand') {
+      // STRAND: warm zand met een lichte toplaag, schelpjes en zeesterren.
+      g.fillStyle(0xe3bd76, 1); g.fillRect(x, y + 12, w, h - 12);
+      g.fillStyle(0xd2ab64, 0.6);
+      for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+      g.fillStyle(0xf3dc9a, 1); g.fillRect(x, y, w, 16);
+      g.fillStyle(0xfae9b8, 1); g.fillRect(x, y, w, 6);
+      // schelpje (wit waaiertje) en zeester (roze) om en om
+      let toggle = false;
+      for (let fx = x + 44; fx < x + w - 24; fx += 120) {
+        toggle = !toggle;
+        if (toggle) {
+          g.fillStyle(0xfff6e8, 1); g.slice(fx, y - 2, 6, Math.PI, 0, false); g.fillPath();
+          g.lineStyle(1.5, 0xd2ab64, 1);
+          g.beginPath(); g.moveTo(fx, y - 2); g.lineTo(fx - 3, y - 7); g.strokePath();
+          g.beginPath(); g.moveTo(fx, y - 2); g.lineTo(fx + 3, y - 7); g.strokePath();
+        } else {
+          g.fillStyle(0xf28ba8, 1);
+          for (let a = 0; a < 5; a++) {
+            const ang = -Math.PI / 2 + a * (2 * Math.PI / 5);
+            g.fillEllipse(fx + Math.cos(ang) * 4, y - 5 + Math.sin(ang) * 4, 4, 4);
+          }
+          g.fillCircle(fx, y - 5, 3);
+        }
+      }
+    } else {
+      // GRAS (Wereld 1): aarde + groene toplaag met sprietjes en bloemetjes.
+      g.fillStyle(0xb07a45, 1); g.fillRect(x, y + 12, w, h - 12);
+      g.fillStyle(0x9c6b3f, 0.6);
+      for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+      g.fillStyle(0x57b947, 1); g.fillRect(x, y, w, 16);
+      g.fillStyle(lighten(0x57b947, 22), 1); g.fillRect(x, y, w, 6);
+      g.fillStyle(0x3f9d3f, 1);
+      for (let bx = x + 6; bx < x + w; bx += 16) g.fillTriangle(bx, y, bx + 5, y, bx + 2.5, y - 6);
+      for (let fx = x + 40; fx < x + w - 20; fx += 130) {
+        g.fillStyle(0xff6b9d, 1); g.fillCircle(fx, y - 10, 3);
+        g.fillStyle(0xffe16b, 1); g.fillCircle(fx, y - 10, 1.4);
+      }
     }
   }
 
@@ -349,14 +398,21 @@ export default class AdventureScene extends Phaser.Scene {
   // na de laatste stapt hij als vriendje opzij en opent de weg.
   buildBoss(L) {
     this.bossGroup = this.physics.add.staticGroup();
+    this.bossWaves = []; // rollende golven van de Golf-Baas (look: 'golf')
     if (!L.boss) return;
     const B = L.boss, groundTop = L.platforms[0][1];
-    const topY = 300, h = groundTop - topY, w = 90;
+    // Blokkade tot bovenaan het scherm: ook met dubbelsprong + groei (waarde 5
+    // springt ~400px) kun je NIET over de baas heen — verslaan is de enige weg.
+    const topY = 40, h = groundTop - topY, w = 90;
     const body = this.add.rectangle(B.x, topY + h / 2, w, h, 0x000000, 0);
     this.physics.add.existing(body, true);
     this.bossGroup.add(body);
 
-    const art = this.drawBoss(B.x, groundTop);
+    // Elke wereld z'n eigen baas-art: 'golf' = blauwe golf (Wereld 2),
+    // anders de klassieke grijze Grommel-baas (Wereld 1).
+    const art = B.look === 'golf' ? this.drawWaveBoss(B.x, groundTop) : this.drawBoss(B.x, groundTop);
+    // Bij de Golf-Baas is de hoge blokkade zichtbaar als opspattende waterzuil.
+    if (B.look === 'golf') art.sprayWall = this.drawSprayWall(B.x, groundTop);
     const pz = {
       type: 'boss', ...B, solved: false, stageIndex: 0,
       doel: B.stages[0].doel, blocks: B.stages[0].blocks,
@@ -396,6 +452,68 @@ export default class AdventureScene extends Phaser.Scene {
     return c;
   }
 
+  // De Golf-Baas (Wereld 2): een grote blauwe golf met schuimkuif en boze
+  // oogjes. Zelfde contract als drawBoss (bubble/bubbleText/brow/mouth).
+  drawWaveBoss(x, groundY) {
+    const c = this.add.container(x, groundY - 70).setDepth(7);
+    const deep = 0x1f7fc4, mid = 0x2e9adf, edge = 0x176b9e;
+    const g = this.add.graphics();
+    // schaduw
+    g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 74, 112, 20);
+    // romp: hoge golf, bovenkant rond, krul naar links (de kant van de speler)
+    g.fillStyle(mid, 1); g.fillRoundedRect(-52, -78, 104, 152, { tl: 46, tr: 52, bl: 10, br: 10 });
+    g.fillCircle(-48, -58, 18); // overhangende krul
+    // donkere onderrand (diep water)
+    g.fillStyle(deep, 1); g.fillRoundedRect(-52, 46, 104, 28, { tl: 0, tr: 0, bl: 10, br: 10 });
+    // licht-strepen: golvend water
+    g.fillStyle(lighten(mid, 55), 0.55);
+    g.fillRoundedRect(-38, -50, 30, 9, 4); g.fillRoundedRect(-4, -28, 34, 8, 4); g.fillRoundedRect(-34, -4, 26, 8, 4);
+    g.lineStyle(4, edge, 1); g.strokeRoundedRect(-52, -78, 104, 152, { tl: 46, tr: 52, bl: 10, br: 10 });
+    // schuimkuif over de top + spetters
+    const foam = this.add.graphics();
+    foam.fillStyle(0xeafaff, 1);
+    [[-44, -64, 13], [-24, -78, 15], [0, -84, 16], [24, -78, 14], [44, -64, 12], [-56, -46, 9], [-62, -32, 7]]
+      .forEach(([fx, fy, r]) => foam.fillCircle(fx, fy, r));
+    foam.fillStyle(0xbfe8ff, 0.9); foam.fillCircle(-66, -14, 4); foam.fillCircle(60, -40, 4); foam.fillCircle(54, -10, 3);
+    // boos gezicht
+    const eL = this.add.circle(-16, -26, 12, 0xffffff).setStrokeStyle(3, edge);
+    const eR = this.add.circle(16, -26, 12, 0xffffff).setStrokeStyle(3, edge);
+    const pL = this.add.circle(-16, -23, 5, 0x123246), pR = this.add.circle(16, -23, 5, 0x123246);
+    const br = this.add.graphics(); br.lineStyle(5, edge, 1);
+    br.beginPath(); br.moveTo(-30, -46); br.lineTo(-6, -38); br.strokePath();
+    br.beginPath(); br.moveTo(30, -46); br.lineTo(6, -38); br.strokePath();
+    const m = this.add.graphics(); m.lineStyle(4, edge, 1); m.beginPath(); m.arc(0, 10, 13, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
+    c.add([g, foam, eL, eR, pL, pR, br, m]);
+    c.bodyG = g; c.foam = foam; c.brow = br; c.mouth = m; c.eyes = [eL, eR];
+
+    // tekstwolkje met het doelgetal (iets hoger: de kuif is hoog)
+    const bub = this.add.container(0, -124);
+    const bg = this.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+    bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+    const wn = this.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+    bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+    this.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    // deinen als de zee + glinsterend schuim
+    this.tweens.add({ targets: c, y: c.y - 9, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: c, angle: 2, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: foam, alpha: 0.75, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    return c;
+  }
+
+  // Doorschijnende zuil van opspattend water boven de Golf-Baas: maakt
+  // zichtbaar dat je er niet overheen kunt springen (de blokkade is schermhoog).
+  drawSprayWall(x, groundTop) {
+    const g = this.add.graphics().setDepth(6);
+    const topY = 46, h = (groundTop - 128) - topY;
+    g.fillStyle(0x8fd3f2, 0.22); g.fillRoundedRect(x - 30, topY, 60, h + 24, 26);
+    g.fillStyle(0xbfe8ff, 0.35);
+    for (let yy = topY + 18; yy < topY + h; yy += 44) g.fillCircle(x - 12 + (Math.floor(yy / 44) % 2) * 24, yy, 7);
+    g.fillStyle(0xeafaff, 0.5);
+    for (let yy = topY + 36; yy < topY + h; yy += 62) g.fillCircle(x + 8 - (Math.floor(yy / 62) % 2) * 20, yy, 4);
+    this.tweens.add({ targets: g, alpha: 0.6, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    return g;
+  }
+
   bossStageReact(pz) {
     const c = pz.bossArt;
     c.bubbleText.setText(`${pz.doel}`);
@@ -403,21 +521,78 @@ export default class AdventureScene extends Phaser.Scene {
     this.sparkleAt(c.x, c.y, 12); SFX.combine(pz.doel);
     const left = pz.stages.length - pz.stageIndex;
     this.questText.setText(`De Baas wankelt! Nog ${left}× — bouw de ${pz.doel}`);
+
+    // Golf-Baas: hij slaat terug! Na fase 1 één golf, daarna twee — spring
+    // eroverheen. Zolang de golven rollen kun je niet bouwen (cooldown).
+    if (pz.look === 'golf') {
+      const n = Math.min(pz.stageIndex, 2);
+      pz.cooldownUntil = this.time.now + 420 + n * 950 + 800;
+      for (let i = 0; i < n; i++) {
+        this.time.delayedCall(420 + i * 950, () => { if (!pz.solved && this.mode === 'explore') this.spawnBossWave(pz); });
+      }
+    }
+  }
+
+  // ============================================================ GOLVEN (Golf-Baas-aanval)
+  spawnBossWave(pz) {
+    const groundTop = this.level.platforms[0][1];
+    const c = this.add.container(pz.bossArt.x - 84, groundTop).setDepth(8);
+    const g = this.add.graphics();
+    g.fillStyle(0x2e9adf, 1); g.fillRoundedRect(-24, -30, 48, 32, { tl: 20, tr: 20, bl: 4, br: 4 });
+    g.fillStyle(0x1f7fc4, 1); g.fillRoundedRect(-24, -8, 48, 10, { tl: 0, tr: 0, bl: 4, br: 4 });
+    g.fillStyle(0xeafaff, 1); g.fillCircle(-14, -28, 8); g.fillCircle(0, -32, 9); g.fillCircle(14, -28, 8);
+    g.fillStyle(lighten(0x2e9adf, 55), 0.6); g.fillRoundedRect(-14, -20, 18, 6, 3);
+    c.add(g);
+    this.physics.add.existing(c);
+    c.body.setAllowGravity(false);
+    c.body.setSize(44, 30); c.body.setOffset(-22, -30);
+    c.body.setVelocityX(-175);
+    c.stopX = Math.max(60, pz.bossArt.x - 820); // dooft vanzelf uit na ±800px
+    this.tweens.add({ targets: c, scaleY: 1.12, duration: 260, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.bossWaves.push(c);
+    SFX.split(); this.sparkleAt(c.x, groundTop - 22, 6);
+    this.questText.setText('Pas op — een golf! Spring! 🌊');
+  }
+
+  splashWave(i) {
+    const w = this.bossWaves[i];
+    this.bossWaves.splice(i, 1);
+    this.sparkleAt(w.x, w.y - 16, 8);
+    w.destroy();
+  }
+
+  clearBossWaves() {
+    while (this.bossWaves.length) this.splashWave(0);
   }
 
   defeatBoss(pz) {
     const c = pz.bossArt;
     pz.bossBody.body.enable = false; this.bossGroup.remove(pz.bossBody, false, false);
-    const col = sig(pz.stages[pz.stages.length - 1].doel);
-    c.bodyG.clear();
-    c.bodyG.fillStyle(0x000000, 0.18); c.bodyG.fillEllipse(0, 74, 96, 20);
-    c.bodyG.fillStyle(col, 1); c.bodyG.fillRoundedRect(-46, -70, 92, 144, 14);
-    c.bodyG.fillStyle(darker(col, 28), 1); c.bodyG.fillRoundedRect(-46, 44, 92, 22, 14);
-    c.bodyG.fillStyle(lighten(col, 70), 0.5); c.bodyG.fillRoundedRect(-38, -60, 26, 44, 8);
-    c.bodyG.lineStyle(4, darker(col, 50), 1); c.bodyG.strokeRoundedRect(-46, -70, 92, 144, 14);
-    // blije wenkbrauwen + mond
-    c.brow.clear();
-    c.mouth.clear(); c.mouth.lineStyle(4, 0x16202b, 1); c.mouth.beginPath(); c.mouth.arc(0, 6, 15, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+    this.clearBossWaves();
+    this.tweens.killTweensOf(c); // stop dein-/wiebel-tweens zodat de win-animatie niet vecht
+    if (pz.look === 'golf') {
+      // De Golf-Baas wordt een vriendelijk golfje: blij gezicht, en hij zakt
+      // langzaam in tot een klein deinend golfje naast het pad.
+      c.brow.clear();
+      c.mouth.clear(); c.mouth.lineStyle(4, 0x176b9e, 1); c.mouth.beginPath(); c.mouth.arc(0, 2, 15, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+      this.tweens.add({ targets: c, scale: 0.45, y: c.y + 46, delay: 2100, duration: 900, ease: 'Sine.inOut' });
+      // de waterzuil zakt in — de weg is vrij
+      if (c.sprayWall) {
+        this.tweens.killTweensOf(c.sprayWall);
+        this.tweens.add({ targets: c.sprayWall, alpha: 0, duration: 700, onComplete: () => c.sprayWall.destroy() });
+      }
+    } else {
+      const col = sig(pz.stages[pz.stages.length - 1].doel);
+      c.bodyG.clear();
+      c.bodyG.fillStyle(0x000000, 0.18); c.bodyG.fillEllipse(0, 74, 96, 20);
+      c.bodyG.fillStyle(col, 1); c.bodyG.fillRoundedRect(-46, -70, 92, 144, 14);
+      c.bodyG.fillStyle(darker(col, 28), 1); c.bodyG.fillRoundedRect(-46, 44, 92, 22, 14);
+      c.bodyG.fillStyle(lighten(col, 70), 0.5); c.bodyG.fillRoundedRect(-38, -60, 26, 44, 8);
+      c.bodyG.lineStyle(4, darker(col, 50), 1); c.bodyG.strokeRoundedRect(-46, -70, 92, 144, 14);
+      // blije wenkbrauwen + mond
+      c.brow.clear();
+      c.mouth.clear(); c.mouth.lineStyle(4, 0x16202b, 1); c.mouth.beginPath(); c.mouth.arc(0, 6, 15, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+    }
     if (c.bubble) this.tweens.add({ targets: c.bubble, scale: 0, alpha: 0, duration: 300, ease: 'Back.in', onComplete: () => c.bubble.destroy() });
     confettiBurst(this, 150); this.cameraPunch(0.05, 7); SFX.yay(); Voice.cue('cheer'); this.burstStars(c.x, c.y - 20, 16);
     this.tweens.add({ targets: c, y: c.y - 30, duration: 250, yoyo: true, repeat: 3, ease: 'Sine.inOut' });
@@ -605,12 +780,48 @@ export default class AdventureScene extends Phaser.Scene {
     if (this.btnBuildParts) this.btnBuildParts.forEach((o) => o.setVisible(v));
   }
 
+  // "Stoppen?"-bevestiging bij de terugknop: voorkomt dat een misklik het hele
+  // level weggooit. Iconen i.p.v. tekst: 🗺️ = naar de kaart, ▶ = verder spelen.
+  confirmExit() {
+    if (this.mode !== 'explore' || this.exitPanel) return;
+    this.physics.pause();
+    const W = this.scale.width, H = this.scale.height;
+    const panel = this.add.container(0, 0).setScrollFactor(0).setDepth(210);
+    this.exitPanel = panel;
+    const dim = this.add.graphics();
+    dim.fillStyle(0x0a1420, 0.7); dim.fillRect(0, 0, W, H);
+    dim.setInteractive(new Phaser.Geom.Rectangle(0, 0, W, H), Phaser.Geom.Rectangle.Contains);
+    const box = this.add.graphics();
+    box.fillStyle(0xffffff, 1); box.fillRoundedRect(W / 2 - 150, H / 2 - 105, 300, 190, 22);
+    box.lineStyle(5, 0x1f2d3a, 1); box.strokeRoundedRect(W / 2 - 150, H / 2 - 105, 300, 190, 22);
+    const t = this.add.text(W / 2, H / 2 - 62, 'Stoppen?', {
+      fontFamily: 'Arial Black, Arial', fontSize: '26px', fontStyle: 'bold', color: '#16202b',
+    }).setOrigin(0.5);
+    panel.add([dim, box, t]);
+
+    const mkBtn = (x, col, edge, icon, cb) => {
+      const g = this.add.graphics();
+      g.fillStyle(col, 1); g.fillCircle(x, H / 2 + 14, 42);
+      g.lineStyle(4, edge, 1); g.strokeCircle(x, H / 2 + 14, 42);
+      const ic = this.add.text(x, H / 2 + 14, icon, { fontSize: '34px' }).setOrigin(0.5);
+      const hit = this.add.circle(x, H / 2 + 14, 48, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', cb);
+      panel.add([g, ic, hit]);
+    };
+    // verder spelen (groen, rechts) & stoppen naar de kaart (blauw, links)
+    mkBtn(W / 2 - 75, 0x38b6cf, 0x1f7a9e, '🗺️', () => { SFX.click(); this.scene.start('WorldMap'); });
+    mkBtn(W / 2 + 75, 0x2fae4e, 0x1f7a36, '▶', () => {
+      SFX.click();
+      panel.destroy(); this.exitPanel = null; this.physics.resume();
+    });
+  }
+
   buildHud() {
     const back = this.add.graphics().setScrollFactor(0).setDepth(60);
     back.fillStyle(0x16202b, 0.42); back.fillRoundedRect(10, 12, 48, 34, 11);
     back.fillStyle(0xffffff, 1); back.fillTriangle(38, 18, 38, 40, 22, 29); back.fillRect(38, 25, 12, 8);
     back.setInteractive(new Phaser.Geom.Rectangle(10, 12, 48, 34), Phaser.Geom.Rectangle.Contains);
-    back.on('pointerdown', () => { SFX.click(); this.scene.start('Menu'); });
+    back.on('pointerdown', () => { SFX.click(); this.confirmExit(); });
 
     this.add.image(this.scale.width - 64, 27, 'star').setScrollFactor(0).setDepth(60).setScale(2.4);
     this.starText = this.add.text(this.scale.width - 16, 27, `${getStars()}`, {
@@ -666,6 +877,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.activePuzzle = pz;
     this.mode = 'build';
     this.physics.pause();
+    this.clearBossWaves(); // geen bevroren golf die je na het bouwen alsnog raakt
     this.player.body.setVelocity(0, 0);
     this.setBuildBtnVisible(false);
     [this.btnLeft, this.btnRight, this.btnJump].forEach((b) => { b.g.setVisible(false); b.t.setVisible(false); b.hit.disableInteractive(); });
@@ -678,11 +890,12 @@ export default class AdventureScene extends Phaser.Scene {
     const title = this.add.text(W / 2, 70, `Maak de ${pz.doel}!`, {
       fontFamily: 'Arial Black, Arial', fontSize: '26px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
-    const hint = this.add.text(W / 2, 104, 'Sleep om samen te voegen · tik 2× om te splitsen', {
+    const hint = this.add.text(W / 2, 104, 'Sleep op elkaar = samen · houd vast = splitsen', {
       fontFamily: 'Arial', fontSize: '13px', color: '#9fb3c8',
     }).setOrigin(0.5);
     panel.add([title, hint]);
 
+    Voice.number(pz.doel); // doelgetal klinkt — óók begrijpelijk zonder te lezen
     const goalDisc = this.add.circle(W / 2, 160, 26, sig(pz.doel)).setStrokeStyle(4, 0x16202b);
     const goalNum = this.add.text(W / 2, 160, `${pz.doel}`, { fontFamily: 'Arial Black, Arial', fontSize: '28px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
     panel.add([goalDisc, goalNum]);
@@ -693,9 +906,13 @@ export default class AdventureScene extends Phaser.Scene {
 
     this.buildPanel = panel;
     this.buildBlocks = [];
-    // Lage drempel = het blok komt meteen los als je sleept (geen plakkerige
-    // dode zone). Een echte tik (nauwelijks beweging) blijft splitsen.
-    this.input.dragDistanceThreshold = 3;
+    this.buildMistakes = 0;
+    this.hintRings = [];
+    // Na 18s zonder oplossing vanzelf een hint laten gloeien.
+    this._hintTimer = this.time.delayedCall(18000, () => this.showBuildHint());
+    // Drempel 8px: laag genoeg om vlot te slepen, hoog genoeg zodat een
+    // trillende vinger tijdens VASTHOUDEN (= splitsen) geen sleep wordt.
+    this.input.dragDistanceThreshold = 8;
 
     pz.blocks.forEach((val, i) => {
       const bx = W / 2 + (i - (pz.blocks.length - 1) / 2) * 120;
@@ -719,6 +936,8 @@ export default class AdventureScene extends Phaser.Scene {
   exitBuild(solved = false) {
     if (this.mode !== 'build') return;
     this.mode = 'explore';
+    if (this._hintTimer) { this._hintTimer.remove(false); this._hintTimer = null; }
+    this.clearHintRings();
     if (this._dragHandler) { this.input.off('drag', this._dragHandler); this._dragHandler = null; }
     if (this.buildPanel) { this.buildPanel.destroy(); this.buildPanel = null; }
     this.buildBlocks = [];
@@ -733,17 +952,15 @@ export default class AdventureScene extends Phaser.Scene {
     this.buildPanel.add(c);
     this.buildBlocks.push(c);
 
-    c._lastTap = 0;
-    c.on('pointerdown', () => { c._dragged = false; });
-    c.on('dragstart', (p) => { c._dragged = true; c._grabDX = c.x - p.x; c._grabDY = c.y - p.y; c.setDepth(140); this.tweens.add({ targets: c, scale: 1.1, duration: 100, yoyo: true, onComplete: () => c.setScale(1.06) }); SFX.pick(); });
+    // Splitsen = VASTHOUDEN (±0,4s): het blok scheurt op de celgrens onder je
+    // vinger — zo kies je zélf de splitsing (7 → 5+2 of 3+4: getalrelaties!).
+    // Slepen = samenvoegen. Een losse tik doet niets (voorkomt ongelukjes).
+    c.on('pointerdown', (p) => { c._dragged = false; this.startSplitHold(c, p); });
+    c.on('dragstart', (p) => { this.cancelSplitHold(c); c._dragged = true; c._grabDX = c.x - p.x; c._grabDY = c.y - p.y; c.setDepth(140); this.tweens.add({ targets: c, scale: 1.1, duration: 100, yoyo: true, onComplete: () => c.setScale(1.06) }); SFX.pick(); });
     c.on('dragend', () => this.dropBuildBlock(c));
-    // Splitsen = 2× tikken (dubbeltik). Eén losse tik doet niks, zodat het
-    // loslaten van een sleep-samenvoeging niet per ongeluk splitst.
     c.on('pointerup', () => {
-      if (c._dragged) return;
-      const now = this.time.now;
-      if (now - (c._lastTap || 0) < 340) { c._lastTap = 0; this.splitBuildBlock(c); }
-      else { c._lastTap = now; this.tweens.add({ targets: c, scale: 1.06, duration: 90, yoyo: true }); }
+      this.cancelSplitHold(c);
+      if (!c._dragged) this.tweens.add({ targets: c, scale: 1.06, duration: 90, yoyo: true });
     });
     c.setScale(0.3);
     this.tweens.add({ targets: c, scale: 1, duration: 260, ease: 'Back.out' });
@@ -758,6 +975,7 @@ export default class AdventureScene extends Phaser.Scene {
     // (torenhoogte blijft dan constant ±460px) — nooit platgeknepen.
     const cell = Phaser.Math.Clamp(460 / value, 18, 46);
     const w = cell, ch = cell, totalH = value * ch, color = sig(value), top = -totalH / 2;
+    c._cell = ch; c._w = w; c._totalH = totalH; // voor splits-keuze (celgrens onder de vinger)
     const s = w / 52; // schaalt de gezicht-/cijfer-details mee met de kubusgrootte
     for (let i = 0; i < value; i++) {
       const ty = totalH / 2 - (i + 1) * ch;
@@ -802,27 +1020,122 @@ export default class AdventureScene extends Phaser.Scene {
       onComplete: () => {
         this.buildBlocks = this.buildBlocks.filter((b) => b !== moving);
         moving.destroy();
-        target._lastTap = 0; // reset dubbeltik-teller (voorkomt per ongeluk splitsen na samenvoegen)
+        this.cancelSplitHold(target);
+        this.clearHintRings();
         this.drawBuildBlock(target, newVal);
         this.tweens.add({ targets: target, scaleX: 1.25, scaleY: 0.8, duration: 120, yoyo: true });
-        SFX.combine(newVal); Voice.number(newVal);
         this.sparkleAt2(target.x, target.y);
-        this.checkPuzzleSolved(target);
+
+        // TELMOMENT: de cellen verschijnen één voor één met een oplopend
+        // toontje (1-2-3-…) — tellen is het leermoment, niet het eindantwoord.
+        const cells = target.list.slice(0, newVal); // eerste n children = cel-graphics (onder → boven)
+        cells.forEach((cg) => cg.setAlpha(0));
+        cells.forEach((cg, i) => this.time.delayedCall(70 + i * 75, () => {
+          if (this.mode !== 'build') return;
+          cg.setAlpha(1); SFX.grow(i + 1);
+        }));
+        this.time.delayedCall(120 + newVal * 75, () => {
+          if (this.mode !== 'build') return;
+          Voice.number(newVal);
+          this.checkPuzzleSolved(target);
+        });
+
+        // Te groot gebouwd? Na 2 missers het juiste paar laten gloeien.
+        const pz = this.activePuzzle;
+        if (pz && newVal > pz.doel) {
+          this.buildMistakes = (this.buildMistakes || 0) + 1;
+          if (this.buildMistakes >= 2) this.time.delayedCall(160 + newVal * 75, () => this.showBuildHint());
+        }
       },
     });
   }
 
-  splitBuildBlock(c) {
+  // Hulpje voor wie vastloopt: laat een kloppend paar (a + b = doel) gloeien,
+  // of — als alles te groot is — het blok dat gesplitst moet worden.
+  showBuildHint() {
+    if (this.mode !== 'build' || !this.activePuzzle || this.activePuzzle.solved) return;
+    this.clearHintRings();
+    const doel = this.activePuzzle.doel, bs = this.buildBlocks;
+    const pair = findPair(bs.map((b) => b.getData('buildBlock').value), doel);
+    let targets = pair ? [bs[pair[0]], bs[pair[1]]] : null;
+    if (!targets) {
+      const big = bs.find((b) => b.getData('buildBlock').value > doel);
+      if (big) targets = [big]; // te groot → houd vast om te splitsen
+    }
+    if (!targets) return;
+    SFX.sparkle(); Voice.cue('greet');
+    targets.forEach((b) => {
+      const ring = this.add.graphics().setScrollFactor(0).setDepth(150);
+      ring.lineStyle(5, 0xffe16b, 1);
+      ring.strokeRoundedRect(-(b._w / 2 + 16), -(b._totalH / 2 + 24), b._w + 32, b._totalH + 48, 16);
+      ring.x = b.x; ring.y = b.y;
+      this.buildPanel.add(ring);
+      this.hintRings.push(ring);
+      this.tweens.add({ targets: ring, scale: 1.12, alpha: 0.45, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    });
+  }
+
+  clearHintRings() {
+    (this.hintRings || []).forEach((r) => { this.tweens.killTweensOf(r); r.destroy(); });
+    this.hintRings = [];
+  }
+
+  // ---- Splitsen door vast te houden ----
+  startSplitHold(c, p) {
+    const info = c.getData('buildBlock');
+    if (!info || info.value <= 1) return; // een 1 kan niet splitsen
+    this.cancelSplitHold(c);
+    // Celgrens het dichtst bij de vinger: k = aantal cellen ónder de scheur.
+    const cell = c._cell || 40, totalH = c._totalH || info.value * cell;
+    const k = Phaser.Math.Clamp(Math.round((totalH / 2 - (p.y - c.y)) / cell), 1, info.value - 1);
+    c._tearK = k;
+    // Scheur-indicator: gestippelde lijn die "oplaadt" terwijl je vasthoudt.
+    const tearY = totalH / 2 - k * cell;
+    const tg = this.add.graphics();
+    tg.lineStyle(4, 0xffffff, 1);
+    for (let x = -c._w / 2 + 2; x < c._w / 2 - 4; x += 10) { tg.beginPath(); tg.moveTo(x, tearY); tg.lineTo(x + 5, tearY); tg.strokePath(); }
+    tg.setAlpha(0.25);
+    c.add(tg);
+    c._tearG = tg;
+    c._tearTweens = [
+      this.tweens.add({ targets: tg, alpha: 1, duration: 380, ease: 'Quad.in' }),
+      this.tweens.add({ targets: c, angle: 1.8, duration: 90, yoyo: true, repeat: 5 }),
+    ];
+    c._splitTimer = this.time.delayedCall(420, () => this.splitBuildBlockAt(c, c._tearK));
+  }
+
+  cancelSplitHold(c) {
+    if (c._splitTimer) { c._splitTimer.remove(false); c._splitTimer = null; }
+    (c._tearTweens || []).forEach((tw) => tw.stop());
+    c._tearTweens = null;
+    if (c._tearG) { c._tearG.destroy(); c._tearG = null; }
+    c.angle = 0;
+  }
+
+  splitBuildBlockAt(c, k) {
+    c._splitTimer = null;
+    (c._tearTweens || []).forEach((tw) => tw.stop());
+    c._tearTweens = null;
+    c._tearG = null; // wordt door drawBuildBlock (removeAll) opgeruimd
+    c.angle = 0;
     const val = c.getData('buildBlock').value;
-    if (val <= 1) { SFX.giggle(); this.tweens.add({ targets: c, y: c.y - 16, duration: 180, yoyo: true, ease: 'Quad.out' }); return; }
-    const botV = Math.floor(val / 2), topV = Math.ceil(val / 2);
+    const [botV, topV] = splitParts(val, k);
     SFX.split();
     this.drawBuildBlock(c, botV);
     this.tweens.add({ targets: c, scaleX: 1.2, scaleY: 0.8, duration: 90, yoyo: true });
-    const piece = this.makeBuildBlock(topV, c.x, c.y);
+    const piece = this.makeBuildBlock(topV, c.x, c.y - 30);
     const dir = c.x < this.scale.width / 2 ? 1 : -1;
     this.tweens.add({ targets: piece, x: Phaser.Math.Clamp(c.x + dir * 90, 60, this.scale.width - 60), duration: 320, ease: 'Back.out' });
     Voice.cue('whee');
+    this.clearHintRings(); // blokken zijn veranderd → oude hint klopt niet meer
+
+    // Ook een SPLITSING kan het doel opleveren (bv. 11 → 10 + 1)! Check het
+    // deel dat het doel is (hooguit één, dus geen dubbele oplos-trigger).
+    const pz = this.activePuzzle;
+    if (pz && !pz.solved) {
+      const hit = botV === pz.doel ? c : (topV === pz.doel ? piece : null);
+      if (hit) this.time.delayedCall(380, () => { if (this.mode === 'build') this.checkPuzzleSolved(hit); });
+    }
   }
 
   checkPuzzleSolved(block) {
@@ -1028,6 +1341,10 @@ export default class AdventureScene extends Phaser.Scene {
     const L = this.level;
     const hasNext = !!LEVELS[this.levelIndex + 1];
     const R = L.reward || {};
+
+    // Voortgang vastleggen: level gehaald (+ ster?) en "verder spelen"-punt.
+    markLevelDone(L.id, this.starPickup && this.starPickup.taken ? { star: true } : {});
+    if (hasNext) setAdventureCurrent(LEVELS[this.levelIndex + 1].id);
     this.time.delayedCall(700, () => {
       showReward(this, {
         title: R.title || 'Level gehaald! 🏆',
@@ -1090,13 +1407,17 @@ export default class AdventureScene extends Phaser.Scene {
       }
     }
 
-    // Puzzel-trigger: ✋-knop tonen bij de dichtstbijzijnde onopgeloste puzzel
+    // Puzzel-trigger: ✋-knop tonen bij de dichtstbijzijnde onopgeloste puzzel.
+    // (cooldownUntil: tijdens de golf-aanval van de Golf-Baas even niet bouwen —
+    // eerst springen!)
     this.nearPuzzle = null;
     for (const pz of this.puzzles) {
-      if (pz.solved) continue;
+      if (pz.solved || (pz.cooldownUntil && time < pz.cooldownUntil)) continue;
       if (Phaser.Geom.Rectangle.Contains(pz.zone, p.x, p.y) && onFloor) { this.nearPuzzle = pz; break; }
     }
     if (this.nearPuzzle) {
+      // Eerste keer bij deze puzzel: vrolijk begroetings-cue (hoorbare uitnodiging).
+      if (!this.nearPuzzle.cuePlayed) { this.nearPuzzle.cuePlayed = true; Voice.cue('greet'); }
       this.setBuildBtnVisible(true);
       this.btnBuildLabel.setText(this.nearPuzzle.prompt);
       this.questText.setText(`Tik op ✋: ${this.nearPuzzle.prompt}`);
@@ -1109,6 +1430,8 @@ export default class AdventureScene extends Phaser.Scene {
       if (door.opened) continue;
       const dx = Math.abs(p.x - door.x);
       if (dx < 70) {
+        // Eerste keer bij de deur: het gevraagde getal klinkt (zonder lezen te snappen).
+        if (!door.cuePlayed) { door.cuePlayed = true; Voice.number(door.doel); }
         if (this.playerValue === door.doel) this.openDoor(door);
         else {
           const need = this.playerValue < door.doel ? 'Word groter!' : 'Word kleiner!';
@@ -1146,6 +1469,16 @@ export default class AdventureScene extends Phaser.Scene {
       if (gr.x <= lo) gr.dir = 1; else if (gr.x >= hi) gr.dir = -1;
       gr.body.setVelocityX(gr.dir * 55);
       gr.art.scaleX = gr.dir;
+    }
+
+    // Golven van de Golf-Baas: rollen naar links; spring eroverheen!
+    for (let i = this.bossWaves.length - 1; i >= 0; i--) {
+      const w = this.bossWaves[i];
+      if (w.x <= w.stopX) { this.splashWave(i); continue; } // uitgedoofd
+      if (time > this.invulnUntil && Math.abs(p.x - w.x) < 34 && body.bottom > w.y - 26) {
+        this.splashWave(i); // raak: golf spat uiteen…
+        this.shrinkPlayer(w); // …en je krimpt (zelfde straf als een Grommel)
+      }
     }
 
     // Wolken driften
