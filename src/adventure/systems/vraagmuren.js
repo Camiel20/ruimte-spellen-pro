@@ -24,6 +24,7 @@ function hit(s, vm, blok) {
     confettiBurst(s, 90); s.cameraPunch(); SFX.yay();
     s.burstStars(vm.x, 400, 10);
     s.questText.setText('Goed gekozen! De muur zakt weg! 🚩');
+    s.vierMijlpaal(vm.x);
   } else {
     s.rekenFouten += 1; // telt mee voor de foutloos-ster
     SFX.wrong(); Voice.cue('oops');

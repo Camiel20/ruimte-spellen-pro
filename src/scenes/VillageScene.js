@@ -15,12 +15,12 @@ import { LEVELS } from '../levels/index.js';
 // welk level je dat vriendje kunt redden. Zo is er altijd een reden om
 // verder te spelen: "red ze allemaal!"
 
-// Vaste plekjes voor de 10 huisjes (getal 1 t/m 10), kronkelend door de wei.
+// Vaste plekjes voor de huisjes (1 t/m 10 + Twintig), kronkelend door de wei.
 const PLOTS = [
   [90, 235], [245, 215], [395, 240],
   [85, 400], [240, 380], [395, 405],
   [90, 565], [245, 545], [400, 570],
-  [245, 720],
+  [130, 720], [340, 725],
 ];
 
 export default class VillageScene extends Phaser.Scene {

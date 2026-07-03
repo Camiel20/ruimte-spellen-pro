@@ -18,12 +18,14 @@ export const LEVEL_3_1 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true, // krachten uit eerdere werelden blijven
   startStamp: true,
+  startDuw: true,
   intro: 'Welkom in het bos! Red Acht!',
   afterGate: 'Ren verder het bos in! 🚩',
 
   platforms: [
     [0, 660, 700, 140],     // bosgrond A (start, Acht)
     [1060, 660, 700, 140],  // bosgrond B
+    [1180, 360, 180, 26],   // hoge richel: alleen te halen via de duw-kist
     [1850, 660, 140, 40],   // boomstronk-stapsteen
     [2080, 660, 320, 140],  // bosgrond C — met de vlag
   ],
@@ -31,8 +33,13 @@ export const LEVEL_3_1 = {
   pickups: [
     { x: 240, y: 600, amount: 1 },
     { x: 480, y: 600, amount: 1 },
+    { x: 1120, y: 600, amount: 1 },
     { x: 1300, y: 600, amount: 1 },
+    { x: 1270, y: 300, amount: 2 }, // bonus op de richel (duw de kist ernaartoe!)
   ],
+
+  // Duw-kist (kracht van Vier, W2): schuif hem onder de richel en klim omhoog.
+  duwKisten: [1100],
 
   // De voorlaatste dorpsbewoner! Acht = 4+4 (dubbel vier).
   rescues: [
@@ -51,7 +58,7 @@ export const LEVEL_3_1 = {
   },
 
   grommels: [
-    { type: 'stomp', x: 1300, y: 612, patrol: [1200, 1600] },
+    { type: 'stomp', x: 1500, y: 612, patrol: [1420, 1660] },
   ],
 
   // Ster boven bosgrond B — met de dubbelsprong.
@@ -79,6 +86,7 @@ export const LEVEL_3_2 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
   intro: 'Red Tien — en maak tien-en-twee!',
   afterGate: 'Twaalf = tien en nog twee! 🚩',
 
@@ -97,7 +105,7 @@ export const LEVEL_3_2 = {
 
   // De láátste dorpsbewoner: Tien! (4+6, afleider 5 — partners van 10.)
   rescues: [
-    { x: 350, y: 636, doel: 10, blocks: [4, 6, 5], name: 'Tien' },
+    { x: 350, y: 636, doel: 10, blocks: [4, 6, 5], gives: 'mega', name: 'Tien' },
   ],
 
   // Eerste plaatswaarde-brug: TWAALF = het grote 10-blok + 2 (afleider 3).
@@ -115,6 +123,9 @@ export const LEVEL_3_2 = {
     { type: 'stomp', x: 450, y: 612, patrol: [380, 620] },
     { type: 'stomp', x: 1400, y: 612, patrol: [1300, 1600] },
   ],
+
+  // Meteen je kersverse TIEN-KRACHT gebruiken: KABOEM door de grauwe muur!
+  grauwMuren: [1750],
 
   star: { x: 1300, y: 430 },
 
@@ -140,6 +151,8 @@ export const LEVEL_3_3 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'Tel met tienen — en leer geven!',
   afterGate: 'Goed geteld! Verder! 🚩',
 
@@ -162,6 +175,9 @@ export const LEVEL_3_3 = {
   plates: [
     { x: 2400, doel: 3 },
   ],
+
+  // Grauwe muur vlak voor de vlag: KABOEM met je nieuwe tien-kracht!
+  grauwMuren: [2680],
 
   // Twee tientallen-bruggen: 15 = 10+5, en 20 = 10+10 (dubbel tien!).
   gates: [
@@ -198,6 +214,8 @@ export const LEVEL_3_4 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'Kleur alle Grommels terug — dan opent de vlag!',
   afterGate: 'Mooi! Waar zit de volgende Grommel? 🎨',
 
@@ -220,6 +238,9 @@ export const LEVEL_3_4 = {
     { x: 2050, y: 600, amount: 1 },
     { x: 3050, y: 600, amount: 1 },
   ],
+
+  // Grauwe muur midden op het jachtterrein.
+  grauwMuren: [1700],
 
   // 13 = 10+3 en 20 = 10+10 — met een afleider erbij.
   gates: [
@@ -258,6 +279,8 @@ export const LEVEL_3_5 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'De Boom-Grommel! Bouw 10, 15 en 20 — spring over zijn eikels!',
 
   // Doorlopende bos-arena; de boom verspert de weg tot je 'm verslaat.

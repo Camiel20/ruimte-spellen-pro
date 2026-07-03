@@ -118,6 +118,7 @@ export default {
             s.tweens.add({ targets: po.hek, alpha: 0, duration: 600, onComplete: () => po.hek.destroy() });
             po.ringen.forEach((r) => s.tweens.add({ targets: r.art, alpha: 0.35, duration: 500 }));
             s.questText.setText(`Ja! Dat is samen ${po.doel} — het sterrenhek is open! 🚩`);
+            s.vierMijlpaal(po.muurX);
           } else {
             s.rekenFouten += 1; // telt mee voor de foutloos-ster
             teleport(s, po.x - 170);

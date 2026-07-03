@@ -5,27 +5,33 @@
 import { sig, lighten, darker } from './palette.js';
 
 // Het grijze Grommel-lijfje (tekent ín de art-container van makeGrommel).
-// type 'springer' krijgt springveer-pootjes en verbaasde wenkbrauwen — je
-// ziet aan hem dat hij gaat huppen.
+// type 'springer' = FELORANJE springveren + gele pet (onmiskenbaar: die gaat
+// huppen!); type 'vlieger' = witte vleugeltjes en geen schaduwpootjes.
 export function drawGrommelArt(scene, art, type) {
   const g = scene.add.graphics();
-  g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 20, 34, 9);
+  g.fillStyle(0x000000, 0.16); g.fillEllipse(0, type === 'vlieger' ? 26 : 20, 34, 9);
   if (type === 'springer') {
-    // springveren onder het lijfje
-    g.lineStyle(3, 0x565b61, 1);
+    // grote feloranje springveren onder het lijfje — zichtbaar van veraf
+    g.lineStyle(4, 0xf07c1f, 1);
     for (const sx of [-9, 9]) {
-      g.beginPath(); g.moveTo(sx, 15); g.lineTo(sx - 4, 18); g.lineTo(sx + 4, 21); g.lineTo(sx - 3, 24); g.strokePath();
+      g.beginPath(); g.moveTo(sx, 14); g.lineTo(sx - 5, 18); g.lineTo(sx + 5, 22); g.lineTo(sx - 4, 26); g.strokePath();
     }
+  }
+  if (type === 'vlieger') {
+    // witte vleugeltjes (de flap-tween zit in makeGrommel)
+    g.fillStyle(0xf4f8fc, 0.95);
+    g.fillEllipse(-22, -6, 18, 10); g.fillEllipse(22, -6, 18, 10);
+    g.lineStyle(2, 0x9aa0a6, 1); g.strokeEllipse(-22, -6, 18, 10); g.strokeEllipse(22, -6, 18, 10);
   }
   g.fillStyle(0x8a8f96, 1); g.fillRoundedRect(-16, -14, 32, 30, 8);
   g.fillStyle(0x6c7178, 1); g.fillRoundedRect(-16, 8, 32, 8, 8);
   g.fillStyle(lighten(0x8a8f96, 40), 0.5); g.fillRoundedRect(-12, -10, 9, 10, 4);
   g.lineStyle(2.5, 0x4a4f55, 1); g.strokeRoundedRect(-16, -14, 32, 30, 8);
   if (type === 'springer') {
-    // verbaasde wenkbrauwen (hij stuitert er zelf van op)
-    g.lineStyle(2, 0x3a3f45, 1);
-    g.beginPath(); g.arc(-6, -10, 4, 1.1 * Math.PI, 1.9 * Math.PI); g.strokePath();
-    g.beginPath(); g.arc(6, -10, 4, 1.1 * Math.PI, 1.9 * Math.PI); g.strokePath();
+    // geel petje met propellertje — het huppel-uniform
+    g.fillStyle(0xf6c624, 1); g.slice(0, -13, 11, Math.PI, 0, false); g.fillPath();
+    g.fillStyle(0xe8402c, 1); g.fillCircle(0, -22, 3.5);
+    g.lineStyle(2, 0xb98d12, 1); g.beginPath(); g.moveTo(0, -19); g.lineTo(0, -14); g.strokePath();
   }
   const eL = scene.add.circle(-6, -3, 5, 0xffffff).setStrokeStyle(2, 0x333333);
   const eR = scene.add.circle(6, -3, 5, 0xffffff).setStrokeStyle(2, 0x333333);
@@ -415,6 +421,102 @@ export function drawFireball(scene, x, y) {
   inner.add(g);
   c.add(inner);
   scene.tweens.add({ targets: trail, scaleX: 1.25, alpha: 0.55, duration: 140, yoyo: true, repeat: -1 });
+  return c;
+}
+
+// BARON GRAUW zelf (de finale, Wereld 6): een lange grijze heer met hoge
+// hoed, monocle en cape, zwevend op een grauwe wolk — met een onweerszuil
+// tot bovenin het scherm (= zichtbare blokkade). Zelfde contract als drawBoss.
+export function drawGrauwBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 110).setDepth(7);
+  const grijs = 0x7d838c, donker = 0x4a4f55, hoed = 0x2b2f34;
+  // onweerszuil erachter, tot bovenin het scherm
+  const spires = scene.add.graphics();
+  spires.fillStyle(0x565b61, 0.75);
+  spires.fillTriangle(-42, 105, -4, 105, -24, -490);
+  spires.fillTriangle(4, 105, 44, 105, 24, -420);
+  spires.fillStyle(0x6c7178, 0.8);
+  spires.fillTriangle(-34, 105, -12, 105, -24, -440);
+  spires.fillTriangle(12, 105, 38, 105, 24, -370);
+  // bliksemflitsjes in de zuil
+  spires.lineStyle(3, 0xffe16b, 0.8);
+  spires.beginPath(); spires.moveTo(-24, -300); spires.lineTo(-16, -260); spires.lineTo(-26, -250); spires.lineTo(-18, -210); spires.strokePath();
+  spires.beginPath(); spires.moveTo(24, -200); spires.lineTo(30, -168); spires.lineTo(22, -160); spires.lineTo(28, -128); spires.strokePath();
+  c.add(spires);
+  const g = scene.add.graphics();
+  // grauwe wolk waar hij op zweeft
+  g.fillStyle(0x6c7178, 0.9); g.fillEllipse(0, 96, 130, 34); g.fillEllipse(-42, 86, 70, 28); g.fillEllipse(44, 86, 70, 28);
+  // cape
+  g.fillStyle(donker, 1); g.fillTriangle(-34, -46, 34, -46, 52, 70);
+  // lijf: lange grijze heer
+  g.fillStyle(grijs, 1); g.fillRoundedRect(-32, -76, 64, 150, 14);
+  g.fillStyle(0x6c7178, 1); g.fillRoundedRect(-32, 54, 64, 20, 14);
+  g.fillStyle(lighten(grijs, 30), 0.4); g.fillRoundedRect(-26, -66, 20, 46, 8);
+  g.lineStyle(4, donker, 1); g.strokeRoundedRect(-32, -76, 64, 150, 14);
+  // hoge hoed
+  g.fillStyle(hoed, 1); g.fillRect(-36, -90, 72, 9); g.fillRoundedRect(-22, -132, 44, 44, 5);
+  g.fillStyle(0x565b61, 1); g.fillRect(-22, -104, 44, 6); // hoedband
+  c.add(g);
+  // boos gezicht + gouden monocle
+  const eL = scene.add.circle(-12, -52, 9, 0xffffff).setStrokeStyle(2.5, hoed);
+  const eR = scene.add.circle(14, -52, 11, 0xffffff).setStrokeStyle(3, 0xd9a821); // monocle!
+  const pL = scene.add.circle(-12, -51, 3.5, 0x2b2f34), pR = scene.add.circle(14, -51, 3.8, 0x2b2f34);
+  const ketting = scene.add.graphics();
+  ketting.lineStyle(1.8, 0xd9a821, 1);
+  ketting.beginPath(); ketting.moveTo(23, -46); ketting.lineTo(28, -26); ketting.strokePath();
+  const br = scene.add.graphics(); br.lineStyle(4, hoed, 1);
+  br.beginPath(); br.moveTo(-24, -68); br.lineTo(-4, -62); br.strokePath();
+  br.beginPath(); br.moveTo(26, -68); br.lineTo(6, -62); br.strokePath();
+  const m = scene.add.graphics(); m.lineStyle(3.5, hoed, 1);
+  m.beginPath(); m.arc(0, -22, 11, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
+  c.add([ketting, eL, eR, pL, pR, br, m]);
+  c.bodyG = g; c.spires = spires; c.brow = br; c.mouth = m; c.eyes = [eL, eR]; c.monocle = eR;
+
+  // tekstwolkje naast hem
+  const bub = scene.add.container(72, -66);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 8, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: spires, alpha: 0.72, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// De verslagen Baron Grauw ONTDEKT TELLEN: monocle wipt, de lach komt, zijn
+// pak kleurt paars en de onweerszuil lost op. Geen verliezer — een bekeerling.
+export function happyGrauwBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear(); c.mouth.lineStyle(3.5, 0x2b2f34, 1); c.mouth.beginPath(); c.mouth.arc(0, -28, 13, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+  // monocle wipt omhoog van verbazing
+  scene.tweens.add({ targets: c.monocle, y: c.monocle.y - 16, angle: 30, duration: 350, yoyo: true, ease: 'Quad.out' });
+  // de onweerszuil lost op — de weg is vrij en de lucht klaart op
+  scene.tweens.killTweensOf(c.spires);
+  scene.tweens.add({ targets: c.spires, alpha: 0, duration: 900 });
+  // zijn pak kleurt: paarse strepen + gouden knopen (hij telt ze hardop!)
+  c.bodyG.fillStyle(0x9b6dd6, 0.85);
+  c.bodyG.fillRoundedRect(-32, -20, 64, 12, 6);
+  c.bodyG.fillRoundedRect(-32, 8, 64, 12, 6);
+  c.bodyG.fillStyle(0xffe16b, 1);
+  [[0, -44], [0, -6], [0, 30]].forEach(([fx, fy]) => c.bodyG.fillCircle(fx, fy, 4));
+}
+
+// Grauw-wolkje (de aanval van Baron Grauw) — het allersnelste projectiel:
+// een klein knorrig onweerswolkje met een bliksemstaartje.
+export function drawGrauwWolkje(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const shadow = scene.add.graphics();
+  shadow.fillStyle(0x000000, 0.14); shadow.fillEllipse(0, 0, 30, 7);
+  c.add(shadow);
+  const inner = scene.add.container(0, -16);
+  const g = scene.add.graphics();
+  g.fillStyle(0x6c7178, 1); g.fillEllipse(0, 0, 34, 18); g.fillCircle(-10, -6, 9); g.fillCircle(2, -9, 10); g.fillCircle(12, -5, 8);
+  g.lineStyle(2, 0x4a4f55, 1); g.strokeEllipse(0, 0, 34, 18);
+  g.fillStyle(0xffe16b, 1); g.fillTriangle(2, 8, 8, 8, -2, 20); // bliksemstaartje
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, y: -20, duration: 200, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   return c;
 }
 

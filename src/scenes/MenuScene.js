@@ -135,7 +135,8 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '✏️', name: 'Schrijven',        color: 0xf97316, go: () => this.scene.start('TraceMenu') },
       { icon: '🎈', name: 'Ballon Merge',     color: 0xa855f7, go: () => this.scene.start('Balloon') },
       { icon: '🪐', name: 'Planeet Tikker',   color: 0xeab308, go: () => this.scene.start('Clicker') },
-      { icon: '🦸', name: 'Getallen-Land',     color: 0xe8402c, go: () => this.scene.start('WorldMap') },
+      // eerste keer: eerst het (woordeloze) verhaal van Baron Grauw
+      { icon: '🦸', name: 'Getallen-Land',     color: 0xe8402c, go: () => this.scene.start(getSetting('introGezien') ? 'WorldMap' : 'Intro') },
       { icon: '🎹', name: 'Regenboog Piano',  color: 0xec4899, go: () => this.scene.start('Piano') },
       { icon: '🚗', name: 'Stad Rijden',      color: 0x22c55e, go: () => this.scene.start('City') },
       { icon: '🧱', name: 'Getallen Toren',   color: 0x14b8a6, go: () => this.scene.start('NumberTower') },

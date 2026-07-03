@@ -16,7 +16,8 @@ const DEFAULT = {
   stars: 0,                 // totaal verzamelde sterren over alle spellen
   medals: {},               // bv. { balloon: true, adventure_1_1: true }
   high: {},                 // topscores per spel
-  levels: {},               // per level-id: { done: true, star: true }
+  levels: {},               // per level-id: { done: true, star: true, sterren: 0-3 }
+  goudenNullen: {},         // per level-id: true als de Gouden Nul daar gevonden is
   adventure: { current: null }, // level-id waar het avontuur verder gaat
   settings: {
     music: true,            // achtergrondmuziek aan/uit
@@ -110,6 +111,15 @@ export function getLevelSterren(id) {
   if (r.sterren != null) return r.sterren;
   return (r.done ? 1 : 0) + (r.star ? 1 : 0);
 }
+// --- Gouden Nullen (openen de geheime Nul-wereld) ---
+export function heeftGoudenNul(id) { return !!(data.goudenNullen && data.goudenNullen[id]); }
+export function markGoudenNul(id) {
+  if (!data.goudenNullen) data.goudenNullen = {};
+  data.goudenNullen[id] = true;
+  save();
+}
+export function telGoudenNullen() { return data.goudenNullen ? Object.keys(data.goudenNullen).length : 0; }
+
 export function getAdventureCurrent() { return (data.adventure && data.adventure.current) || null; }
 export function setAdventureCurrent(id) {
   if (!data.adventure) data.adventure = {};

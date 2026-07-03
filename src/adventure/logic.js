@@ -68,10 +68,15 @@ export function validateLevel(L) {
 
   // Grommels moeten hun HELE patrouille op een platform kunnen lopen (marge =
   // halve lijfbreedte), anders wandelen ze de zee/kloof in en vallen ze weg.
+  // Vliegers zweven en hebben geen grond nodig — alleen wereld-grenzen.
   (L.grommels || []).forEach((gr, i) => {
     if (!gr.patrol || gr.patrol.length !== 2) { err(`grommel ${i + 1} mist een patrol [lo, hi]`); return; }
     const [lo, hi] = gr.patrol;
     if (lo >= hi) err(`grommel ${i + 1}: patrol lo (${lo}) >= hi (${hi})`);
+    if (gr.type === 'vlieger') {
+      if (lo < 0 || hi > L.worldW) err(`vlieger ${i + 1} vliegt buiten de wereld`);
+      return;
+    }
     const supported = L.platforms.some(([px, py, pw]) =>
       py >= gr.y && py <= gr.y + 140 && px <= lo - 16 && px + pw >= hi + 16);
     if (!supported) err(`grommel ${i + 1}: patrouille ${lo}..${hi} loopt (deels) buiten een platform — hij wandelt de kloof in`);
@@ -82,6 +87,10 @@ export function validateLevel(L) {
 
   if (L.star && (L.star.x < 0 || L.star.x > L.worldW || L.star.y < 0 || L.star.y > L.worldH)) {
     err('ster ligt buiten de wereld');
+  }
+
+  if (L.goudenNul && (L.goudenNul.x < 0 || L.goudenNul.x > L.worldW || L.goudenNul.y < 0 || L.goudenNul.y > L.worldH)) {
+    err('gouden nul ligt buiten de wereld');
   }
 
   (L.pickups || []).forEach((p, i) => {
@@ -176,6 +185,22 @@ export function validateLevel(L) {
     const cover = L.platforms.some(([px, py, pw]) => py === groundTop && px <= A.spawnX && px + pw >= A.endX);
     if (!cover) err(`achtervolging ${i + 1}: geen doorlopende grond van spawn tot einde — de rots valt in een gat`);
   });
+
+  // Duw-kisten: op doorlopende grond (anders valt hij bij het schuiven).
+  (L.duwKisten || []).forEach((x, i) => {
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= x - 30 && px + pw >= x + 30);
+    if (!support) err(`duw-kist ${i + 1} (x=${x}) staat niet op doorlopende grond`);
+  });
+
+  // Grauwe muren: alleen de tien-kracht breekt ze — die moet er dus zijn.
+  if ((L.grauwMuren || []).length) {
+    const heeftMega = !!L.startMega || (L.rescues || []).some((r) => r.gives === 'mega');
+    if (!heeftMega) err('grauwe muur zonder tien-kracht (startMega of een redding met gives:mega) — onpasseerbaar');
+    L.grauwMuren.forEach((x, i) => {
+      const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= x && px + pw >= x);
+      if (!support) err(`grauwe muur ${i + 1} (x=${x}) staat niet op de grond`);
+    });
+  }
 
   // Maan-zones (lage zwaartekracht) binnen de wereld.
   (L.maanZones || []).forEach((Z, i) => {

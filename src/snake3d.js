@@ -58,23 +58,45 @@ export function launchSnake3D(onExit) {
   const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.3, transparent: true, opacity: 0.6 }));
   scene.add(stars);
 
-  // --- Groot speelveld ---
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x1a1d36, roughness: 1 });
+  // --- Groot speelveld: neon-arena met gradiënt-vloer i.p.v. platte kleur ---
+  function maakVloerTextuur() {
+    const sz = 512, cv = document.createElement('canvas');
+    cv.width = sz; cv.height = sz;
+    const c = cv.getContext('2d');
+    // radiale gradiënt: diep nachtblauw in het midden → paars aan de rand
+    const gr = c.createRadialGradient(sz / 2, sz / 2, 20, sz / 2, sz / 2, sz / 2);
+    gr.addColorStop(0, '#262b5e');
+    gr.addColorStop(0.55, '#1c1f44');
+    gr.addColorStop(0.85, '#231b4a');
+    gr.addColorStop(1, '#31205e');
+    c.fillStyle = gr; c.fillRect(0, 0, sz, sz);
+    // subtiel stippen-raster (diepte-gevoel bij het bewegen)
+    c.fillStyle = 'rgba(140,150,255,0.10)';
+    for (let y = 8; y < sz; y += 20) {
+      for (let x = 8 + ((y / 20) % 2) * 10; x < sz; x += 20) {
+        c.beginPath(); c.arc(x, y, 1.4, 0, Math.PI * 2); c.fill();
+      }
+    }
+    return new THREE.CanvasTexture(cv);
+  }
+  const floorMat = new THREE.MeshBasicMaterial({ map: maakVloerTextuur() });
   const floor = new THREE.Mesh(new THREE.CircleGeometry(FIELD, 64), floorMat);
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = 0;
   scene.add(floor);
-  // Ruitpatroon-ringen ter oriëntatie
+  // Gloeiende oriëntatie-ringen — elke ring z'n eigen zachte neonkleur
+  const RING_KLEUREN = [0x35406e, 0x3e3570, 0x2f4a6e, 0x45306a, 0x2e5468];
+  let ringIdx = 0;
   for (let r = 10; r < FIELD; r += 10) {
     const ring = new THREE.Mesh(
-      new THREE.RingGeometry(r - 0.15, r + 0.15, 64),
-      new THREE.MeshBasicMaterial({ color: 0x2a2e52, side: THREE.DoubleSide })
+      new THREE.RingGeometry(r - 0.18, r + 0.18, 64),
+      new THREE.MeshBasicMaterial({ color: RING_KLEUREN[ringIdx++ % RING_KLEUREN.length], side: THREE.DoubleSide })
     );
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.02;
     scene.add(ring);
   }
-  // Rand-muur (gloeiende cirkel)
+  // Rand-muur (gloeiende cirkel; pulseert in de animate-lus)
   const wall = new THREE.Mesh(
     new THREE.TorusGeometry(FIELD, 0.6, 12, 80),
     new THREE.MeshStandardMaterial({ color: 0x7c5cff, emissive: 0x4a2a90, emissiveIntensity: 0.6, roughness: 0.4 })
@@ -82,6 +104,22 @@ export function launchSnake3D(onExit) {
   wall.rotation.x = -Math.PI / 2;
   wall.position.y = 0.3;
   scene.add(wall);
+  // Gloeiende kristallen rond de arena-rand (decor dat meedeint)
+  const decor = [];
+  const kristalGeo = new THREE.IcosahedronGeometry(1, 0);
+  const DECOR_KLEUREN = [0xff6ec7, 0x4dd0e1, 0x6ee86e, 0xffa14d, 0xb06eff, 0x6e9bff];
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    const col = DECOR_KLEUREN[i % DECOR_KLEUREN.length];
+    const m = new THREE.Mesh(kristalGeo, new THREE.MeshStandardMaterial({
+      color: col, emissive: col, emissiveIntensity: 0.55, roughness: 0.25, metalness: 0.2,
+    }));
+    const r = FIELD - 2.2;
+    m.position.set(Math.cos(a) * r, 1.1, Math.sin(a) * r);
+    m.scale.setScalar(0.7 + (i % 3) * 0.35);
+    scene.add(m);
+    decor.push({ mesh: m, a, faz: i * 0.9 });
+  }
 
   // --- Gedeelde geometrie ---
   const bodyGeo = new THREE.SphereGeometry(0.45, 12, 12);
@@ -149,6 +187,28 @@ export function launchSnake3D(onExit) {
       this.eyeL = new THREE.Mesh(eyeGeo, white); this.eyeR = new THREE.Mesh(eyeGeo, white);
       this.pupilL = new THREE.Mesh(pupilGeo, black); this.pupilR = new THREE.Mesh(pupilGeo, black);
       scene.add(this.eyeL, this.eyeR, this.pupilL, this.pupilR);
+
+      // Flikkerende rode tong (schiet in en uit — slangen doen dat)
+      this.tong = new THREE.Mesh(
+        new THREE.BoxGeometry(0.06, 0.03, 0.45),
+        new THREE.MeshBasicMaterial({ color: 0xff4d6d })
+      );
+      scene.add(this.tong);
+      // Zachte schaduw-blob onder de kop: de slang "staat" op de vloer
+      this.schaduw = new THREE.Mesh(
+        new THREE.CircleGeometry(0.55, 16),
+        new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28 })
+      );
+      this.schaduw.rotation.x = -Math.PI / 2;
+      scene.add(this.schaduw);
+      // De speler draagt een gouden kroontje — je vindt jezelf altijd terug
+      if (isPlayer) {
+        this.kroon = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.34, 0.26, 0.24, 8, 1, true),
+          new THREE.MeshStandardMaterial({ color: 0xffd54d, emissive: 0xcc8800, emissiveIntensity: 0.5, metalness: 0.6, roughness: 0.3, side: THREE.DoubleSide })
+        );
+        scene.add(this.kroon);
+      }
     }
 
     ensureBody(count) {
@@ -163,7 +223,8 @@ export function launchSnake3D(onExit) {
     }
 
     destroy() {
-      scene.remove(this.head, this.eyeL, this.eyeR, this.pupilL, this.pupilR);
+      scene.remove(this.head, this.eyeL, this.eyeR, this.pupilL, this.pupilR, this.tong, this.schaduw);
+      if (this.kroon) scene.remove(this.kroon);
       this.bodyMeshes.forEach((m) => scene.remove(m));
       this.bodyMeshes = [];
     }
@@ -200,7 +261,7 @@ export function launchSnake3D(onExit) {
       }
     }
 
-    layout() {
+    layout(now = 0) {
       const needed = Math.ceil(this.length / SEG_SPACING);
       this.ensureBody(needed);
       // Kop
@@ -216,6 +277,22 @@ export function launchSnake3D(onExit) {
       let segIdx = 0, nextDist = 0.5, acc = 0, prev = { x: this.pos.x, z: this.pos.z };
       const headScale = Math.min(1.6, 0.8 + this.length * 0.02);
       this.head.scale.setScalar(headScale);
+      // Tong: schiet ritmisch in en uit vóór de kop
+      const tongUit = Math.max(0, Math.sin(now * 0.006 + this.pos.x)); // 0..1
+      this.tong.visible = tongUit > 0.55;
+      const tLen = 0.3 + tongUit * 0.35;
+      this.tong.scale.z = tLen;
+      this.tong.position.set(this.pos.x + fx * (0.55 + tLen * 0.25) * headScale, 0.5, this.pos.z + fz * (0.55 + tLen * 0.25) * headScale);
+      this.tong.rotation.y = -this.angle + Math.PI / 2;
+      // Schaduw onder de kop
+      this.schaduw.position.set(this.pos.x, 0.035, this.pos.z);
+      this.schaduw.scale.setScalar(headScale);
+      // Kroontje (alleen de speler) draait langzaam mee
+      if (this.kroon) {
+        this.kroon.position.set(this.pos.x, 0.5 + 0.62 * headScale, this.pos.z);
+        this.kroon.scale.setScalar(headScale);
+        this.kroon.rotation.y = now * 0.001;
+      }
       for (let k = 0; k < this.trail.length && segIdx < needed; k++) {
         const cur = this.trail[k];
         const seg = Math.hypot(cur.x - prev.x, cur.z - prev.z);
@@ -224,8 +301,10 @@ export function launchSnake3D(onExit) {
           const px = prev.x + (cur.x - prev.x) * t;
           const pz = prev.z + (cur.z - prev.z) * t;
           const m = this.bodyMeshes[segIdx];
+          // ademende puls die door het lijf golft — de slang leeft
+          const puls = 1 + Math.sin(now * 0.008 - segIdx * 0.55) * 0.07;
           m.position.set(px, 0.45, pz);
-          m.scale.setScalar(headScale * (1 - (segIdx / needed) * 0.4));
+          m.scale.setScalar(headScale * (1 - (segIdx / needed) * 0.4) * puls);
           m.visible = true;
           segIdx++; nextDist += SEG_SPACING;
         }
@@ -251,10 +330,20 @@ export function launchSnake3D(onExit) {
     scene.add(m);
     foods.push({ mesh: m, x, z, value: 5, power: 'boost' });
   }
+  // De GOUDEN NUL ⭕ — zeldzaam: 6 seconden lang vliegt al het eten naar je toe!
+  const nulGeo = new THREE.TorusGeometry(0.55, 0.2, 10, 24);
+  function addGoudenNul(x, z) {
+    const m = new THREE.Mesh(nulGeo, new THREE.MeshStandardMaterial({ color: 0xffd54d, emissive: 0xcc8800, emissiveIntensity: 0.9, roughness: 0.15, metalness: 0.6 }));
+    m.position.set(x, 0.8, z);
+    scene.add(m);
+    foods.push({ mesh: m, x, z, value: 10, power: 'magneet' });
+  }
+  // Eten in vrolijke snoepkleuren (niet alles geel)
+  const ETEN_KLEUREN = [0xffd54d, 0xff6ec7, 0x6ee86e, 0x4dd0e1, 0xffa14d, 0xb06eff];
   function scatterFood(n) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, r = Math.random() * (FIELD - 4);
-      addFood(Math.cos(a) * r, Math.sin(a) * r);
+      addFood(Math.cos(a) * r, Math.sin(a) * r, 1, ETEN_KLEUREN[Math.floor(Math.random() * ETEN_KLEUREN.length)]);
     }
   }
 
@@ -274,6 +363,25 @@ export function launchSnake3D(onExit) {
   let player, bots, score, alive;
   let boostTimer = 0;
   let powerTimer = 10;
+  let nulTimer = 16;        // wanneer de volgende Gouden Nul verschijnt
+  let magnetTimer = 0;      // Gouden Nul actief: eten vliegt naar je toe
+  let lastTiental = 0;      // laatste gevierde lengte-tiental (10, 20, …)
+  let rainbowT = 0;         // regenboog-slang animatieklok
+
+  // Tellen met tientallen — net als in Getallen-Land!
+  const TIENTAL_NAMEN = ['TIEN!', 'TWINTIG!', 'DERTIG!', 'VEERTIG!', 'VIJFTIG!', 'ZESTIG!', 'ZEVENTIG!', 'TACHTIG!', 'NEGENTIG!', 'HONDERD!!!'];
+  const RAINBOW = [0xf87171, 0xfb923c, 0xfbbf24, 0x4ade80, 0x22d3ee, 0x6e9bff, 0xb06eff];
+
+  function tientalFeest(n) {
+    SFX.fanfare();
+    burst(player.pos.x, player.pos.z, 0xffe14d);
+    const el = document.createElement('div');
+    el.textContent = TIENTAL_NAMEN[Math.min(n / 10, 10) - 1] || `${n}!`;
+    el.style.cssText = 'position:absolute;top:38%;left:0;right:0;text-align:center;font-family:Arial Black,Arial;font-size:46px;font-weight:900;color:#ffe14d;text-shadow:0 3px 12px rgba(0,0,0,.7);pointer-events:none;transition:all 1.2s ease;z-index:2;';
+    root.appendChild(el);
+    requestAnimationFrame(() => { el.style.transform = 'translateY(-70px) scale(1.35)'; el.style.opacity = '0'; });
+    setTimeout(() => el.remove(), 1300);
+  }
 
   function spawnBot() {
     const a = Math.random() * Math.PI * 2;
@@ -304,14 +412,18 @@ export function launchSnake3D(onExit) {
     score = 0;
     boostTimer = 0;
     powerTimer = 10;
+    nulTimer = 16;
+    magnetTimer = 0;
+    lastTiental = 0;
     alive = true;
     document.getElementById('snakeScore').textContent = '🍎 0';
+    document.getElementById('snakeLen').textContent = '📏 5';
   }
 
   // ===== HUD =====
   const hud = document.createElement('div');
   hud.style.cssText = `position:absolute;top:max(16px,env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:space-between;padding:0 20px;font-family:Arial,sans-serif;color:#fff;font-size:22px;font-weight:800;pointer-events:none;text-shadow:0 2px 6px rgba(0,0,0,.6);`;
-  hud.innerHTML = `<span id="snakeScore">🍎 0</span><span>🐍 Snake</span>`;
+  hud.innerHTML = `<span id="snakeScore">🍎 0</span><span id="snakeLen">📏 5</span><span>🐍 Snake</span>`;
   root.appendChild(hud);
 
   const backBtn = document.createElement('button');
@@ -321,7 +433,7 @@ export function launchSnake3D(onExit) {
   root.appendChild(backBtn);
 
   const hint = document.createElement('div');
-  hint.textContent = 'Houd vast en stuur · eet andere slangen op!';
+  hint.textContent = 'Houd vast en stuur · eet slangen · vang de Gouden Nul! ⭕';
   hint.style.cssText = `position:absolute;bottom:max(20px,env(safe-area-inset-bottom));left:0;right:0;text-align:center;font-family:Arial;font-size:13px;color:#94a3b8;pointer-events:none;`;
   root.appendChild(hint);
 
@@ -425,7 +537,14 @@ export function launchSnake3D(onExit) {
         const f = foods[i];
         const reach = f.power ? 1.3 : 1.0;
         if (Math.hypot(f.x - player.pos.x, f.z - player.pos.z) < reach) {
-          if (f.power === 'boost') {
+          if (f.power === 'magneet') {
+            // GOUDEN NUL: 6 seconden lang komt al het eten naar jou toe!
+            magnetTimer = 6.0;
+            score += 10;
+            player.length += 1;
+            burst(f.x, f.z, 0xffd54d);
+            SFX.fanfare();
+          } else if (f.power === 'boost') {
             // Power-up: extra groei + tijdelijke snelheidsboost
             player.length += 2;
             score += 5;
@@ -448,6 +567,38 @@ export function launchSnake3D(onExit) {
         powerTimer = 12 + Math.random() * 8;
         const a = Math.random() * Math.PI * 2, r = Math.random() * (FIELD - 6);
         addPowerUp(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      // …en heel af en toe: de Gouden Nul ⭕
+      nulTimer -= dt;
+      if (nulTimer <= 0) {
+        nulTimer = 20 + Math.random() * 12;
+        const a = Math.random() * Math.PI * 2, r = Math.random() * (FIELD - 6);
+        addGoudenNul(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      // Magneet actief: eten zweeft naar je toe (en je kop gloeit goud)
+      if (magnetTimer > 0) {
+        magnetTimer -= dt;
+        for (const f of foods) {
+          if (f.power) continue;
+          const dx = player.pos.x - f.x, dz = player.pos.z - f.z;
+          const d = Math.hypot(dx, dz);
+          if (d < 14 && d > 0.1) {
+            const trek = 9 * dt / d;
+            f.x += dx * trek; f.z += dz * trek;
+            f.mesh.position.x = f.x; f.mesh.position.z = f.z;
+          }
+        }
+        player.head.material.emissiveIntensity = 0.6;
+      } else {
+        player.head.material.emissiveIntensity = 0.12;
+      }
+      // Lengte in de HUD + FEEST bij elk nieuw tiental (10, 20, … 100)
+      const lengte = Math.floor(player.length);
+      document.getElementById('snakeLen').textContent = '📏 ' + lengte;
+      const tiental = Math.floor(lengte / 10) * 10;
+      if (tiental > lastTiental && tiental >= 10) {
+        lastTiental = tiental;
+        tientalFeest(tiental);
       }
       // Snelheidsboost aftellen
       if (boostTimer > 0) {
@@ -498,13 +649,28 @@ export function launchSnake3D(onExit) {
       // Dode bots opruimen uit de lijst
       bots = bots.filter((b) => b.alive);
 
-      player.layout();
-      bots.forEach((b) => b.layout());
+      player.layout(now);
+      bots.forEach((b) => b.layout(now));
+
+      // REGENBOOG-SLANG: vanaf lengte 25 golven alle kleuren door je lijf.
+      if (player.length >= 25) {
+        rainbowT += dt * 8;
+        const off = Math.floor(rainbowT);
+        player.head.material.color.setHex(RAINBOW[off % RAINBOW.length]);
+        player.bodyMeshes.forEach((m, i) => {
+          if (m.visible) m.material.color.setHex(RAINBOW[(i + off) % RAINBOW.length]);
+        });
+      }
     }
 
     // Eten animeren (power-ups draaien sneller en zweven hoger)
     foods.forEach((f) => {
-      if (f.power) {
+      if (f.power === 'magneet') {
+        // de Gouden Nul staat rechtop te pronken en draait rond
+        f.mesh.rotation.y += 0.06;
+        f.mesh.rotation.x = Math.PI / 2 + Math.sin(now * 0.004 + f.x) * 0.3;
+        f.mesh.position.y = 0.9 + Math.sin(now * 0.005 + f.x) * 0.3;
+      } else if (f.power) {
         f.mesh.rotation.y += 0.12; f.mesh.rotation.x += 0.06;
         f.mesh.position.y = 0.7 + Math.sin(now * 0.006 + f.x) * 0.25;
       } else {
@@ -522,6 +688,14 @@ export function launchSnake3D(onExit) {
     }
 
     stars.rotation.y += 0.0001;
+
+    // De arena leeft: rand-muur pulseert, kristallen deinen en fonkelen
+    wall.material.emissiveIntensity = 0.5 + Math.sin(now * 0.0018) * 0.25;
+    for (const d of decor) {
+      d.mesh.position.y = 1.1 + Math.sin(now * 0.0016 + d.faz) * 0.45;
+      d.mesh.rotation.y += 0.008;
+      d.mesh.material.emissiveIntensity = 0.45 + Math.sin(now * 0.003 + d.faz) * 0.25;
+    }
 
     // Camera volgt speler van schuin boven (hoogte schaalt licht mee met lengte)
     if (player && player.alive) {
@@ -544,6 +718,7 @@ export function launchSnake3D(onExit) {
     panel.innerHTML = `<div style="font-size:60px">🐍</div><div style="font-size:30px;font-weight:800">Game Over!</div><div style="font-size:18px;color:#94a3b8">Score: ${score}</div>`;
     const isRecord = saveHigh('snake', score);
     if (score >= 50) giveMedal('snake_50');
+    if (score >= 100) giveMedal('snake_100'); // Slangen-Koning!
     const earned = Math.max(1, Math.floor(score / 3));
     addStars(earned);
     const rec = document.createElement('div');

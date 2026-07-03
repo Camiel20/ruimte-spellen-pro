@@ -141,6 +141,20 @@ describe('puzzellogica', () => {
     expect(validateLevel(goed)).toEqual([]);
   });
 
+  it('validateLevel: vangt een grauwe muur zonder tien-kracht', () => {
+    const kapot = {
+      id: 'x-9', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      grauwMuren: [800], // geen startMega en geen redding die 'mega' geeft
+      goal: { x: 1900, y: 588, value: 10 },
+    };
+    expect(validateLevel(kapot).some((e) => e.includes('tien-kracht'))).toBe(true);
+    // mét startMega is het wél in orde
+    const goed = { ...kapot, startMega: true };
+    expect(validateLevel(goed)).toEqual([]);
+  });
+
   it('validateLevel: vangt een maan-zone buiten de wereld', () => {
     const kapot = {
       id: 'x-8', worldW: 1000, worldH: 800, killY: 720,

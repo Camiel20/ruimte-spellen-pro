@@ -14,5 +14,7 @@ import chases from './chases.js';
 import maanZones from './maanzones.js';
 import raket from './raket.js';
 import portalen from './portalen.js';
+import duwKisten from './duwkisten.js';
+import grauwMuren from './grauwmuren.js';
 
-export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen];
+export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren];

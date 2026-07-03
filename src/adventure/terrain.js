@@ -11,6 +11,33 @@ export function buildBackground(scene, L) {
   sky.fillGradientStyle(L.bg.top, L.bg.top, L.bg.bottom, L.bg.bottom, 1);
   sky.fillRect(0, 0, scene.scale.width, scene.scale.height);
 
+  if (L.terrain === 'fort') {
+    // HET GRAUWE FORT (Wereld 6): onweerslucht, verre fort-torens en trage
+    // grauwe wolken. Geen zon — die heeft Baron Grauw weggejaagd.
+    const torens = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    torens.fillStyle(0x3f3b48, 0.9);
+    [[40, 300, 70], [150, 380, 90], [300, 340, 80], [420, 400, 100]].forEach(([tx, th, tw]) => {
+      torens.fillRect(tx, scene.scale.height - th - 140, tw, th + 140);
+      for (let k = 0; k < tw; k += 18) torens.fillRect(tx + k, scene.scale.height - th - 156, 10, 18); // kantelen
+    });
+    // verlichte raampjes
+    torens.fillStyle(0xffe16b, 0.5);
+    [[70, 320], [190, 390], [330, 360], [460, 420]].forEach(([wx, wy]) => torens.fillRect(wx, scene.scale.height - wy, 10, 14));
+    scene.clouds = [];
+    for (let i = 0; i < 6; i++) {
+      const x = (i / 6) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(60, 260);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5).setAlpha(0.55);
+      const g = scene.add.graphics();
+      g.fillStyle(0x565b61, 0.9);
+      [[-26, 4, 17], [-6, -8, 23], [16, 0, 20], [34, 7, 14]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(6, 14);
+      scene.clouds.push(c);
+    }
+    return;
+  }
+
   if (L.terrain === 'ruimte') {
     // RUIMTE (Wereld 5): fonkelsterren, een maan en verre planeetjes i.p.v.
     // zon en wolken; paarse nevel-slierten driften mee als "wolken".
@@ -155,6 +182,27 @@ export function drawGround(scene, x, y, w, h) {
       } else {
         g.fillStyle(0x6a7078, 1); g.fillEllipse(fx - 6, y - 3, 10, 7);
         g.fillStyle(0x8a9098, 1); g.fillEllipse(fx + 5, y - 4, 12, 8);
+      }
+    }
+  } else if (scene.level.terrain === 'fort') {
+    // FORT (Wereld 6): grauwe kasteelstenen met fakkels en grijze vlaggetjes.
+    g.fillStyle(0x565b61, 1); g.fillRect(x, y + 12, w, h - 12);
+    // steen-voegen
+    g.lineStyle(2, 0x3f434a, 0.8);
+    for (let ry = y + 16; ry < y + h - 6; ry += 24) { g.beginPath(); g.moveTo(x, ry); g.lineTo(x + w, ry); g.strokePath(); }
+    g.fillStyle(0x6c7178, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(0x8a8f96, 1); g.fillRect(x, y, w, 6);
+    // om en om: fakkel en grauw vlaggetje
+    let fort = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      fort = !fort;
+      if (fort) {
+        g.fillStyle(0x8a5a33, 1); g.fillRect(fx - 2, y - 18, 4, 18);
+        g.fillStyle(0xf07c1f, 1); g.fillEllipse(fx, y - 24, 10, 14);
+        g.fillStyle(0xffe16b, 1); g.fillEllipse(fx, y - 22, 5, 8);
+      } else {
+        g.fillStyle(0xcfd6dd, 1); g.fillRect(fx - 1, y - 20, 2, 20);
+        g.fillStyle(0x6c7178, 1); g.fillTriangle(fx + 1, y - 20, fx + 1, y - 11, fx + 13, y - 16);
       }
     }
   } else if (scene.level.terrain === 'ruimte') {

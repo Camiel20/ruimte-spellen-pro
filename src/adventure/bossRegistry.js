@@ -10,6 +10,7 @@ import {
   drawTreeBoss, happyTreeBoss, drawAcorn,
   drawCrystalBoss, happyCrystalBoss, drawCrystalShard,
   drawMeteorBoss, happyMeteorBoss, drawFireball,
+  drawGrauwBoss, happyGrauwBoss, drawGrauwWolkje,
 } from './enemyArt.js';
 import { sig } from './palette.js';
 
@@ -55,6 +56,14 @@ export const BOSS_LOOKS = {
     projectile: drawFireball,
     speed: -235,
     waarschuwing: 'Pas op — een vuurbal! Spring! ☄️',
+  },
+  // BARON GRAUW (W6, de finale): grauw-wolkjes — het allersnelst.
+  grauw: {
+    draw: (s, x, groundTop) => drawGrauwBoss(s, x, groundTop),
+    happy: (s, c) => happyGrauwBoss(s, c),
+    projectile: drawGrauwWolkje,
+    speed: -250,
+    waarschuwing: 'Pas op — een grauw-wolkje! Spring! ⛈️',
   },
 };
 

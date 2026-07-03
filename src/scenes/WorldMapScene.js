@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { SFX } from '../sound.js';
-import { getLevelRecord, getLevelSterren, getAdventureCurrent, getStars } from '../progress.js';
+import { getLevelRecord, getLevelSterren, getAdventureCurrent, getStars, telGoudenNullen } from '../progress.js';
 import { sig } from '../adventure/palette.js';
 import { WORLDS } from '../levels/index.js';
 
@@ -88,6 +88,10 @@ export default class WorldMapScene extends Phaser.Scene {
     const rec = getLevelRecord(id);
     if (rec && rec.done) return true; // al gehaald blijft altijd open
     const entry = this.entries.find((e) => e.type === 'level' && e.lvl.id === id);
+    // De geheime wereld opent met Gouden Nullen (niet met sterren of ketting).
+    if (entry && WORLDS[entry.world].geheim) {
+      return telGoudenNullen() >= (WORLDS[entry.world].nullen || 0);
+    }
     if (entry && this.totaalSterren < (WORLDS[entry.world].sterren || 0)) return false;
     let prevDone = true; // eerste level is altijd open
     for (const e of this.entries) {
@@ -151,7 +155,16 @@ export default class WorldMapScene extends Phaser.Scene {
         this.add.text(this.scale.width / 2, e.y, e.world.naam, {
           fontFamily: 'Arial Black, Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffffff',
         }).setOrigin(0.5).setStroke('#1f2d3a', 6).setDepth(5);
-        // Wereld-poort: nog niet genoeg sterren? Toon wat er nodig is.
+        // Wereld-poort: nog niet genoeg sterren (of Gouden Nullen)? Toon het.
+        if (e.world.geheim) {
+          const n = telGoudenNullen(), nodig = e.world.nullen || 0;
+          if (n < nodig) {
+            this.add.text(this.scale.width / 2, e.y + 24, `⭕ Vind ${nodig} Gouden Nullen — jij hebt er ${n}`, {
+              fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#ffe16b',
+            }).setOrigin(0.5).setStroke('#1f2d3a', 4).setDepth(5);
+          }
+          return;
+        }
         const nodig = e.world.sterren || 0;
         if (this.totaalSterren < nodig) {
           this.add.text(this.scale.width / 2, e.y + 24, `🔒 Verzamel ${nodig} sterren (jij hebt ${this.totaalSterren})`, {

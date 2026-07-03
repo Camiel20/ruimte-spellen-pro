@@ -67,6 +67,7 @@ export default {
         } else if (ch.rots.x > ch.endX) {
           crash(s, ch, false);
           s.questText.setText('Gehaald! De rots is stuk! 🎉');
+          s.vierMijlpaal(ch.endX);
         }
       } else if (!ch.actief && !ch.klaar && p.x > ch.triggerX && p.x < ch.endX - 80) {
         start(s, ch);

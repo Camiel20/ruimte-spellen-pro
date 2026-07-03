@@ -21,6 +21,8 @@ export const LEVEL_5_1 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'Tank precies 100! Tel: 10, 20, 30… ⛽🚀',
 
   // Eén groot ruimte-ravijn (1040 breed — nooit te overspringen): de raket
@@ -54,6 +56,7 @@ export const LEVEL_5_1 = {
   grommels: [
     { type: 'stomp', x: 640, y: 612, patrol: [560, 780] },
     { type: 'stomp', x: 1000, y: 612, patrol: [920, 1140] },
+    { type: 'vlieger', x: 750, y: 250, patrol: [400, 1100] }, // bewaakt de vaatjes!
   ],
 
   // Ster boven het hoogste eilandje.
@@ -81,6 +84,8 @@ export const LEVEL_5_2 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'Maan-zwaartekracht: spring superhoog! 🌙',
 
   // Hoge richels die je alléén met maan-zwaartekracht haalt; helemaal
@@ -117,6 +122,9 @@ export const LEVEL_5_2 = {
   // Ster hoog boven de eerste richel: alleen met een zweefsprong.
   star: { x: 790, y: 170 },
 
+  // GEHEIM: een Gouden Nul boven de slaapplek van Twintig (maan-sprong!).
+  goudenNul: { x: 2170, y: 150 },
+
   goal: { x: 2740, y: 588, value: 20 },
 
   reward: {
@@ -139,6 +147,8 @@ export const LEVEL_5_3 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'Kies het portaal met de goede som! ✨',
 
   platforms: [
@@ -160,8 +170,11 @@ export const LEVEL_5_3 = {
 
   grommels: [
     { type: 'stomp', x: 1350, y: 612, patrol: [1250, 1480] },
-    { type: 'springer', x: 2450, y: 612, patrol: [2380, 2580] },
+    { type: 'springer', x: 2700, y: 612, patrol: [2600, 2780] },
   ],
+
+  // Grauwe muur vlak voor de vlag: alleen de tien-kracht komt erdoorheen.
+  grauwMuren: [2480],
 
   star: { x: 1400, y: 430 },
 
@@ -187,6 +200,8 @@ export const LEVEL_5_4 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'RENNEN! De komeet komt eraan! ☄️',
 
   // Meesterproef: twee komeet-achtervolgingen (sneller dan de rots van W4!),
@@ -248,6 +263,8 @@ export const LEVEL_5_5 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'De Meteoor-Grommel! Maak zijn tientallen — ontwijk de vuurballen! ☄️',
 
   platforms: [

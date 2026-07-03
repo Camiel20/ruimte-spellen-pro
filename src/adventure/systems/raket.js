@@ -59,6 +59,7 @@ function launch(s) {
           s.mode = 'explore';
           confettiBurst(s, 130); SFX.yay(); Voice.cue('cheer'); s.cameraPunch();
           s.questText.setText('Wat een vlucht! Ren naar de vlag! 🚩');
+          s.vierMijlpaal(ex);
         },
       });
     },

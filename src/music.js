@@ -13,6 +13,20 @@ let timer = null;
 let masterGain = null;
 let step = 0;
 let current = 'menu';
+let variatie = { pitch: 1, tempo: 1 };
+
+// Elke wereld z'n eigen klankkleur: hetzelfde avontuur-deuntje, maar
+// getransponeerd en in een ander tempo — de kust klinkt zonnig, het bos
+// dieper, de ruimte dromerig en het fort dreigend laag.
+export function muziekVoorTerrein(terrain) {
+  return {
+    zand: { pitch: 1.122, tempo: 1.05 },   // +2 halve tonen: zonnig
+    bos: { pitch: 0.891, tempo: 0.96 },    // −2: dieper het bos in
+    berg: { pitch: 0.841, tempo: 1.0 },    // −3: stoer
+    ruimte: { pitch: 1.189, tempo: 0.9 },  // +3, trager: zweven
+    fort: { pitch: 0.749, tempo: 0.88 },   // −5, traag: hier woont Grauw
+  }[terrain] || { pitch: 1, tempo: 1 };
+}
 
 const TUNES = {
   // Rustig menu-deuntje (pentatonisch — klinkt altijd goed).
@@ -78,24 +92,26 @@ function playKick() {
 function tick() {
   const T = TUNES[current] || TUNES.menu;
   const note = T.melody[step % T.melody.length];
-  if (note > 0) playNote(note, T.melodyWave === 'square' ? 0.16 : 0.35, T.melodyVol, T.melodyWave);
+  if (note > 0) playNote(note * variatie.pitch, T.melodyWave === 'square' ? 0.16 : 0.35, T.melodyVol, T.melodyWave);
   const be = T.bassEvery || 4;
   if (step % be === 0) {
     const b = T.bass[(step / be) % T.bass.length];
-    if (b > 0) playNote(b, be * (T.stepMs / 1000) * 0.9, T.bassVol, T.bassWave);
+    if (b > 0) playNote(b * variatie.pitch, be * (T.stepMs / 1000) * 0.9, T.bassVol, T.bassWave);
   }
   if (T.kick && step % 2 === 0) playKick();
   // vrolijk glinster-laagje af en toe
-  if (note > 0 && step % 8 === 2) playNote(note * 2, 0.22, 0.02, 'sine');
+  if (note > 0 && step % 8 === 2) playNote(note * 2 * variatie.pitch, 0.22, 0.02, 'sine');
   step++;
 }
 
-// tune: 'menu' (standaard) of 'adventure'. Wisselt van deuntje als er al muziek
-// speelt maar een ander deuntje gevraagd wordt.
-export function startMusic(tune = 'menu') {
-  if (playing && current === tune) return; // draait dit deuntje al
-  stopMusic();                             // ander deuntje? herstart schoon
+// tune: 'menu' (standaard) of 'adventure'; varr: optionele wereld-variatie
+// ({ pitch, tempo }, zie muziekVoorTerrein). Wisselt als er iets verandert.
+export function startMusic(tune = 'menu', varr = null) {
+  const v = varr || { pitch: 1, tempo: 1 };
+  if (playing && current === tune && v.pitch === variatie.pitch && v.tempo === variatie.tempo) return;
+  stopMusic();                             // ander deuntje/variatie? herstart schoon
   current = tune;
+  variatie = v;
   if (!getSetting('music')) return; // staat uit in instellingen
   const ctx = getAudioContext();
   if (!ctx) return;
@@ -107,7 +123,7 @@ export function startMusic(tune = 'menu') {
   playing = true;
   step = 0;
   tick();
-  timer = setInterval(tick, TUNES[current].stepMs);
+  timer = setInterval(tick, TUNES[current].stepMs / variatie.tempo);
 }
 
 export function stopMusic() {

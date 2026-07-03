@@ -219,15 +219,20 @@ export const LEVEL_2_4 = {
 
   // GEEN brug dit keer — DEUREN (het wees-N-werkwoord, nieuw voor de kust):
   // word precies het dubbel-getal door bolletjes te pakken. Te groot geworden?
-  // Een Grommel-tik maakt je weer kleiner, en de magische bolletjes groeien
-  // terug — je kunt dus nooit vastlopen.
+  // Tik op jezelf om een blokje af te splitsen (−1, blijft liggen om weer op
+  // te pakken) — je kunt dus nooit vastlopen.
   platforms: [
-    [0, 660, 2600, 140], // doorlopend strand (faal-vriendelijk)
+    [0, 660, 2600, 140],   // doorlopend strand (faal-vriendelijk)
+    [2140, 340, 180, 26],  // hoge richel: alleen te halen via de duw-kist
   ],
 
-  // Vriendjes redden blijft: Vier is zelf een dubbel (2+2)!
+  // Je eerste duw-kist! Schuif hem onder de richel en klim naar de ster.
+  duwKisten: [2060],
+
+  // Vriendjes redden blijft: Vier is zelf een dubbel (2+2) — en de sterkste
+  // van het stel: hij leert je ZWARE KISTEN DUWEN (nieuwe kracht!).
   rescues: [
-    { x: 330, y: 636, doel: 4, blocks: [2, 2], name: 'Vier' },
+    { x: 330, y: 636, doel: 4, blocks: [2, 2], gives: 'duw', name: 'Vier' },
     { x: 1330, y: 636, doel: 5, blocks: [2, 3], name: 'Vijf' },
   ],
 
@@ -249,11 +254,11 @@ export const LEVEL_2_4 = {
   grommels: [
     { type: 'stomp', x: 400, y: 612, patrol: [300, 560] },
     { type: 'stomp', x: 1450, y: 612, patrol: [1380, 1600] },
-    { type: 'stomp', x: 2200, y: 612, patrol: [2100, 2340] },
+    { type: 'stomp', x: 2400, y: 612, patrol: [2340, 2450] },
   ],
 
-  // Ster hoog boven de bolletjes-baan — pak 'm met de dubbelsprong.
-  star: { x: 700, y: 430 },
+  // Ster boven de richel: duw de kist eronder en klim omhoog (duw-kracht!).
+  star: { x: 2230, y: 250 },
 
   goal: { x: 2490, y: 588, value: 6 },
 
@@ -277,6 +282,7 @@ export const LEVEL_2_5 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true, // krachten van Wereld 1 blijven
   startStamp: true,
+  startDuw: true, // net geleerd van Vier (2-4)
   intro: 'Zoek telkens de twee die samen 10 zijn!',
   afterGate: 'Top! Op naar de volgende brug! 🚩',
 
@@ -335,6 +341,7 @@ export const LEVEL_2_6 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true, // krachten van Wereld 1 blijven
   startStamp: true,
+  startDuw: true,
   intro: 'Wolken-ritme én samen 10 — laat zien wat je kunt!',
   afterGate: 'Meester van Tien! Naar de vlag! 🚩',
 
@@ -409,6 +416,7 @@ export const LEVEL_2_7 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true, // krachten van Wereld 1 blijven
   startStamp: true,
+  startDuw: true,
   intro: 'De Golf-Baas! Bouw de 10 — en spring over zijn golven!',
 
   // Doorlopende strand-arena; de baas verspert de weg tot je 'm verslaat.

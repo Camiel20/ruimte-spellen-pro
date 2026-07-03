@@ -28,6 +28,7 @@ function give(s, pl) {
   SFX.yay(); Voice.cue('cheer'); s.burstStars(pl.x, pl.groundTop - 60, 10);
   s.cameraPunch();
   s.questText.setText(`Dank je wel! ${was} − ${n} = ${s.playerValue} — de weg is open! 🚩`);
+  s.vierMijlpaal(pl.x);
 }
 
 export default {

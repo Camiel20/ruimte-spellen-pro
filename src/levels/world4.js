@@ -19,6 +19,8 @@ export const LEVEL_4_1 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'Splits de 10 en vul de trein!',
   afterGate: 'Tsjoeke-tsjoek! Volgende trein! 🚂',
 
@@ -69,6 +71,8 @@ export const LEVEL_4_2 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'Spring tegen het goede blok: meer of minder?',
 
   // Doorlopende bergweg met drie vraag-muren; Grommels patrouilleren
@@ -119,6 +123,8 @@ export const LEVEL_4_3 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'RENNEN! De rots komt eraan!',
 
   platforms: [
@@ -145,6 +151,7 @@ export const LEVEL_4_3 = {
 
   grommels: [
     { type: 'stomp', x: 1650, y: 612, patrol: [1560, 1760] },
+    { type: 'vlieger', x: 700, y: 430, patrol: [450, 950] }, // duikt boven het renpad!
   ],
 
   // Ster midden op het achtervolgings-pad: durf jij 'm te grijpen?
@@ -172,6 +179,8 @@ export const LEVEL_4_4 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'Splits de 15 — en geef de helft!',
   afterGate: 'Knap gesplitst! Verder! 🚩',
 
@@ -225,6 +234,9 @@ export const LEVEL_4_4 = {
   // Ster boven de muur.
   star: { x: 1280, y: 405 },
 
+  // GEHEIM: een Gouden Nul achterin de ondergrondse gang.
+  goudenNul: { x: 2280, y: 724 },
+
   goal: { x: 3120, y: 588, value: 10 },
 
   reward: {
@@ -247,6 +259,8 @@ export const LEVEL_4_5 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true,
   startStamp: true,
+  startDuw: true,
+  startMega: true,
   intro: 'De Kristal-Grommel! Splits zijn raadsels — ontwijk de scherven!',
 
   platforms: [

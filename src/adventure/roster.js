@@ -3,8 +3,9 @@
 // apart save-veld nodig: level gehaald ⇒ de vriendjes uit dat level zijn gered.
 // (isLevelDone is injecteerbaar zodat dit unit-testbaar is zonder localStorage.)
 
-// Het dorp heeft plek voor de getallen 1 t/m 10.
-export const ROSTER = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+// Het dorp heeft plek voor de getallen 1 t/m 10 — en sinds Wereld 5 ook
+// voor TWINTIG (het eerste grote-getallen-vriendje, gered in 5-2).
+export const ROSTER = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20];
 
 // Set van geredde getallen. Één (1) ben je zelf — die woont er altijd al.
 export function rescuedFrom(levels, isLevelDone) {

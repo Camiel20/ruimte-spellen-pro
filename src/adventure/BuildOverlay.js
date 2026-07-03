@@ -15,6 +15,21 @@ import { findPair, splitParts } from './logic.js';
 import { sig } from './palette.js';
 import { drawCubeStack, addNumberDisc } from './art.js';
 
+// De beste bouwvloer bij een puzzel op (x, y): de hoogste vloer eronder die
+// op het scherm genoeg bouwruimte overlaat (±520px boven de vloer). In platte
+// levels is dat gewoon de grond; in verticale levels de juiste verdieping.
+function vloerOnder(L, x, y, scrollY, H) {
+  const kandidaten = L.platforms
+    .filter(([px, py, pw]) => px <= x && px + pw >= x && py >= y - 60)
+    .map(([, py]) => py)
+    .sort((a, b) => a - b);
+  for (const py of kandidaten) {
+    const schermY = py - scrollY;
+    if (schermY >= 520 && schermY <= H - 10) return py;
+  }
+  return kandidaten.length ? kandidaten[kandidaten.length - 1] : L.platforms[0][1];
+}
+
 export default class BuildOverlay {
   constructor(scene) {
     this.s = scene;
@@ -105,12 +120,13 @@ export default class BuildOverlay {
     // (Zo vóelt rekenen als onderdeel van het avontuur, niet als een popup.)
     const cam = s.cameras.main;
     cam.stopFollow();
-    s.tweens.add({
-      targets: cam,
-      scrollX: Phaser.Math.Clamp(pz.zone.centerX - W / 2, 0, s.level.worldW - W),
-      duration: 420, ease: 'Sine.inOut',
-    });
-    this.groundY = s.level.platforms[0][1] - 4; // bouwvloer (schermhoogte == wereldhoogte)
+    const doelScrollX = Phaser.Math.Clamp(pz.zone.centerX - W / 2, 0, s.level.worldW - W);
+    // Verticale werelden: de camera glijdt óók verticaal naar de puzzel.
+    const doelScrollY = Phaser.Math.Clamp(pz.zone.centerY + 120 - H / 2, 0, Math.max(0, s.level.worldH - H));
+    s.tweens.add({ targets: cam, scrollX: doelScrollX, scrollY: doelScrollY, duration: 420, ease: 'Sine.inOut' });
+    // Bouwvloer in SCHERM-coördinaten (de overlay is scrollFactor 0):
+    // de best passende vloer onder de puzzel minus de camera-verschuiving.
+    this.groundY = vloerOnder(s.level, pz.zone.centerX, pz.zone.bottom, doelScrollY, H) - doelScrollY - 4;
 
     const panel = s.add.container(0, 0).setScrollFactor(0).setDepth(120);
     // klein info-banner bovenin (i.p.v. het hele scherm dimmen)
