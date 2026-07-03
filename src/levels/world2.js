@@ -204,7 +204,7 @@ export const LEVEL_2_3 = {
 
 export const LEVEL_2_4 = {
   id: '2-4',
-  naam: 'Dubbel Vijf op het Strand',
+  naam: 'De Dubbel-Deuren',
 
   worldW: 2600,
   worldH: 800,
@@ -215,64 +215,51 @@ export const LEVEL_2_4 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true, // krachten van Wereld 1 blijven
   startStamp: true,
-  intro: 'Red Vier en Vijf, en maak samen 10!',
-  afterGate: 'Ren naar de vlag! 🚩',
+  intro: 'Dubbel! Word 4 (2+2), dan 6 (3+3)!',
 
-  // Zand-eilanden met stapstenen over de zee ertussen, daarna de brug-poort.
+  // GEEN brug dit keer — DEUREN (het wees-N-werkwoord, nieuw voor de kust):
+  // word precies het dubbel-getal door bolletjes te pakken. Te groot geworden?
+  // Een Grommel-tik maakt je weer kleiner, en de magische bolletjes groeien
+  // terug — je kunt dus nooit vastlopen.
   platforms: [
-    [0, 660, 700, 140],     // zand A (start, Vier, Grommel)
-    [790, 660, 140, 40],    // stapsteen 1
-    [1010, 660, 140, 40],   // stapsteen 2
-    [1230, 660, 600, 140],  // zand B (Vijf, ster, brug-aanloop)
-    [2190, 660, 410, 140],  // zand C (na de brug) — met de vlag
+    [0, 660, 2600, 140], // doorlopend strand (faal-vriendelijk)
   ],
 
-  // Water (alleen visueel) onder het stapsteen-gedeelte.
-  water: [
-    [700, 692, 530, 108],
-  ],
-
-  // Groei-bolletjes: het figuurtje groeit onderweg mee (1 → 5).
-  pickups: [
-    { x: 250, y: 600, amount: 1 },
-    { x: 480, y: 600, amount: 1 },
-    { x: 1300, y: 600, amount: 1 },
-    { x: 1500, y: 600, amount: 1 },
-  ],
-
-  // Twee vriendjes redden: eerst Vier (dubbel twee!), dan Vijf. Deze redding
-  // geeft geen kracht (die heb je al uit Wereld 1) — puur het bouwplezier én
-  // de opbouw naar "dubbel vijf is tien" bij de brug.
+  // Vriendjes redden blijft: Vier is zelf een dubbel (2+2)!
   rescues: [
-    { x: 350, y: 636, doel: 4, blocks: [2, 2], name: 'Vier' },
-    { x: 1400, y: 636, doel: 5, blocks: [2, 3], name: 'Vijf' },
+    { x: 330, y: 636, doel: 4, blocks: [2, 2], name: 'Vier' },
+    { x: 1330, y: 636, doel: 5, blocks: [2, 3], name: 'Vijf' },
+  ],
+
+  pickups: [
+    { x: 480, y: 600, amount: 1 },
+    { x: 620, y: 600, amount: 1 },
+    { x: 760, y: 600, amount: 1 },              // 1 → 4 bij de eerste deur
+    { x: 880, y: 600, amount: 1, regen: true }, // magisch: altijd bij te tanken
+    { x: 1540, y: 600, amount: 1 },
+    { x: 1680, y: 600, amount: 1 },             // 4 → 6 bij de tweede deur
+    { x: 1810, y: 600, amount: 1, regen: true },
+  ],
+
+  doors: [
+    { x: 1020, doel: 4, topY: 120 }, // wees 4 — dubbel twee
+    { x: 1960, doel: 6, topY: 120 }, // wees 6 — dubbel drie
   ],
 
   grommels: [
-    { type: 'stomp', x: 520, y: 612, patrol: [430, 660] },
-    { type: 'stomp', x: 1650, y: 612, patrol: [1560, 1790] },
+    { type: 'stomp', x: 400, y: 612, patrol: [300, 560] },
+    { type: 'stomp', x: 1450, y: 612, patrol: [1380, 1600] },
+    { type: 'stomp', x: 2200, y: 612, patrol: [2100, 2340] },
   ],
 
-  // Brug over zee: maak SAMEN 10 door VIJF te DUBBELEN (5 + 5).
-  gate: {
-    type: 'brug',
-    gapX: 1830, gapW: 360,
-    y: 650,
-    doel: 10,
-    blocks: [5, 5],
-    triggerX: 1710,
-    triggerW: 120,
-    water: true, // teken de kloof als water i.p.v. donkere spleet
-  },
+  // Ster hoog boven de bolletjes-baan — pak 'm met de dubbelsprong.
+  star: { x: 700, y: 430 },
 
-  // Ster hoog boven zand B — pak 'm met de dubbelsprong.
-  star: { x: 1520, y: 424 },
-
-  goal: { x: 2490, y: 588, value: 10 },
+  goal: { x: 2490, y: 588, value: 6 },
 
   reward: {
     title: 'Level 2-4 gehaald! 🏆',
-    subtitle: 'Dubbel vijf is tien — knap gedaan!',
+    subtitle: '2+2=4 en 3+3=6 — jij bent een dubbel-held!',
     stars: 3, medal: 'adventure_2_4', medalLabel: 'Dubbel-Held',
   },
 };
@@ -348,43 +335,57 @@ export const LEVEL_2_6 = {
   start: { x: 90, y: 560 },
   startDoubleJump: true, // krachten van Wereld 1 blijven
   startStamp: true,
-  intro: 'Toon dat je een Meester van Tien bent!',
-  afterGate: 'Goed zo! Op naar de volgende brug! 🚩',
+  intro: 'Wolken-ritme én samen 10 — laat zien wat je kunt!',
+  afterGate: 'Meester van Tien! Naar de vlag! 🚩',
 
-  // Vier zand-eilanden, drie zee-kloven. Grootste Wereld 2-level vóór de baas:
-  // alles komt samen (partners + dubbelen) mét een dubbelsprong-muur ertussen.
+  // De meesterproef van de kust — GEEN drie bruggen meer, maar alles wat je
+  // op de kust leerde in één tocht: een lange TEL-WOLKEN-cascade boven zee
+  // (timing!), een springende Grommel, en één grote keuze-brug waarin twee
+  // paren van 10 verstopt zitten (2+8 of 5+5).
   platforms: [
-    [0, 660, 560, 140],     // zand A (start)
-    [920, 660, 640, 140],   // zand B
-    [1920, 660, 640, 140],  // zand C — met de dubbelsprong-muur
-    [2200, 470, 60, 190],   // hoge MUUR op C: alleen met dubbelsprong eroverheen
-    [2920, 660, 480, 140],  // zand D — met de vlag
+    [0, 660, 700, 140],     // zand A (start)
+    [1550, 660, 600, 140],  // zand B
+    [2510, 660, 890, 140],  // zand C — met de vlag
   ],
 
-  // Groei-bolletjes: het figuurtje groeit onderweg mee (1 → 5).
+  // Drie wolken om-en-om aan/uit: spring op het ritme de zee over.
+  telWolken: [
+    [770, 640, 150, 0],
+    [1010, 640, 150, 1100],
+    [1250, 640, 150, 2200],
+  ],
+
+  water: [
+    [700, 692, 850, 108],
+  ],
+
   pickups: [
-    { x: 200, y: 600, amount: 1 },
-    { x: 1050, y: 600, amount: 1 },
-    { x: 2050, y: 600, amount: 1 },
-    { x: 3050, y: 600, amount: 1 },
+    { x: 250, y: 600, amount: 1 },
+    { x: 500, y: 600, amount: 1 },
+    { x: 1700, y: 600, amount: 1 },
+    { x: 2650, y: 600, amount: 1 },
   ],
 
-  // Drie bruggen; nu telkens VIER blokjes klaar met méér keuze — Adrian moet
-  // zelf een paar vinden dat samen 10 is (partners én dubbelen door elkaar).
-  gates: [
-    { type: 'brug', gapX: 560,  gapW: 360, y: 650, doel: 10, blocks: [2, 4, 6, 8], triggerX: 440,  triggerW: 120, water: true }, // 2+8 of 4+6
-    { type: 'brug', gapX: 1560, gapW: 360, y: 650, doel: 10, blocks: [3, 5, 5, 7], triggerX: 1440, triggerW: 120, water: true }, // 5+5 of 3+7
-    { type: 'brug', gapX: 2560, gapW: 360, y: 650, doel: 10, blocks: [1, 4, 6, 9], triggerX: 2440, triggerW: 120, water: true }, // 1+9 of 4+6
-  ],
+  // Eén grote keuze-brug: vier blokjes, twee goede paren (2+8 of 5+5).
+  gate: {
+    type: 'brug',
+    gapX: 2150, gapW: 360,
+    y: 650,
+    doel: 10,
+    blocks: [2, 5, 5, 8],
+    triggerX: 2030,
+    triggerW: 120,
+    water: true,
+  },
 
   grommels: [
-    { type: 'stomp', x: 300,  y: 612, patrol: [180, 500] },
-    { type: 'stomp', x: 1200, y: 612, patrol: [980, 1520] },
-    { type: 'stomp', x: 2400, y: 612, patrol: [2260, 2520] }, // ná de muur
+    { type: 'stomp', x: 350, y: 612, patrol: [250, 550] },
+    { type: 'springer', x: 1800, y: 612, patrol: [1650, 1950] }, // nieuw: hij hupt!
+    { type: 'stomp', x: 2800, y: 612, patrol: [2700, 2980] },
   ],
 
-  // Ster hoog boven de muur — pak 'm tijdens de verplichte dubbelsprong-hop.
-  star: { x: 2230, y: 430 },
+  // Ster boven de middelste wolk: pak 'm midden in het ritme (voor durvers!)
+  star: { x: 1085, y: 540 },
 
   goal: { x: 3300, y: 588, value: 10 },
 
@@ -440,6 +441,9 @@ export const LEVEL_2_7 = {
       { doel: 10, blocks: [2, 4, 6, 8] },
     ],
   },
+
+  // Verstopte ster boven de arena: pak 'm tussen de golven door!
+  star: { x: 880, y: 436 },
 
   goal: { x: 1850, y: 588, value: 10 },
 

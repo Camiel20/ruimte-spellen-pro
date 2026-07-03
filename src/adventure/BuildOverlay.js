@@ -245,6 +245,7 @@ export default class BuildOverlay {
           if (moving.getData('buildBlock').value === slot.doel) {
             this.fillWagon(slot, moving);
           } else {
+            this.s.rekenFouten += 1; // telt mee voor de foutloos-ster
             SFX.wrong(); Voice.cue('oops');
             this.s.tweens.add({ targets: slot.art, x: slot.x + 6, duration: 60, yoyo: true, repeat: 3 });
             this.settle(moving);
@@ -300,8 +301,9 @@ export default class BuildOverlay {
 
         // Te groot gebouwd? Na 2 missers het juiste paar laten gloeien.
         const pz = this.activePuzzle;
-        if (pz && newVal > pz.doel) {
+        if (pz && !pz.wagons && newVal > pz.doel) {
           this.mistakes += 1;
+          s.rekenFouten += 1; // telt mee voor de foutloos-ster
           if (this.mistakes >= 2) s.time.delayedCall(160 + newVal * 75, () => this.showHint());
         }
       },

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { SFX } from '../sound.js';
-import { getLevelRecord, getAdventureCurrent, getStars } from '../progress.js';
+import { getLevelRecord, getLevelSterren, getAdventureCurrent, getStars } from '../progress.js';
 import { sig } from '../adventure/palette.js';
 import { WORLDS } from '../levels/index.js';
 
@@ -42,6 +42,11 @@ export default class WorldMapScene extends Phaser.Scene {
     });
     const contentH = y + FOOTER_H;
 
+    // Totaal VERDIENDE sterren (max 3 per level) — opent de wereld-poorten.
+    this.totaalSterren = this.entries
+      .filter((e) => e.type === 'level')
+      .reduce((sum, e) => sum + getLevelSterren(e.lvl.id), 0);
+
     this.cameras.main.setBounds(0, 0, W, Math.max(contentH, H));
     this.buildBackground(W, Math.max(contentH, H));
     this.buildPath();
@@ -77,10 +82,13 @@ export default class WorldMapScene extends Phaser.Scene {
     return found;
   }
 
-  // Een level is speelbaar als het gehaald is, of het eerstvolgende is.
+  // Een level is speelbaar als het gehaald is, of het eerstvolgende is —
+  // én de wereld-poort open is (genoeg verdiende sterren).
   isUnlocked(id) {
     const rec = getLevelRecord(id);
-    if (rec && rec.done) return true;
+    if (rec && rec.done) return true; // al gehaald blijft altijd open
+    const entry = this.entries.find((e) => e.type === 'level' && e.lvl.id === id);
+    if (entry && this.totaalSterren < (WORLDS[entry.world].sterren || 0)) return false;
     let prevDone = true; // eerste level is altijd open
     for (const e of this.entries) {
       if (e.type !== 'level') continue;
@@ -143,6 +151,13 @@ export default class WorldMapScene extends Phaser.Scene {
         this.add.text(this.scale.width / 2, e.y, e.world.naam, {
           fontFamily: 'Arial Black, Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffffff',
         }).setOrigin(0.5).setStroke('#1f2d3a', 6).setDepth(5);
+        // Wereld-poort: nog niet genoeg sterren? Toon wat er nodig is.
+        const nodig = e.world.sterren || 0;
+        if (this.totaalSterren < nodig) {
+          this.add.text(this.scale.width / 2, e.y + 24, `🔒 Verzamel ${nodig} sterren (jij hebt ${this.totaalSterren})`, {
+            fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#ffe16b',
+          }).setOrigin(0.5).setStroke('#1f2d3a', 4).setDepth(5);
+        }
         return;
       }
       this.drawLevelNode(e, e.lvl.id === curId);
@@ -180,15 +195,18 @@ export default class WorldMapScene extends Phaser.Scene {
       lock.lineStyle(3.5, 0x5b6168, 1); lock.beginPath(); lock.arc(0, 8, 7, Math.PI, 2 * Math.PI); lock.strokePath();
       c.add(lock);
     } else if (done) {
-      // ✔-stempel + eventueel ster-stempel
+      // ✔-stempel + drie sterren-slots eronder (vol = verdiend, grijs = nog
+      // te halen → reden om het level opnieuw te spelen!)
       const st = this.add.graphics();
       st.fillStyle(0x2fae4e, 1); st.fillCircle(s / 2 - 4, -s / 2 + 4, 12);
       st.lineStyle(3.5, 0xffffff, 1);
       st.beginPath(); st.moveTo(s / 2 - 10, -s / 2 + 4); st.lineTo(s / 2 - 6, -s / 2 + 9); st.lineTo(s / 2 + 3, -s / 2 - 3); st.strokePath();
       c.add(st);
-      if (rec.star) {
-        const star = this.add.image(-s / 2 + 4, -s / 2 + 4, 'star').setScale(1.8);
-        c.add(star);
+      const earned = getLevelSterren(id);
+      for (let i = 0; i < 3; i++) {
+        const mst = this.add.image(-18 + i * 18, s / 2 + 13, 'star').setScale(1.7);
+        if (i >= earned) mst.setTint(0x6b7280).setAlpha(0.55);
+        c.add(mst);
       }
     }
 

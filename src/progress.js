@@ -93,8 +93,22 @@ export function getMedalCount() { return data.medals ? Object.keys(data.medals).
 export function getLevelRecord(id) { return (data.levels && data.levels[id]) || null; }
 export function markLevelDone(id, extra = {}) {
   if (!data.levels) data.levels = {};
-  data.levels[id] = Object.assign({}, data.levels[id], { done: true }, extra);
+  const prev = data.levels[id] || {};
+  const next = Object.assign({}, prev, { done: true }, extra);
+  if (prev.star) next.star = true; // een gepakte ster raak je nooit meer kwijt
+  // beste sterren-score bewaren (opnieuw spelen kan alleen verbeteren)
+  if (prev.sterren != null) next.sterren = Math.max(prev.sterren, extra.sterren || 0);
+  data.levels[id] = next;
   save();
+}
+
+// Verdiende sterren van een level (0–3). Oude records (van vóór de
+// sterren-telling) tellen als: gehaald = 1, plus de geheime ster = 1.
+export function getLevelSterren(id) {
+  const r = getLevelRecord(id);
+  if (!r) return 0;
+  if (r.sterren != null) return r.sterren;
+  return (r.done ? 1 : 0) + (r.star ? 1 : 0);
 }
 export function getAdventureCurrent() { return (data.adventure && data.adventure.current) || null; }
 export function setAdventureCurrent(id) {

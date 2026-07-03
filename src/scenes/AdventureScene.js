@@ -8,9 +8,10 @@ import { sig, lighten, darker } from '../adventure/palette.js';
 import BuildOverlay from '../adventure/BuildOverlay.js';
 import { drawCubeStack, addNumberDisc, addFeet, makeSleepingFriend, drawAwakeFriendInto } from '../adventure/art.js';
 import { buildBackground, buildWater, buildPlatforms } from '../adventure/terrain.js';
-import { drawGrommelArt, recolorGrommelArt, drawBoss, drawWaveBoss, drawSprayWall, drawWaveMinion, recolorBossHappy, drawTreeBoss, happyTreeBoss, drawAcorn, drawCrystalBoss, happyCrystalBoss, drawCrystalShard, drawMeteorBoss, happyMeteorBoss, drawFireball } from '../adventure/enemyArt.js';
+import { drawGrommelArt, recolorGrommelArt } from '../adventure/enemyArt.js';
+import { bossLook } from '../adventure/bossRegistry.js';
+import { SYSTEMS } from '../adventure/systems/index.js';
 import { CELL, PW, MOVE_SPEED, JUMP_BASE, JUMP_PER_LEVEL, COYOTE_MS, BUFFER_MS } from '../adventure/constants.js';
-import { portaalMuurX, PORTAL_AFSTAND } from '../adventure/logic.js';
 import { LEVELS } from '../levels/index.js';
 
 // ===== TEL-AVONTUUR — level-engine =====
@@ -63,6 +64,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.jumpsUsed = 0;
     this.powers = { doubleJump: !!L.startDoubleJump, stamp: !!L.startStamp };
     this.won = false;
+    this.rekenFouten = 0; // foutloos rekenen = extra ster bij de vlag
 
     // Phaser HERGEBRUIKT scene-instanties: alles wat vorige potjes op `this`
     // zetten leeft nog (als kapotte referenties). Expliciet resetten, anders
@@ -82,22 +84,21 @@ export default class AdventureScene extends Phaser.Scene {
     buildBackground(this, L);
     buildWater(this, L);
     buildPlatforms(this, L);
-    this.buildTelWolken(L);
     this.buildPickups(L);
     this.buildPuzzles(L);
     this.buildDoors(L);
-    this.buildPlates(L);
-    this.buildVraagMuren(L);
-    this.buildAchtervolgingen(L);
-    this.buildMaanZones(L);
-    this.buildRaket(L);
-    this.buildPortalen(L);
+    // Alle optionele mechanics (tel-wolken, geef-platen, vraagmuren, chases,
+    // maan-zones, raket, portalen) leven als SYSTEMEN in adventure/systems/ —
+    // de scene loopt er generiek overheen en kent hun binnenkant niet.
+    SYSTEMS.forEach((sys) => sys.build(this, L));
     this.buildBreakables(L);
     this.buildBoss(L);
     this.buildGrommels(L);
     this.buildStar(L);
     this.buildGoal(L);
     this.buildPlayer(L);
+    SYSTEMS.forEach((sys) => { if (sys.afterPlayer) sys.afterPlayer(this); });
+    this.buildCheckpointFlag(L);
     this.buildTouchControls();
     this.buildHud();
     if (import.meta.env && import.meta.env.DEV) this.buildDevLevelPicker();
@@ -120,543 +121,13 @@ export default class AdventureScene extends Phaser.Scene {
       const c = this.add.container(p.x, p.y).setDepth(5);
       const glow = this.add.circle(0, 0, 15, 0xfff3b0, 0.5);
       const ball = this.add.circle(0, 0, 10, 0xffe16b).setStrokeStyle(3, 0xf6a723);
-      const plus = this.add.text(0, 0, '+1', { fontFamily: 'Arial Black, Arial', fontSize: '13px', fontStyle: 'bold', color: '#7a4f10' }).setOrigin(0.5);
+      const plus = this.add.text(0, 0, `+${p.amount || 1}`, { fontFamily: 'Arial Black, Arial', fontSize: '13px', fontStyle: 'bold', color: '#7a4f10' }).setOrigin(0.5);
       c.add([glow, ball, plus]);
       c.amount = p.amount || 1; c.taken = false; c.regen = !!p.regen; // regen = magisch: groeit terug
       this.tweens.add({ targets: c, y: p.y - 8, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       this.tweens.add({ targets: glow, scale: 1.3, alpha: 0.2, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
       this.pickups.push(c);
     });
-  }
-
-  // ============================================================ TEL-WOLKEN
-  // Platforms die op een vast ritme verdwijnen en verschijnen (met knipper-
-  // waarschuwing): spring op het goede moment! Nieuw level-werkwoord: timing.
-  buildTelWolken(L) {
-    this.telWolken = [];
-    (L.telWolken || []).forEach(([x, y, w, offset = 0]) => {
-      const plat = this.add.rectangle(x + w / 2, y + 10, w, 20, 0x000000, 0);
-      this.physics.add.existing(plat, true);
-      plat._noCheckpoint = true; // nooit een checkpoint op een verdwijn-wolk!
-      this.platforms.add(plat);
-      const art = this.add.container(x + w / 2, y + 8).setDepth(-9);
-      const g = this.add.graphics();
-      const r = 15;
-      g.fillStyle(0xffffff, 1);
-      for (let cx = -w / 2 + r; cx <= w / 2 - r + 1; cx += r * 1.3) g.fillCircle(cx, 0, r);
-      g.fillCircle(-w / 2 + r * 1.6, -9, r * 0.85); g.fillCircle(w / 2 - r * 1.6, -9, r * 0.85);
-      g.fillStyle(0xdfeeff, 0.8);
-      for (let cx = -w / 2 + r; cx <= w / 2 - r + 1; cx += r * 1.3) g.fillCircle(cx, 5, r * 0.7);
-      art.add(g);
-      this.telWolken.push({ plat, art, offset });
-    });
-  }
-
-  updateTelWolken() {
-    const CYCLE = 3400, ON = 2300, WARN = 700; // 2,3s aan (laatste 0,7s knipperen), 1,1s weg
-    for (const wl of this.telWolken) {
-      const t = (this.time.now + wl.offset) % CYCLE;
-      const on = t < ON;
-      wl.plat.body.enable = on;
-      if (!on) wl.art.setAlpha(0.12);
-      else if (t > ON - WARN) wl.art.setAlpha(Math.floor(t / 130) % 2 ? 0.35 : 0.95);
-      else wl.art.setAlpha(0.95);
-    }
-  }
-
-  // ============================================================ GEEF-PLATEN
-  // Gouden plaat + slagboom: GEEF een deel van jezelf (bv. 3 blokjes) om de
-  // weg te openen — aftrekken met je eigen lijf als materiaal (GDD-werkwoord
-  // "splitsen/achterlaten"). Het gegeven stapeltje wordt een blij mini-vriendje.
-  buildPlates(L) {
-    this.plates = [];
-    (L.plates || []).forEach((P) => {
-      const groundTop = L.platforms[0][1];
-      const bx = P.x + 96;
-      // schermhoge blokkade (niet overheen te springen)…
-      const body = this.add.rectangle(bx, (40 + groundTop) / 2, 40, groundTop - 40, 0x000000, 0);
-      this.physics.add.existing(body, true);
-      this.doorGroup.add(body);
-      // …zichtbaar gemaakt met een fonkel-zuil + slagboom
-      const shimmer = this.add.graphics().setDepth(3);
-      shimmer.fillStyle(0xfff3b0, 0.18); shimmer.fillRoundedRect(bx - 20, 46, 40, groundTop - 106, 18);
-      shimmer.fillStyle(0xffe16b, 0.5);
-      for (let yy = 70; yy < groundTop - 80; yy += 52) shimmer.fillCircle(bx - 8 + (Math.floor(yy / 52) % 2) * 16, yy, 4);
-      this.tweens.add({ targets: shimmer, alpha: 0.5, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-      const post = this.add.graphics().setDepth(4);
-      post.fillStyle(0x9c6b3f, 1); post.fillRoundedRect(bx + 10, groundTop - 78, 10, 78, 4);
-      const beam = this.add.container(bx + 15, groundTop - 72).setDepth(4);
-      const bg = this.add.graphics();
-      bg.fillStyle(0xe8402c, 1); bg.fillRoundedRect(-86, -7, 92, 14, 7);
-      bg.fillStyle(0xffffff, 1); bg.fillRoundedRect(-64, -7, 18, 14, 7); bg.fillRoundedRect(-28, -7, 18, 14, 7);
-      beam.add(bg);
-      // de plaat zelf + gevraagd getal + zwevend hartje
-      const plate = this.add.graphics().setDepth(2);
-      plate.fillStyle(0xb98d12, 1); plate.fillEllipse(P.x, groundTop + 3, 84, 18);
-      plate.fillStyle(0xffe16b, 1); plate.fillEllipse(P.x, groundTop, 84, 16);
-      plate.lineStyle(3, 0xb98d12, 1); plate.strokeEllipse(P.x, groundTop, 84, 16);
-      const disc = this.add.circle(P.x, groundTop - 46, 15, 0xffffff).setStrokeStyle(3, 0x16202b).setDepth(4);
-      const num = this.add.text(P.x, groundTop - 46, `${P.doel}`, { fontFamily: 'Arial Black, Arial', fontSize: '17px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5).setDepth(4);
-      const hart = this.add.graphics().setDepth(4);
-      hart.fillStyle(0xff6b9d, 1); hart.fillCircle(-4, 0, 5); hart.fillCircle(4, 0, 5); hart.fillTriangle(-9, 2, 9, 2, 0, 13);
-      hart.x = P.x; hart.y = groundTop - 78;
-      this.tweens.add({ targets: hart, y: groundTop - 86, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-      this.plates.push({ ...P, body, beam, shimmer, hart, given: false, groundTop });
-    });
-  }
-
-  givePlate(pl) {
-    pl.given = true;
-    const n = pl.doel, was = this.playerValue;
-    this.playerValue -= n;
-    this.drawPlayer();
-    SFX.split(); Voice.number(n);
-    // het gegeven stapeltje wordt een blij mini-vriendje op de plaat
-    const c = this.add.container(pl.x, 0).setDepth(5);
-    const { totalH } = drawCubeStack(this, c, n, { w: 26, cell: 26, color: sig(n), eyeR: 4.5, eyeX: 5.5, pupilR: 2, mouthR: 4.5, faceStroke: 2 });
-    c.y = pl.groundTop - totalH / 2;
-    addNumberDisc(this, c, n, -totalH / 2 - 10, 9, '11px');
-    this.tweens.add({ targets: c, y: c.y - 14, duration: 220, yoyo: true, repeat: 2, ease: 'Sine.inOut' });
-    this.heart(pl.x, pl.groundTop - totalH - 26);
-    // slagboom omhoog + blokkade weg
-    pl.body.body.enable = false;
-    this.tweens.add({ targets: pl.beam, angle: -78, duration: 500, ease: 'Back.out' });
-    this.tweens.add({ targets: [pl.shimmer, pl.hart], alpha: 0, duration: 500, onComplete: () => { pl.shimmer.destroy(); pl.hart.destroy(); } });
-    SFX.yay(); Voice.cue('cheer'); this.burstStars(pl.x, pl.groundTop - 60, 10);
-    this.cameraPunch();
-    this.questText.setText(`Dank je wel! ${was} − ${n} = ${this.playerValue} — de weg is open! 🚩`);
-  }
-
-  // ============================================================ ANTWOORD-BLOKKEN
-  // Een muur met een vraag ("waar is MEER?") en twee zweefblokken met getallen:
-  // spring en SLA het juiste blok van onderen (kopstoot!) → de muur zakt weg.
-  // Fout blok = schudden + oeps; gewoon nog eens proberen. Werkwoord: vergelijken.
-  buildVraagMuren(L) {
-    this.vraagMuren = [];
-    this.antwoordGroup = this.physics.add.staticGroup();
-    (L.vraagMuren || []).forEach((V) => {
-      const groundTop = L.platforms[0][1];
-      const goedIdx = V.kies === 'meer'
-        ? (V.opties[0] > V.opties[1] ? 0 : 1)
-        : (V.opties[0] < V.opties[1] ? 0 : 1);
-      // schermhoge blokkade + zichtbare rotsmuur
-      const body = this.add.rectangle(V.x, (40 + groundTop) / 2, 46, groundTop - 40, 0x000000, 0);
-      this.physics.add.existing(body, true);
-      this.doorGroup.add(body);
-      const art = this.add.container(V.x, 0).setDepth(4);
-      const g = this.add.graphics();
-      g.fillStyle(0x7d838c, 1); g.fillRoundedRect(-23, 120, 46, groundTop - 118, 10);
-      g.fillStyle(0x9aa0a6, 1); g.fillRoundedRect(-23, 120, 46, 14, 6);
-      g.lineStyle(3, 0x5b6168, 1); g.strokeRoundedRect(-23, 120, 46, groundTop - 118, 10);
-      const bord = this.add.container(0, 96);
-      const bg = this.add.graphics();
-      bg.fillStyle(0xf3e2c0, 1); bg.lineStyle(3, 0x9c6b3f, 1);
-      bg.fillRoundedRect(-56, -20, 112, 40, 10); bg.strokeRoundedRect(-56, -20, 112, 40, 10);
-      const vt = this.add.text(0, 0, V.kies === 'meer' ? 'MEER?' : 'MINDER?', {
-        fontFamily: 'Arial Black, Arial', fontSize: '17px', fontStyle: 'bold', color: '#16202b',
-      }).setOrigin(0.5);
-      bord.add([bg, vt]);
-      art.add([g, bord]);
-      // twee antwoord-blokken vóór de muur
-      const blokken = V.opties.map((val, i) => {
-        const bx = V.x - 190 + i * 105, by = 410;
-        const blok = this.add.rectangle(bx, by, 56, 52, 0x000000, 0);
-        this.physics.add.existing(blok, true);
-        this.antwoordGroup.add(blok);
-        const bc = this.add.container(bx, by).setDepth(5);
-        const bgra = this.add.graphics();
-        bgra.fillStyle(0xf6c624, 1); bgra.fillRoundedRect(-28, -26, 56, 52, 10);
-        bgra.fillStyle(0xffe16b, 1); bgra.fillRoundedRect(-24, -22, 48, 20, 8);
-        bgra.lineStyle(3.5, 0xb98d12, 1); bgra.strokeRoundedRect(-28, -26, 56, 52, 10);
-        const num = this.add.text(0, 0, `${val}`, { fontFamily: 'Arial Black, Arial', fontSize: '24px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
-        bc.add([bgra, num]);
-        blok._art = bc; blok._idx = i;
-        return blok;
-      });
-      const vm = { ...V, body, art, blokken, goedIdx, opgelost: false, lastHit: 0, cuePlayed: false };
-      blokken.forEach((b) => { b._vm = vm; });
-      this.vraagMuren.push(vm);
-    });
-  }
-
-  hitAntwoord(vm, blok) {
-    const bc = blok._art;
-    if (blok._idx === vm.goedIdx) {
-      vm.opgelost = true;
-      SFX.correct(); Voice.cue('great');
-      this.tweens.add({ targets: bc, y: bc.y - 18, duration: 120, yoyo: true, ease: 'Quad.out' });
-      const flash = this.add.graphics().setDepth(6);
-      flash.fillStyle(0x2fae4e, 0.5); flash.fillRoundedRect(bc.x - 28, bc.y - 26, 56, 52, 10);
-      this.tweens.add({ targets: flash, alpha: 0, duration: 600, onComplete: () => flash.destroy() });
-      // de muur zakt in de grond
-      vm.body.body.enable = false;
-      this.tweens.add({ targets: vm.art, y: 480, alpha: 0.2, duration: 700, ease: 'Quad.in' });
-      confettiBurst(this, 90); this.cameraPunch(); SFX.yay();
-      this.burstStars(vm.x, 400, 10);
-      this.questText.setText('Goed gekozen! De muur zakt weg! 🚩');
-    } else {
-      SFX.wrong(); Voice.cue('oops');
-      this.tweens.add({ targets: bc, x: bc.x + 6, duration: 60, yoyo: true, repeat: 3 });
-      const flash = this.add.graphics().setDepth(6);
-      flash.fillStyle(0xe8402c, 0.45); flash.fillRoundedRect(bc.x - 28, bc.y - 26, 56, 52, 10);
-      this.tweens.add({ targets: flash, alpha: 0, duration: 500, onComplete: () => flash.destroy() });
-      this.questText.setText(vm.kies === 'meer' ? 'Oeps — welk getal is MEER?' : 'Oeps — welk getal is MINDER?');
-    }
-  }
-
-  // ============================================================ ACHTERVOLGING
-  // Een rollende rotsbal komt achter je aan: RENNEN! Raak = krimpen en de
-  // rots spat uiteen (opnieuw proberen bij de trigger); haal het einde en
-  // hij spat vanzelf. Werkwoord: rennen/durven.
-  buildAchtervolgingen(L) {
-    this.chases = (L.achtervolgingen || []).map((A) => ({ ...A, actief: false, klaar: false, rots: null }));
-  }
-
-  startChase(ch) {
-    ch.actief = true;
-    const groundTop = this.level.platforms[0][1];
-    const c = this.add.container(ch.spawnX, groundTop - 30).setDepth(9);
-    const g = this.add.graphics();
-    if (ch.skin === 'komeet') {
-      // vlammende komeet: gloeiende kop met een flakkerende vuurstaart erachter
-      const trail = this.add.graphics();
-      trail.fillStyle(0xf07c1f, 0.75); trail.fillEllipse(-36, 0, 46, 24);
-      trail.fillStyle(0xffc14d, 0.75); trail.fillEllipse(-24, 0, 28, 14);
-      c.add(trail);
-      this.tweens.add({ targets: trail, scaleX: 1.2, alpha: 0.5, duration: 150, yoyo: true, repeat: -1 });
-      g.fillStyle(0xe8402c, 1); g.fillCircle(0, 0, 26);
-      g.fillStyle(0xf07c1f, 1); g.fillCircle(3, -3, 19);
-      g.fillStyle(0xffe16b, 1); g.fillCircle(6, -5, 10);
-      g.lineStyle(3, 0xb93227, 1); g.strokeCircle(0, 0, 26);
-      c.add(g);
-    } else {
-      g.fillStyle(0x6a7078, 1); g.fillCircle(0, 0, 28);
-      g.fillStyle(0x7d838c, 1); g.fillCircle(-6, -6, 20);
-      g.lineStyle(3, 0x4a4f55, 1); g.strokeCircle(0, 0, 28);
-      g.fillStyle(0x4a4f55, 0.8); g.fillCircle(8, 4, 5); g.fillCircle(-10, 8, 4); g.fillCircle(2, -12, 4);
-      c.add(g);
-      this.tweens.add({ targets: g, angle: 360, duration: 700, repeat: -1 });
-    }
-    c._g = g;
-    this.physics.add.existing(c);
-    c.body.setAllowGravity(false);
-    c.body.setSize(56, 56); c.body.setOffset(-28, -28);
-    c.body.setVelocityX(ch.speed || 185);
-    ch.rots = c;
-    SFX.stomp(); this.cameraPunch(0.02, 6); Voice.cue('oops');
-    this.questText.setText(ch.skin === 'komeet' ? 'RENNEN! De komeet komt! ☄️' : 'RENNEN! 🪨');
-  }
-
-  crashChase(ch, geraakt) {
-    if (ch.rots) {
-      this.burstStars(ch.rots.x, ch.rots.y, 12); SFX.stomp();
-      this.tweens.killTweensOf(ch.rots._g);
-      ch.rots.destroy();
-    }
-    ch.rots = null;
-    ch.actief = false;
-    ch.klaar = !geraakt; // gehaald → klaar; geraakt → opnieuw bij de trigger
-  }
-
-  // ============================================================ MAAN-ZONES
-  // Zones met maan-zwaartekracht: binnen de zone val je langzaam en spring je
-  // superhoog — zo haal je richels die normaal onbereikbaar zijn. Werkwoord:
-  // zweven. (Alleen de speler zweeft; Grommels merken er niets van.)
-  buildMaanZones(L) {
-    this.maanZones = L.maanZones || [];
-    this.inMaanZone = false;
-    if (!this.maanZones.length) return;
-    const groundTop = L.platforms[0][1];
-    this.maanZones.forEach((Z) => {
-      const g = this.add.graphics().setDepth(-13);
-      g.fillStyle(0x9fb6ff, 0.08); g.fillRoundedRect(Z.x, 56, Z.w, groundTop - 56, 26);
-      g.lineStyle(2.5, 0xbfd0ff, 0.4); g.strokeRoundedRect(Z.x, 56, Z.w, groundTop - 56, 26);
-      // zwevende fonkeltjes in de zone
-      g.fillStyle(0xffffff, 0.5);
-      for (let i = 0; i < Math.floor(Z.w / 46); i++) {
-        g.fillCircle(Z.x + 24 + i * 46, 130 + ((i * 97) % (groundTop - 220)), 2.2);
-      }
-      this.tweens.add({ targets: g, alpha: 0.55, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-      // maantje-bordje bovenaan de zone
-      const icon = this.add.container(Z.x + Z.w / 2, 88).setDepth(-12);
-      const ig = this.add.graphics();
-      ig.fillStyle(0xe8e4f0, 1); ig.fillCircle(0, 0, 16);
-      ig.fillStyle(0xc9c4d8, 0.9); ig.fillCircle(-5, -3, 4); ig.fillCircle(6, 4, 3);
-      ig.lineStyle(2.5, 0x8a86ad, 1); ig.strokeCircle(0, 0, 16);
-      icon.add(ig);
-      this.tweens.add({ targets: icon, y: 96, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    });
-  }
-
-  updateMaanZones() {
-    if (!this.maanZones.length) return;
-    const px = this.player.x;
-    const inZone = this.maanZones.some((Z) => px >= Z.x && px <= Z.x + Z.w);
-    if (inZone !== this.inMaanZone) {
-      this.inMaanZone = inZone;
-      // Arcade telt wereld- + lijf-zwaartekracht op: −55% van de wereld ≈ zweven.
-      this.player.body.setGravityY(inZone ? -this.physics.world.gravity.y * 0.55 : 0);
-      if (inZone) { SFX.sparkle(); this.questText.setText('Maan-zwaartekracht — spring superhoog! 🌙'); }
-    }
-    // zweef-fonkeltjes onder je voeten zolang je in de lucht hangt
-    if (inZone && !this.player.body.blocked.down && Math.random() < 0.06) {
-      this.sparkleAt(this.player.x, this.player.y + this.player.totalH / 2, 1);
-    }
-  }
-
-  // ============================================================ RAKET (tank precies vol!)
-  // Tellen met sprongen van 10: verzamel vaatjes van 10 tot de tank op precies
-  // `doel` staat, stap in en de raket vliegt je over het ruimte-ravijn.
-  // Werkwoord: tanken (tientallen tellen tot 100).
-  buildRaket(L) {
-    this.raket = null;
-    this.fuelDrums = [];
-    if (!L.raket) return;
-    const R = L.raket, groundTop = L.platforms[0][1];
-
-    const c = this.add.container(R.x, groundTop).setDepth(7);
-    const g = this.add.graphics();
-    g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 2, 80, 14);
-    // vinnen
-    g.fillStyle(0xb93227, 1);
-    g.fillTriangle(-24, -10, -46, 0, -24, -58);
-    g.fillTriangle(24, -10, 46, 0, 24, -58);
-    // romp + neuskegel + glansstreep
-    g.fillStyle(0xe8eef5, 1); g.fillRoundedRect(-26, -158, 52, 152, { tl: 26, tr: 26, bl: 10, br: 10 });
-    g.fillStyle(0xe8402c, 1); g.fillTriangle(-26, -150, 26, -150, 0, -208);
-    g.fillStyle(0xffffff, 0.55); g.fillRoundedRect(-20, -140, 10, 90, 5);
-    g.lineStyle(3.5, 0x5b6168, 1); g.strokeRoundedRect(-26, -158, 52, 152, { tl: 26, tr: 26, bl: 10, br: 10 });
-    c.add(g);
-    // patrijspoort (bij de lancering kijkt Één erdoorheen)
-    const win = this.add.circle(0, -112, 15, 0x8fd3f2).setStrokeStyle(4, 0x5b6168);
-    c.add(win);
-    // vlam (pas zichtbaar bij de lancering)
-    const flame = this.add.graphics();
-    flame.fillStyle(0xf07c1f, 0.95); flame.fillTriangle(-14, -4, 14, -4, 0, 42);
-    flame.fillStyle(0xffe16b, 0.95); flame.fillTriangle(-8, -4, 8, -4, 0, 26);
-    flame.setVisible(false);
-    c.add(flame);
-    this.tweens.add({ targets: flame, scaleY: 1.3, duration: 90, yoyo: true, repeat: -1 });
-
-    // tank-meter boven de raket: balk + grote teller
-    const meter = this.add.container(R.x, groundTop - 258).setDepth(7);
-    const mbg = this.add.graphics();
-    mbg.fillStyle(0x16202b, 0.55); mbg.fillRoundedRect(-64, -24, 128, 60, 14);
-    meter.add(mbg);
-    const bar = this.add.graphics();
-    meter.add(bar);
-    const mt = this.add.text(0, -8, `0 / ${R.doel}`, { fontFamily: 'Arial Black, Arial', fontSize: '18px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
-    const ml = this.add.text(0, 24, '⛽ tank de raket!', { fontFamily: 'Arial', fontSize: '12px', color: '#cfe0ee' }).setOrigin(0.5);
-    meter.add([mt, ml]);
-
-    this.raket = { ...R, c, flame, win, meter, meterText: mt, meterBar: bar, fuel: 0, ready: false, launched: false, cueAt: 0 };
-    this.drawRaketBar();
-
-    // de vaatjes van 10 (oranje jerrycans)
-    (R.drums || []).forEach(([x, y]) => {
-      const d = this.add.container(x, y).setDepth(5);
-      const dg = this.add.graphics();
-      dg.fillStyle(0xb45309, 1); dg.fillRoundedRect(-6, -21, 12, 6, 2); // dopje
-      dg.fillStyle(0xf07c1f, 1); dg.fillRoundedRect(-14, -16, 28, 32, 6);
-      dg.fillStyle(0xffc14d, 1); dg.fillRoundedRect(-14, -16, 28, 9, { tl: 6, tr: 6, bl: 0, br: 0 });
-      dg.lineStyle(2.5, 0xb45309, 1); dg.strokeRoundedRect(-14, -16, 28, 32, 6);
-      d.add(dg);
-      d.add(this.add.text(0, 2, '10', { fontFamily: 'Arial Black, Arial', fontSize: '14px', fontStyle: 'bold', color: '#7a3d05' }).setOrigin(0.5));
-      d.taken = false;
-      this.tweens.add({ targets: d, y: y - 7, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-      this.fuelDrums.push(d);
-    });
-  }
-
-  drawRaketBar() {
-    const R = this.raket, bar = R.meterBar;
-    bar.clear();
-    bar.fillStyle(0x2b3d52, 1); bar.fillRoundedRect(-54, 2, 108, 10, 5);
-    const frac = Math.min(1, R.fuel / R.doel);
-    if (frac > 0) { bar.fillStyle(frac >= 1 ? 0x2fae4e : 0xffc14d, 1); bar.fillRoundedRect(-54, 2, 108 * frac, 10, 5); }
-  }
-
-  updateRaket(time) {
-    const R = this.raket;
-    if (!R || R.launched) return;
-    const p = this.player;
-    // vaatjes oppakken: +10 op de teller (hardop tellen in tientallen!)
-    for (const d of this.fuelDrums) {
-      if (d.taken) continue;
-      if (Math.abs(p.x - d.x) < 46 && Math.abs(p.y - d.y) < 62) {
-        d.taken = true;
-        R.fuel += 10;
-        this.tweens.killTweensOf(d);
-        this.tweens.add({ targets: d, scale: 0, y: d.y - 20, duration: 220, ease: 'Back.in', onComplete: () => d.destroy() });
-        SFX.coin(); SFX.grow(R.fuel / 10); // oplopend toontje: 10, 20, 30, …
-        const t10 = this.add.text(d.x, d.y - 26, '+10', { fontFamily: 'Arial Black, Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffe16b' }).setOrigin(0.5).setDepth(60).setStroke('#7a3d05', 5);
-        this.tweens.add({ targets: t10, y: d.y - 64, alpha: 0, duration: 800, ease: 'Quad.out', onComplete: () => t10.destroy() });
-        R.meterText.setText(`${R.fuel} / ${R.doel}`);
-        this.drawRaketBar();
-        this.tweens.add({ targets: R.meter, scale: 1.15, duration: 120, yoyo: true });
-        if (R.fuel >= R.doel) {
-          R.ready = true;
-          SFX.fanfare(); Voice.cue('cheer'); confettiBurst(this, 80);
-          R.meterText.setText(`${R.doel}! VOL`);
-          this.questText.setText(`PRECIES ${R.doel} — de tank is vol! Stap in! 🚀`);
-          this.tweens.add({ targets: R.c, x: R.c.x + 3, duration: 70, yoyo: true, repeat: 5 }); // trappelen om te gaan
-        } else {
-          this.questText.setText(`Brandstof: ${R.fuel} / ${R.doel} ⛽`);
-        }
-      }
-    }
-    // bij de raket: instappen (vol) of uitleggen wat hij wil (nog niet vol)
-    if (Math.abs(p.x - R.c.x) < 60) {
-      if (R.ready) this.launchRaket();
-      else if (time > R.cueAt) {
-        if (!R.cueAt) Voice.cue('greet');
-        R.cueAt = time + 2600;
-        this.questText.setText(`De raket wil PRECIES ${R.doel} brandstof — pak de vaatjes van 10! ⛽`);
-      }
-    }
-  }
-
-  launchRaket() {
-    const R = this.raket;
-    R.launched = true;
-    this.mode = 'vlucht'; // update-lus pauzeert de besturing tijdens de vlucht
-    const p = this.player;
-    p.body.setVelocity(0, 0);
-    p.body.enable = false;
-    const groundTop = this.level.platforms[0][1];
-    this.tweens.add({ targets: R.meter, alpha: 0, duration: 400 });
-    // instappen: Één huppelt naar de patrijspoort en verdwijnt erin
-    SFX.pick(); Voice.cue('whee');
-    this.tweens.add({
-      targets: p, x: R.c.x, y: R.c.y - 112, scale: 0.25, duration: 420, ease: 'Sine.inOut',
-      onComplete: () => {
-        p.setVisible(false); p.setScale(1);
-        R.win.setFillStyle(0xe8402c); // Één kijkt door het raampje
-        SFX.fanfare(); this.cameraPunch(0.04, 6);
-        this.questText.setText('3… 2… 1… LANCEREN! 🚀');
-        R.flame.setVisible(true);
-        const sx = R.c.x, ex = R.landX, peak = 330;
-        const prog = { t: 0 };
-        this.tweens.add({
-          targets: prog, t: 1, duration: 2600, delay: 600, ease: 'Sine.inOut',
-          onUpdate: () => {
-            const t = prog.t;
-            R.c.x = sx + (ex - sx) * t;
-            R.c.y = groundTop - Math.sin(Math.PI * t) * peak;
-            R.c.angle = Math.sin(Math.PI * t) * 14;
-            p.setPosition(R.c.x, R.c.y - 100); // camera volgt de speler → dus de raket
-            if (Math.random() < 0.3) this.sparkleAt(R.c.x, R.c.y + 10, 1);
-          },
-          onComplete: () => {
-            R.flame.setVisible(false);
-            R.c.angle = 0; R.c.y = groundTop;
-            R.win.setFillStyle(0x8fd3f2);
-            // uitstappen: voeten netjes op de grond + checkpoint hier
-            p.setVisible(true);
-            p.setPosition(ex + 60, groundTop - p.totalH / 2 - 2);
-            p.body.enable = true;
-            p.body.reset(p.x, p.y);
-            this.checkpoint = { x: p.x, bottom: groundTop };
-            this.mode = 'explore';
-            confettiBurst(this, 130); SFX.yay(); Voice.cue('cheer'); this.cameraPunch();
-            this.questText.setText('Wat een vlucht! Ren naar de vlag! 🚩');
-          },
-        });
-      },
-    });
-  }
-
-  // ============================================================ PORTALEN (kies de goede som)
-  // Portalen met elk een som erboven; alleen de som die het doelgetal maakt
-  // teleporteert je vóórbij het sterrenhek — de rest stuurt je terug naar het
-  // begin. Werkwoord: portaal-rekenen (sommen vergelijken met het doel).
-  buildPortalen(L) {
-    this.portalen = [];
-    const groundTop = L.platforms[0][1];
-    const kleuren = [0x38b6cf, 0x9b6dd6, 0xf28ba8];
-    (L.portalen || []).forEach((P) => {
-      const muurX = portaalMuurX(P);
-      // sterrenhek: schermhoge blokkade + fonkelende zuil van sterretjes
-      const body = this.add.rectangle(muurX, (40 + groundTop) / 2, 44, groundTop - 40, 0x000000, 0);
-      this.physics.add.existing(body, true);
-      this.doorGroup.add(body);
-      const hek = this.add.graphics().setDepth(3);
-      hek.fillStyle(0x9fb6ff, 0.16); hek.fillRoundedRect(muurX - 22, 46, 44, groundTop - 66, 20);
-      hek.fillStyle(0xffffff, 0.7);
-      for (let yy = 76; yy < groundTop - 40; yy += 46) {
-        const sx = muurX - 8 + (Math.floor(yy / 46) % 2) * 16;
-        hek.fillTriangle(sx - 5, yy, sx + 5, yy, sx, yy - 7);
-        hek.fillTriangle(sx - 5, yy - 3, sx + 5, yy - 3, sx, yy + 5);
-      }
-      this.tweens.add({ targets: hek, alpha: 0.5, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-      // bord met het doel boven de portalen
-      const mid = P.x + ((P.opties.length - 1) * PORTAL_AFSTAND) / 2;
-      const bord = this.add.container(mid, 150).setDepth(5);
-      const bg = this.add.graphics();
-      bg.fillStyle(0xf3e2c0, 1); bg.lineStyle(3, 0x9c6b3f, 1);
-      bg.fillRoundedRect(-84, -22, 168, 44, 12); bg.strokeRoundedRect(-84, -22, 168, 44, 12);
-      bord.add([bg, this.add.text(0, 0, `Welke som is ${P.doel}?`, { fontFamily: 'Arial Black, Arial', fontSize: '16px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5)]);
-      this.tweens.add({ targets: bord, y: 144, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-      // de portalen zelf: ovale ringen met een som-bordje erboven
-      const ringen = P.opties.map((o, i) => {
-        const px = P.x + i * PORTAL_AFSTAND;
-        const ring = this.add.container(px, groundTop - 64).setDepth(4);
-        const rg = this.add.graphics();
-        rg.fillStyle(kleuren[i % 3], 0.22); rg.fillEllipse(0, 0, 52, 116);
-        rg.lineStyle(6, kleuren[i % 3], 1); rg.strokeEllipse(0, 0, 52, 116);
-        rg.lineStyle(3, 0xffffff, 0.55); rg.strokeEllipse(0, 0, 34, 92);
-        ring.add(rg);
-        const label = this.add.container(0, -92);
-        const lb = this.add.graphics();
-        lb.fillStyle(0xffffff, 0.95); lb.lineStyle(3, 0x16202b, 1);
-        lb.fillRoundedRect(-40, -17, 80, 34, 9); lb.strokeRoundedRect(-40, -17, 80, 34, 9);
-        label.add([lb, this.add.text(0, 0, `${o[0]}+${o[1]}`, { fontFamily: 'Arial Black, Arial', fontSize: '17px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5)]);
-        ring.add(label);
-        this.tweens.add({ targets: ring, scaleY: 1.04, duration: 900 + i * 130, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-        return { x: px, som: o[0] + o[1], art: ring };
-      });
-      this.portalen.push({ ...P, muurX, body, hek, ringen, opgelost: false, cooldownTot: 0, cuePlayed: false });
-    });
-  }
-
-  // Flits-teleport naar x-positie tx (voeten op de grond).
-  teleportNaar(tx) {
-    const p = this.player, groundTop = this.level.platforms[0][1];
-    this.sparkleAt(p.x, p.y, 10);
-    p.setPosition(tx, groundTop - p.totalH / 2 - 2);
-    p.body.reset(p.x, p.y);
-    this.sparkleAt(tx, p.y, 10);
-    this.cameras.main.flash(180, 120, 140, 255);
-  }
-
-  updatePortalen(time) {
-    const p = this.player;
-    for (const po of this.portalen) {
-      if (po.opgelost || time < po.cooldownTot) continue;
-      if (!po.cuePlayed && Math.abs(p.x - po.x) < 300) {
-        po.cuePlayed = true; Voice.cue('greet');
-        this.questText.setText(`Stap in het portaal waar de som ${po.doel} is! ✨`);
-      }
-      for (const pt of po.ringen) {
-        if (Math.abs(p.x - pt.x) < 24 && (p.body.blocked.down || p.body.touching.down)) {
-          po.cooldownTot = time + 900;
-          if (pt.som === po.doel) {
-            po.opgelost = true;
-            po.body.body.enable = false;
-            this.teleportNaar(po.muurX + 110);
-            SFX.correct(); Voice.cue('great'); confettiBurst(this, 90); this.cameraPunch();
-            this.tweens.add({ targets: po.hek, alpha: 0, duration: 600, onComplete: () => po.hek.destroy() });
-            po.ringen.forEach((r) => this.tweens.add({ targets: r.art, alpha: 0.35, duration: 500 }));
-            this.questText.setText(`Ja! Dat is samen ${po.doel} — het sterrenhek is open! 🚩`);
-          } else {
-            this.teleportNaar(po.x - 170);
-            SFX.wrong(); Voice.cue('oops');
-            this.questText.setText(`Dat is samen ${pt.som}, niet ${po.doel} — probeer een ander portaal!`);
-          }
-          break;
-        }
-      }
-    }
   }
 
   // ============================================================ PUZZELS (brug + redding)
@@ -807,16 +278,9 @@ export default class AdventureScene extends Phaser.Scene {
     this.physics.add.existing(body, true);
     this.bossGroup.add(body);
 
-    // Elke wereld z'n eigen baas-art: 'golf' = blauwe golf (W2), 'boom' =
-    // Boom-Grommel (W3), 'kristal' = Kristal-Grommel (W4), anders de
-    // klassieke grijze Grommel-baas (W1).
-    const art = B.look === 'golf' ? drawWaveBoss(this, B.x, groundTop)
-      : B.look === 'boom' ? drawTreeBoss(this, B.x, groundTop)
-        : B.look === 'kristal' ? drawCrystalBoss(this, B.x, groundTop)
-          : B.look === 'meteoor' ? drawMeteorBoss(this, B.x, groundTop)
-            : drawBoss(this, B.x, groundTop);
-    // Bij de Golf-Baas is de hoge blokkade zichtbaar als opspattende waterzuil.
-    if (B.look === 'golf') art.sprayWall = drawSprayWall(this, B.x, groundTop);
+    // Elke wereld z'n eigen baas: alles (art, projectiel, blij-worden) komt
+    // uit de baas-registry — nieuwe baas = één entry in bossRegistry.js.
+    const art = bossLook(B.look).draw(this, B.x, groundTop);
     const pz = {
       type: 'boss', ...B, solved: false, stageIndex: 0,
       doel: B.stages[0].doel, blocks: B.stages[0].blocks,
@@ -836,10 +300,9 @@ export default class AdventureScene extends Phaser.Scene {
     const left = pz.stages.length - pz.stageIndex;
     this.questText.setText(`De Baas wankelt! Nog ${left}× — bouw de ${pz.doel}`);
 
-    // Golf-Baas/Boom-Grommel: hij slaat terug! Na fase 1 één projectiel
-    // (golf/eikel), daarna twee — spring eroverheen. Zolang ze rollen kun je
-    // niet bouwen (cooldown).
-    if (pz.look === 'golf' || pz.look === 'boom' || pz.look === 'kristal' || pz.look === 'meteoor') {
+    // Schiet de baas terug? Na fase 1 één projectiel, daarna twee — spring
+    // eroverheen. Zolang ze rollen kun je niet bouwen (cooldown).
+    if (bossLook(pz.look).projectile) {
       const n = Math.min(pz.stageIndex, 2);
       pz.cooldownUntil = this.time.now + 420 + n * 950 + 800;
       for (let i = 0; i < n; i++) {
@@ -851,22 +314,17 @@ export default class AdventureScene extends Phaser.Scene {
   // ============================================================ GOLVEN (Golf-Baas-aanval)
   spawnBossWave(pz) {
     const groundTop = this.level.platforms[0][1];
-    const c = pz.look === 'boom' ? drawAcorn(this, pz.bossArt.x - 84, groundTop)
-      : pz.look === 'kristal' ? drawCrystalShard(this, pz.bossArt.x - 84, groundTop)
-        : pz.look === 'meteoor' ? drawFireball(this, pz.bossArt.x - 84, groundTop)
-          : drawWaveMinion(this, pz.bossArt.x - 84, groundTop);
+    const look = bossLook(pz.look);
+    const c = look.projectile(this, pz.bossArt.x - 84, groundTop);
     this.physics.add.existing(c);
     c.body.setAllowGravity(false);
     c.body.setSize(44, 30); c.body.setOffset(-22, -30);
-    // kristal = sneller (W4), vuurbal = het snelst (W5-niveau!)
-    c.body.setVelocityX(pz.look === 'meteoor' ? -235 : pz.look === 'kristal' ? -215 : -175);
+    c.body.setVelocityX(look.speed); // per baas: latere werelden schieten sneller
     c.stopX = Math.max(60, pz.bossArt.x - 820); // dooft vanzelf uit na ±800px
     this.tweens.add({ targets: c, scaleY: 1.12, duration: 260, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.bossWaves.push(c);
     SFX.split(); this.sparkleAt(c.x, groundTop - 22, 6);
-    this.questText.setText(pz.look === 'boom' ? 'Pas op — een eikel! Spring! 🌰'
-      : pz.look === 'kristal' ? 'Pas op — een kristal! Spring! 💎'
-        : pz.look === 'meteoor' ? 'Pas op — een vuurbal! Spring! ☄️' : 'Pas op — een golf! Spring! 🌊');
+    this.questText.setText(look.waarschuwing);
   }
 
   splashWave(i) {
@@ -885,30 +343,7 @@ export default class AdventureScene extends Phaser.Scene {
     pz.bossBody.body.enable = false; this.bossGroup.remove(pz.bossBody, false, false);
     this.clearBossWaves();
     this.tweens.killTweensOf(c); // stop dein-/wiebel-tweens zodat de win-animatie niet vecht
-    if (pz.look === 'golf') {
-      // De Golf-Baas wordt een vriendelijk golfje: blij gezicht, en hij zakt
-      // langzaam in tot een klein deinend golfje naast het pad.
-      c.brow.clear();
-      c.mouth.clear(); c.mouth.lineStyle(4, 0x176b9e, 1); c.mouth.beginPath(); c.mouth.arc(0, 2, 15, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
-      this.tweens.add({ targets: c, scale: 0.45, y: c.y + 46, delay: 2100, duration: 900, ease: 'Sine.inOut' });
-      // de waterzuil zakt in — de weg is vrij
-      if (c.sprayWall) {
-        this.tweens.killTweensOf(c.sprayWall);
-        this.tweens.add({ targets: c.sprayWall, alpha: 0, duration: 700, onComplete: () => c.sprayWall.destroy() });
-      }
-    } else if (pz.look === 'boom') {
-      // de boom wordt lief: lach + roze bloesem; hij blijft vriendelijk staan
-      happyTreeBoss(this, c);
-    } else if (pz.look === 'kristal') {
-      // de kristal gaat stralen: lach + regenboog-fonkels
-      happyCrystalBoss(this, c);
-    } else if (pz.look === 'meteoor') {
-      // de meteoor koelt af: het vuur dooft, lach + sterretjes
-      happyMeteorBoss(this, c);
-    } else {
-      // blije kleur + lach voor de klassieke Grommel-baas
-      recolorBossHappy(this, c, sig(pz.stages[pz.stages.length - 1].doel));
-    }
+    bossLook(pz.look).happy(this, c, pz); // elke baas z'n eigen blije gedaante
     if (c.bubble) this.tweens.add({ targets: c.bubble, scale: 0, alpha: 0, duration: 300, ease: 'Back.in', onComplete: () => c.bubble.destroy() });
     confettiBurst(this, 150); this.cameraPunch(0.05, 7); SFX.yay(); Voice.cue('cheer'); this.burstStars(c.x, c.y - 20, 16);
     this.tweens.add({ targets: c, y: c.y - 30, duration: 250, yoyo: true, repeat: 3, ease: 'Sine.inOut' });
@@ -924,7 +359,7 @@ export default class AdventureScene extends Phaser.Scene {
   makeGrommel(def) {
     const c = this.add.container(def.x, def.y).setDepth(8);
     const art = this.add.container(0, 0);
-    drawGrommelArt(this, art);
+    drawGrommelArt(this, art, def.type); // 'springer' krijgt veren + wenkbrauwen
     c.add(art);
     c.art = art; c.def = def; c.alive = true; c.dir = 1;
 
@@ -958,7 +393,7 @@ export default class AdventureScene extends Phaser.Scene {
     // driecijferige doelen (100!) iets kleiner, zodat ze in de schijf passen
     const num = this.add.text(0, -48, `${L.goal.value}`, { fontFamily: 'Arial Black, Arial', fontSize: L.goal.value >= 100 ? '23px' : '34px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
     c.add([disc, num]);
-    c.disc = disc; c.value = L.goal.value; c.reached = false;
+    c.disc = disc; c.num = num; c.value = L.goal.value; c.reached = false;
     this.tweens.add({ targets: c, y: L.goal.y - 6, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.goal = c;
 
@@ -1005,19 +440,8 @@ export default class AdventureScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.player, this.doorGroup);
     this.physics.add.collider(this.player, this.bossGroup);
-    // Antwoord-blokken: raak het blok met een SPRONG (kopstoot) → antwoord
-    // gekozen. Overlap i.p.v. botsing: een gegroeide (lange) speler past niet
-    // ónder het blok, maar moet er wél bij kunnen — dus elke sprong die het
-    // blok van onderen raakt telt, hoe groot je ook bent.
-    this.physics.add.overlap(this.player, this.antwoordGroup, (pl, blok) => {
-      const vm = blok._vm;
-      if (!vm || vm.opgelost || this.time.now < vm.lastHit + 500) return;
-      if (pl.body.velocity.y < -40 && pl.body.bottom > blok.body.bottom) {
-        vm.lastHit = this.time.now;
-        pl.body.setVelocityY(90); // kopstoot: je stuitert er zachtjes vanaf
-        this.hitAntwoord(vm, blok);
-      }
-    });
+    // (De kopstoot-overlap van de antwoord-blokken registreert het
+    // vraagmuren-systeem zelf via zijn afterPlayer-hook.)
     // Breekbare kratten: met stamp-kracht + naar beneden vallend → sla je erdoorheen.
     this.physics.add.collider(this.player, this.breakGroup, null, (player, block) => {
       if (this.powers.stamp && player.body.velocity.y > 60 && player.body.bottom <= block.body.top + 22) {
@@ -1295,8 +719,33 @@ export default class AdventureScene extends Phaser.Scene {
     this.player.body.setVelocity(dir * 190, -240);
     this.tweens.add({ targets: this.player.art, alpha: 0.3, duration: 110, yoyo: true, repeat: 4, onComplete: () => this.player.art.setAlpha(1) });
 
+    // Tijdens een achtervolging krimp je nooit onder de 2: kleiner = lager
+    // springen, en dat maakte het rennen een negatieve spiraal.
+    const inChase = (this.chases || []).some((ch) => ch.actief);
+    if (inChase) { this.playerValue = Math.max(2, this.playerValue - 1); this.drawPlayer(); return; }
     if (this.playerValue <= 1) this.respawn();
     else { this.playerValue -= 1; this.drawPlayer(); }
+  }
+
+  // ============================================================ CHECKPOINT-VLAGGETJE
+  // Klein groen vlaggetje dat laat zíen waar je terugkomt na een val — zoals
+  // Nintendo checkpoints altijd zichtbaar maakt. Het huppelt met je mee.
+  buildCheckpointFlag(L) {
+    const c = this.add.container(L.start.x, L.start.y).setDepth(3);
+    const g = this.add.graphics();
+    g.fillStyle(0xcfd6dd, 1); g.fillRect(-1.5, -34, 3, 34);
+    g.fillStyle(0x2fae4e, 1); g.fillTriangle(1.5, -34, 1.5, -20, 20, -27);
+    g.lineStyle(1.5, 0x1f7a36, 1); g.strokeTriangle(1.5, -34, 1.5, -20, 20, -27);
+    c.add(g);
+    this.cpFlag = c;
+    this._cpFlagX = L.start.x;
+    this.moveCheckpointFlag(L.start.x, L.start.y + ((L.startValue || 1) * CELL) / 2);
+  }
+
+  moveCheckpointFlag(x, bottom) {
+    if (!this.cpFlag) return;
+    this.cpFlag.setPosition(x - 26, bottom); // ietsje achter je, niet in de weg
+    this.tweens.add({ targets: this.cpFlag, scaleY: 1.25, duration: 130, yoyo: true, ease: 'Quad.out' });
   }
 
   // Staat de speler STEVIG op een platform (draagt het z'n volle breedte),
@@ -1362,21 +811,42 @@ export default class AdventureScene extends Phaser.Scene {
     if (this.won) return; this.won = true;
     this.goal.reached = true;
     this.goal.disc.setFillStyle(sig(this.goal.value));
-    this.tweens.add({ targets: this.goal, scale: 1.2, duration: 200, yoyo: true, repeat: 2 });
     confettiBurst(this, 200); this.cameraPunch(0.05, 7); SFX.win(); Voice.cue('cheer');
 
     const L = this.level;
     const hasNext = !!LEVELS[this.levelIndex + 1];
     const R = L.reward || {};
 
-    // Voortgang vastleggen: level gehaald (+ ster?) en "verder spelen"-punt.
-    markLevelDone(L.id, this.starPickup && this.starPickup.taken ? { star: true } : {});
+    // VERDIENDE sterren (max 3): finish + de geheime ster + foutloos gerekend.
+    // Geen gratis sterren meer — de teller op de kaart betekent nu echt iets.
+    const heeftSter = !!(this.starPickup && this.starPickup.taken);
+    const verdiend = 1 + (heeftSter ? 1 : 0) + (this.rekenFouten === 0 ? 1 : 0);
+
+    // Voortgang vastleggen: gehaald, ster en beste sterren-score.
+    markLevelDone(L.id, { ...(heeftSter ? { star: true } : {}), sterren: verdiend });
     if (hasNext) setAdventureCurrent(LEVELS[this.levelIndex + 1].id);
-    this.time.delayedCall(700, () => {
+
+    // TEL-FINALE: de vlag telt hoorbaar naar zijn getal — jij maakt hem
+    // compleet! Ronde tientallen tellen met sprongen van 10 (20, 30 … 100).
+    const val = this.goal.value;
+    const perTien = val >= 20 && val % 10 === 0;
+    const stappen = perTien ? val / 10 : val;
+    for (let i = 0; i < stappen; i++) {
+      this.time.delayedCall(140 + i * 110, () => {
+        this.goal.num.setText(`${perTien ? (i + 1) * 10 : i + 1}`);
+        SFX.grow(i + 1);
+        this.tweens.add({ targets: this.goal.disc, scale: 1.15, duration: 80, yoyo: true });
+      });
+    }
+    const telKlaar = 140 + stappen * 110;
+    this.tweens.add({ targets: this.goal, scale: 1.2, duration: 200, delay: telKlaar, yoyo: true, repeat: 2 });
+
+    this.time.delayedCall(telKlaar + 520, () => {
       showReward(this, {
         title: R.title || 'Level gehaald! 🏆',
         subtitle: R.subtitle || 'Goed gedaan!',
-        stars: R.stars || 3,
+        stars: verdiend,
+        sterrenVan3: verdiend, // toont de 3 slots: wat heb je (nog niet) verdiend
         medal: R.medal, medalLabel: R.medalLabel,
         buttonText: hasNext ? 'Volgend level ▶' : 'Nog een keer! 🔄',
         onClose: () => {
@@ -1394,7 +864,14 @@ export default class AdventureScene extends Phaser.Scene {
     const onFloor = body.blocked.down || body.touching.down;
     if (onFloor) {
       this.lastGroundAt = time; this.jumpsUsed = 0;
-      if (this.solidlyGrounded()) this.checkpoint = { x: p.x, bottom: body.bottom };
+      if (this.solidlyGrounded()) {
+        this.checkpoint = { x: p.x, bottom: body.bottom };
+        // vlaggetje huppelt mee zodra je een flink stuk verder bent
+        if (Math.abs(this.checkpoint.x - this._cpFlagX) > 150) {
+          this._cpFlagX = this.checkpoint.x;
+          this.moveCheckpointFlag(this.checkpoint.x, this.checkpoint.bottom);
+        }
+      }
     }
 
     // Horizontale beweging (touch of toetsenbord)
@@ -1480,47 +957,9 @@ export default class AdventureScene extends Phaser.Scene {
       }
     }
 
-    // Geef-platen: sta op de plaat met genoeg blokjes → geef, en de weg opent
-    for (const pl of this.plates) {
-      if (pl.given) continue;
-      if (Math.abs(p.x - pl.x) < 42 && onFloor) {
-        if (!pl.cuePlayed) { pl.cuePlayed = true; Voice.number(pl.doel); }
-        if (this.playerValue > pl.doel) this.givePlate(pl);
-        else this.questText.setText(`Geef ${pl.doel} blokjes — word eerst groter! (pak bolletjes)`);
-      }
-    }
-
-    // Tel-wolken aan/uit op het ritme
-    this.updateTelWolken();
-
-    // Vraagmuren: hint bij aankomst (eenmalig cue)
-    for (const vm of this.vraagMuren) {
-      if (vm.opgelost) continue;
-      if (Math.abs(p.x - (vm.x - 140)) < 170) {
-        if (!vm.cuePlayed) { vm.cuePlayed = true; Voice.cue('greet'); }
-        this.questText.setText(`Spring tegen het blok met ${vm.kies.toUpperCase()}! ⬆`);
-      }
-    }
-
-    // Achtervolgingen: rollende rotsen
-    for (const ch of this.chases) {
-      if (ch.actief && ch.rots) {
-        if (time > this.invulnUntil && Math.abs(p.x - ch.rots.x) < 44 && Math.abs(p.y - ch.rots.y) < 90) {
-          this.shrinkPlayer(ch.rots);
-          this.crashChase(ch, true);
-        } else if (ch.rots.x > ch.endX) {
-          this.crashChase(ch, false);
-          this.questText.setText('Gehaald! De rots is stuk! 🎉');
-        }
-      } else if (!ch.actief && !ch.klaar && p.x > ch.triggerX && p.x < ch.endX - 80) {
-        this.startChase(ch);
-      }
-    }
-
-    // Ruimte-systemen (Wereld 5): zweefzones, de tank-raket en som-portalen
-    this.updateMaanZones();
-    this.updateRaket(time);
-    this.updatePortalen(time);
+    // Alle level-systemen (tel-wolken, platen, muren, chases, maan-zones,
+    // raket, portalen) — zie adventure/systems/index.js voor de volgorde.
+    for (const sys of SYSTEMS) { if (sys.update) sys.update(this, time, delta); }
 
     // Ster oppakken (ruime rechthoek: pak 'm ook al scheer je er in een boog langs)
     if (this.starPickup && !this.starPickup.taken &&
@@ -1553,13 +992,18 @@ export default class AdventureScene extends Phaser.Scene {
     // onder de grens uit.
     if (body.bottom > this.level.killY) this.respawn();
 
-    // Grommels patrouilleren
+    // Grommels patrouilleren; springers huppen er af en toe bij (timing!)
     for (const gr of this.grommels) {
       if (!gr.alive) continue;
       const [lo, hi] = gr.def.patrol;
       if (gr.x <= lo) gr.dir = 1; else if (gr.x >= hi) gr.dir = -1;
-      gr.body.setVelocityX(gr.dir * 55);
+      gr.body.setVelocityX(gr.dir * (gr.def.type === 'springer' ? 70 : 55));
       gr.art.scaleX = gr.dir;
+      if (gr.def.type === 'springer' && gr.body.blocked.down && time > (gr.nextHop || 0)) {
+        gr.nextHop = time + 1400 + (gr.def.x % 500); // eigen ritme per springer
+        gr.body.setVelocityY(-380);
+        this.tweens.add({ targets: gr.art, scaleY: 1.25, duration: 140, yoyo: true, ease: 'Quad.out' });
+      }
     }
 
     // Golven van de Golf-Baas: rollen naar links; spring eroverheen!

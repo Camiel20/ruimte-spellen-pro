@@ -110,7 +110,7 @@ export const LEVEL_5_2 = {
 
   grommels: [
     { type: 'stomp', x: 380, y: 612, patrol: [300, 480] },
-    { type: 'stomp', x: 1350, y: 612, patrol: [1250, 1500] },
+    { type: 'springer', x: 1350, y: 612, patrol: [1250, 1500] },
     { type: 'stomp', x: 2550, y: 612, patrol: [2460, 2680] },
   ],
 
@@ -160,7 +160,7 @@ export const LEVEL_5_3 = {
 
   grommels: [
     { type: 'stomp', x: 1350, y: 612, patrol: [1250, 1480] },
-    { type: 'stomp', x: 2450, y: 612, patrol: [2380, 2580] },
+    { type: 'springer', x: 2450, y: 612, patrol: [2380, 2580] },
   ],
 
   star: { x: 1400, y: 430 },
@@ -279,6 +279,9 @@ export const LEVEL_5_5 = {
       { doel: 30, blocks: [16, 15] },  // 31 → 30 + 1
     ],
   },
+
+  // Verstopte ster boven de arena: pak 'm tussen de vuurballen door!
+  star: { x: 880, y: 440 },
 
   goal: { x: 1850, y: 588, value: 30 },
 

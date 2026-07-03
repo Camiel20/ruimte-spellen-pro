@@ -5,13 +5,28 @@
 import { sig, lighten, darker } from './palette.js';
 
 // Het grijze Grommel-lijfje (tekent ín de art-container van makeGrommel).
-export function drawGrommelArt(scene, art) {
+// type 'springer' krijgt springveer-pootjes en verbaasde wenkbrauwen — je
+// ziet aan hem dat hij gaat huppen.
+export function drawGrommelArt(scene, art, type) {
   const g = scene.add.graphics();
   g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 20, 34, 9);
+  if (type === 'springer') {
+    // springveren onder het lijfje
+    g.lineStyle(3, 0x565b61, 1);
+    for (const sx of [-9, 9]) {
+      g.beginPath(); g.moveTo(sx, 15); g.lineTo(sx - 4, 18); g.lineTo(sx + 4, 21); g.lineTo(sx - 3, 24); g.strokePath();
+    }
+  }
   g.fillStyle(0x8a8f96, 1); g.fillRoundedRect(-16, -14, 32, 30, 8);
   g.fillStyle(0x6c7178, 1); g.fillRoundedRect(-16, 8, 32, 8, 8);
   g.fillStyle(lighten(0x8a8f96, 40), 0.5); g.fillRoundedRect(-12, -10, 9, 10, 4);
   g.lineStyle(2.5, 0x4a4f55, 1); g.strokeRoundedRect(-16, -14, 32, 30, 8);
+  if (type === 'springer') {
+    // verbaasde wenkbrauwen (hij stuitert er zelf van op)
+    g.lineStyle(2, 0x3a3f45, 1);
+    g.beginPath(); g.arc(-6, -10, 4, 1.1 * Math.PI, 1.9 * Math.PI); g.strokePath();
+    g.beginPath(); g.arc(6, -10, 4, 1.1 * Math.PI, 1.9 * Math.PI); g.strokePath();
+  }
   const eL = scene.add.circle(-6, -3, 5, 0xffffff).setStrokeStyle(2, 0x333333);
   const eR = scene.add.circle(6, -3, 5, 0xffffff).setStrokeStyle(2, 0x333333);
   const pL = scene.add.circle(-6, -2, 2.2, 0x222222), pR = scene.add.circle(6, -2, 2.2, 0x222222);
@@ -122,6 +137,19 @@ export function drawWaveBoss(scene, x, groundY) {
   scene.tweens.add({ targets: c, angle: 2, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   scene.tweens.add({ targets: foam, alpha: 0.75, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   return c;
+}
+
+// De verslagen Golf-Baas wordt een vriendelijk golfje: blije mond en hij
+// zakt langzaam in tot een klein deinend golfje naast het pad.
+export function happyWaveBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear(); c.mouth.lineStyle(4, 0x176b9e, 1); c.mouth.beginPath(); c.mouth.arc(0, 2, 15, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+  scene.tweens.add({ targets: c, scale: 0.45, y: c.y + 46, delay: 2100, duration: 900, ease: 'Sine.inOut' });
+  // de waterzuil zakt in — de weg is vrij
+  if (c.sprayWall) {
+    scene.tweens.killTweensOf(c.sprayWall);
+    scene.tweens.add({ targets: c.sprayWall, alpha: 0, duration: 700, onComplete: () => c.sprayWall.destroy() });
+  }
 }
 
 // Doorschijnende zuil van opspattend water boven de Golf-Baas: maakt

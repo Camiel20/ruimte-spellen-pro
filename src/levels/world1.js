@@ -252,6 +252,9 @@ export const LEVEL_1_5 = {
     ],
   },
 
+  // Verstopte ster boven de arena: durf jij 'm te pakken tijdens het gevecht?
+  star: { x: 850, y: 440 },
+
   goal: { x: 1650, y: 588, value: 5 },
 
   reward: {

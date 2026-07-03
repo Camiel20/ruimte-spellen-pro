@@ -53,7 +53,20 @@ export function showReward(scene, opts) {
     items.push(sub);
   }
 
-  if (opts.stars > 0) {
+  if (opts.sterrenVan3 != null) {
+    // Drie sterren-slots (à la Mario/Angry Birds): je ziet wat je verdiende
+    // én wat er nog te halen valt — reden om het level opnieuw te spelen.
+    for (let i = 0; i < 3; i++) {
+      const st = scene.add.image(cx - 52 + i * 52, cy + 34, 'star')
+        .setScale(0.4).setScrollFactor(0).setDepth(D + 1);
+      if (i >= opts.sterrenVan3) st.setTint(0x475569).setAlpha(0.55); // nog niet verdiend
+      items.push(st);
+      scene.tweens.add({
+        targets: st, scale: i < opts.sterrenVan3 ? 4.4 : 3.2,
+        delay: 250 + i * 220, duration: 300, ease: 'Back.out',
+      });
+    }
+  } else if (opts.stars > 0) {
     const st = scene.add.text(cx, cy + 28, `+${opts.stars}  ⭐`, {
       fontFamily: 'Arial', fontSize: '26px', fontStyle: 'bold', color: '#fbbf24',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(D + 1);
