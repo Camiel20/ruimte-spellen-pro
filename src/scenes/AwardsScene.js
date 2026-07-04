@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { SFX } from '../sound.js';
-import { getStars, getMedalCount, hasMedal } from '../progress.js';
+import { getStars, hasMedal } from '../progress.js';
 import { luchtAchtergrond, terugKnop, schermTitel } from '../theme.js';
 
 // Beloningenkast — laat zien hoeveel sterren en welke medailles je hebt.
@@ -12,7 +12,8 @@ const ALL_MEDALS = [
   { id: 'trace_digits', icon: '🔢', label: 'Cijferheld' },
   { id: 'trace_letters', icon: '🔤', label: 'Letterheld' },
   { id: 'trace_name', icon: '🌟', label: 'Naamheld' },
-  { id: 'platform_done', icon: '🚀', label: 'Ruimtereiziger' },
+  { id: 'grauw_verslagen', icon: '🦸', label: 'Redder van Getallen-Land' },
+  { id: 'rocket_max', icon: '🚀', label: 'Triljoen-Held' },
   { id: 'balloon_512', icon: '🎈', label: 'Ballonkoning' },
   { id: 'balloon_2048', icon: '🌈', label: 'Ballon-Legende' },
   { id: 'reken_nul', icon: '⭕', label: 'Nul-Planeet' },
@@ -20,6 +21,7 @@ const ALL_MEDALS = [
   { id: 'sticker_album', icon: '📖', label: 'Album-meester' },
   { id: 'bezorg_baas', icon: '🚚', label: 'Bezorg-Baas' },
   { id: 'snake_50', icon: '🐍', label: 'Slangenmeester' },
+  { id: 'snake_100', icon: '👑', label: 'Slangen-Koning' },
 ];
 
 export default class AwardsScene extends Phaser.Scene {
@@ -37,7 +39,9 @@ export default class AwardsScene extends Phaser.Scene {
       fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#b45309',
     }).setOrigin(0.5);
 
-    const got = getMedalCount();
+    // Tel alleen de HIER getoonde medailles (anders kan "X van Y" méér dan Y
+    // worden door avontuur-/wereld-medailles die niet in deze kast staan).
+    const got = ALL_MEDALS.filter((m) => hasMedal(m.id)).length;
     this.add.text(width / 2, 142, `🏅 ${got} van ${ALL_MEDALS.length} medailles`, {
       fontFamily: 'Arial', fontSize: '16px', color: '#5b7083',
     }).setOrigin(0.5);

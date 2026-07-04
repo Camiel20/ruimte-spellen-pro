@@ -552,6 +552,13 @@ export function launchSnake3D(onExit) {
   backBtn.onclick = () => quit();
   root.appendChild(backBtn);
 
+  // Korte besturings-hint die na een paar seconden vervaagt
+  const hint = document.createElement('div');
+  hint.textContent = 'Houd vast en stuur · eet cijfers · tel omhoog! 🔢';
+  hint.style.cssText = `position:absolute;bottom:max(112px,calc(env(safe-area-inset-bottom) + 92px));left:0;right:0;text-align:center;font-family:Arial;font-size:13px;color:#94a3b8;pointer-events:none;transition:opacity 1s ease;z-index:2;`;
+  root.appendChild(hint);
+  setTimeout(() => { hint.style.opacity = '0'; }, 6000);
+
   // HUD-updaters (function-declaraties → beschikbaar in reset())
   function updateTelHud() {
     const n = Math.floor(player.count);
@@ -750,7 +757,7 @@ export function launchSnake3D(onExit) {
       if (magnetTimer > 0) {
         magnetTimer -= dt;
         for (const f of foods) {
-          if (f.power) continue;
+          if (f.power || f.bestel) continue; // bestel-bollen niet meetrekken (anders eet je fout)
           const dx = player.pos.x - f.x, dz = player.pos.z - f.z;
           const d = Math.hypot(dx, dz);
           if (d < 14 && d > 0.1) {
