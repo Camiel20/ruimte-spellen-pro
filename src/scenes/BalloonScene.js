@@ -486,6 +486,13 @@ export default class BalloonScene extends Phaser.Scene {
   }
 
   spawnHover() {
+    // Ruim een eventuele bestaande hover eerst op, anders blijft die als
+    // wees-ballon bovenaan zweven (gebeurde na een prik — zie resolveStep).
+    if (this.hover) {
+      if (this.hoverBob) this.hoverBob.stop();
+      this.weg(this.hover);
+      this.hover = null;
+    }
     // Nét onder het HUD-paneel zweven (erachter zou hij wegvallen tegen het wit)
     const hy = this.topH + 44;
     this.hover = this.makeBalloon(this.huidigeVal, this.cellX(this.hoverCol), hy);
@@ -572,7 +579,10 @@ export default class BalloonScene extends Phaser.Scene {
       if (this.state.vals[0][c] !== 0) { this.gameOver(); return; }
     }
     this.busy = false;
-    this.spawnHover();
+    // Na een drop is de hover opgebruikt → maak een nieuwe. Na een prik
+    // bestaat de hover nog → laat 'm staan en ververs alleen de hint.
+    if (this.hover) this.updateHint();
+    else this.spawnHover();
   }
 
   // De regenboog-joker neemt de (hoogste) buurwaarde aan
