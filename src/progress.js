@@ -22,7 +22,6 @@ const DEFAULT = {
   adventure: { current: null }, // level-id waar het avontuur verder gaat
   settings: {
     music: true,            // achtergrondmuziek aan/uit
-    difficulty: 'normaal',  // makkelijk / normaal / moeilijk (globaal)
     childName: 'Adrian',    // naam van het kind (menu + naam-schrijven)
   },
 };

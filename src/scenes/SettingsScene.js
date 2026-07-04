@@ -17,22 +17,17 @@ export default class SettingsScene extends Phaser.Scene {
     schermTitel(this, 60, '⚙️ Instellingen');
 
     // Muziek aan/uit
-    this.toggleRow(width / 2, 140, '🎵 Achtergrondmuziek', 'music');
+    this.toggleRow(width / 2, 180, '🎵 Achtergrondmuziek', 'music');
 
-    // Moeilijkheid
-    this.add.text(width / 2, 210, '🎯 Moeilijkheid', {
+    // Naam van het kind. (De oude globale moeilijkheids-knop is verwijderd:
+    // de spellen regelen hun moeilijkheid nu zelf, adaptief per spel.)
+    this.add.text(width / 2, 290, '🌟 Naam van het kind', {
       fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#1f2d3a',
     }).setOrigin(0.5);
-    this.difficultyRow(width / 2, 250);
-
-    // Naam van het kind
-    this.add.text(width / 2, 330, '🌟 Naam van het kind', {
-      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#1f2d3a',
-    }).setOrigin(0.5);
-    this.add.text(width / 2, 360, '(gebruikt in het menu en bij "Mijn naam" schrijven)', {
+    this.add.text(width / 2, 320, '(gebruikt in het menu en bij "Mijn naam" schrijven)', {
       fontFamily: 'Arial', fontSize: '12px', color: '#5b7083',
     }).setOrigin(0.5);
-    this.nameRow(width / 2, 400);
+    this.nameRow(width / 2, 360);
 
     // Voortgang wissen
     const reset = this.add.text(width / 2, height - 60, '🗑️ Voortgang wissen', {
@@ -60,33 +55,6 @@ export default class SettingsScene extends Phaser.Scene {
       btn.setBackgroundColor(newVal ? '#4ade80' : '#e2e8f0');
       SFX.click();
       if (key === 'music') setMusicEnabled(newVal);
-    });
-  }
-
-  difficultyRow(x, y) {
-    const opts = [['Makkelijk', 'makkelijk', 0x4ade80], ['Normaal', 'normaal', 0xfbbf24], ['Moeilijk', 'moeilijk', 0xf87171]];
-    const bw = 100;
-    this.diffButtons = [];
-    opts.forEach(([label, val, color], i) => {
-      const bx = x - bw + i * bw;
-      const cur = getSetting('difficulty') === val;
-      const b = this.add.text(bx, y, label, {
-        fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold',
-        color: cur ? '#1a1a2e' : '#64748b',
-        backgroundColor: cur ? '#' + color.toString(16).padStart(6, '0') : '#e2e8f0',
-        padding: { x: 12, y: 8 },
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      b.val = val; b.color2 = color;
-      b.on('pointerdown', () => {
-        setSetting('difficulty', val);
-        SFX.click();
-        this.diffButtons.forEach((bb) => {
-          const sel = bb.val === val;
-          bb.setColor(sel ? '#1a1a2e' : '#64748b');
-          bb.setBackgroundColor(sel ? '#' + bb.color2.toString(16).padStart(6, '0') : '#e2e8f0');
-        });
-      });
-      this.diffButtons.push(b);
     });
   }
 

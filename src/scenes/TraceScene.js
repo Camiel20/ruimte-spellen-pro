@@ -22,9 +22,10 @@ export default class TraceScene extends Phaser.Scene {
 
     // Strengheid hangt af van de moeilijkheid: makkelijk = vergevingsgezind,
     // moeilijk = je moet preciezer op de lijn blijven.
-    const diff = getSetting('difficulty');
-    this.tolFactor = diff === 'makkelijk' ? 0.085 : diff === 'moeilijk' ? 0.05 : 0.062;
-    this.passThreshold = diff === 'makkelijk' ? 0.78 : diff === 'moeilijk' ? 0.95 : 0.9;
+    // Vaste, kindvriendelijke strengheid (de oude globale moeilijkheids-knop
+    // is verwijderd; spellen regelen hun moeilijkheid nu zelf).
+    this.tolFactor = 0.062;
+    this.passThreshold = 0.9;
 
     luchtAchtergrond(this);
     terugKnop(this);
