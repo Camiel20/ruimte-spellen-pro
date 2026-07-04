@@ -19,6 +19,7 @@ import FeestScene from './scenes/FeestScene.js';
 import WorldMapScene from './scenes/WorldMapScene.js';
 import VillageScene from './scenes/VillageScene.js';
 import StatsScene from './scenes/StatsScene.js';
+import StickerScene from './scenes/StickerScene.js';
 import { installTracking } from './stats.js';
 
 // Het hele spel wordt hier opgebouwd. Elk spel is een aparte "Scene"
@@ -48,6 +49,7 @@ const config = {
     TraceScene, TraceMenuScene, ClickerScene, PianoScene,
     AwardsScene, SettingsScene, CityScene, NumberTowerScene, ZeroRocketScene,
     NumberLandScene, AdventureScene, IntroScene, FeestScene, WorldMapScene, VillageScene, StatsScene,
+    StickerScene,
   ],
 };
 

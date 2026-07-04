@@ -16,6 +16,8 @@ const ALL_MEDALS = [
   { id: 'balloon_512', icon: '🎈', label: 'Ballonkoning' },
   { id: 'balloon_2048', icon: '🌈', label: 'Ballon-Legende' },
   { id: 'reken_nul', icon: '⭕', label: 'Nul-Planeet' },
+  { id: 'sticker_pagina', icon: '📄', label: 'Pagina Vol' },
+  { id: 'sticker_album', icon: '📖', label: 'Album-meester' },
   { id: 'snake_50', icon: '🐍', label: 'Slangenmeester' },
 ];
 

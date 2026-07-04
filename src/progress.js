@@ -15,6 +15,7 @@ const DEFAULT = {
   version: 2,
   stars: 0,                 // totaal verzamelde sterren over alle spellen
   medals: {},               // bv. { balloon: true, adventure_1_1: true }
+  stickers: {},             // sticker-id -> aantal (Plakboek); >=2 = glimmer
   high: {},                 // topscores per spel
   levels: {},               // per level-id: { done: true, star: true, sterren: 0-3 }
   goudenNullen: {},         // per level-id: true als de Gouden Nul daar gevonden is
@@ -78,6 +79,23 @@ function save() {
 // --- Sterren ---
 export function getStars() { return data.stars || 0; }
 export function addStars(n) { data.stars = (data.stars || 0) + n; save(); return data.stars; }
+// Sterren uitgeven (bv. een sticker-pakje). Geeft false als je te weinig hebt.
+export function spendStars(n) {
+  if ((data.stars || 0) < n) return false;
+  data.stars -= n;
+  save();
+  return true;
+}
+
+// --- Stickers (Plakboek) ---
+export function getStickers() { return data.stickers || {}; }
+export function getStickerCount(id) { return (data.stickers && data.stickers[id]) || 0; }
+export function addSticker(id) {
+  if (!data.stickers) data.stickers = {};
+  data.stickers[id] = (data.stickers[id] || 0) + 1;
+  save();
+  return data.stickers[id];
+}
 
 // --- Medailles ---
 export function hasMedal(id) { return !!(data.medals && data.medals[id]); }

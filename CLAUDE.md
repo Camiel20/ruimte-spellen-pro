@@ -109,6 +109,22 @@ te vliegen; 10 sommen per vlucht, daarna landing + sterren.
 - Voortgang in settings: `rekenNiveau`, `rekenMastery`, `rekenNullen`,
   `rekenHoogte`.
 
+## Plakboek (`src/scenes/StickerScene.js`)
+Verzamel-meta over álle spellen (menutegel 📖 "Plakboek", juli 2026). Verdiende
+sterren (`spendStars`) koop je in voor verrassings-pakjes (`PAK_KOST = 5`, 2
+stickers per pakje); vul 4 thema-pagina's van 6 stickers (24 totaal).
+- **Logica los van Phaser** in `src/stickerLogic.js` (vitest, `tests/sticker.test.js`):
+  catalogus (`PAGINAS`), `openPak` met **duplicaat-bescherming** (80% voorkeur
+  voor nog-niet-bezeten stickers, rariteit-weging gewoon/zeldzaam/goud),
+  `paginaVol`/`albumVol`/`nieuwVollePaginas`.
+- **Opslag** in `progress.js`: `stickers` (id→aantal; ≥2 = "glimmer"), plus
+  `spendStars`, `getStickers`, `addSticker`, `getStickerCount`.
+- **Scene** = het plaatje: insteekboek met pagina's, een zelf-tekenende
+  `tekenSticker` (ballon/planeet/blokje/slang/bloem/… — geen emoji, past bij de
+  huisstijl), pakjes-open-overlay met NIEUW!/GLIMMER!-badges, pagina- en
+  album-feest. Medailles `sticker_pagina` en `sticker_album` (Album-meester).
+- Thema's: Ballonnen-feest · De Ruimte · Getallen-vriendjes · Buiten spelen.
+
 ## Getallen-Toren (`src/scenes/NumberTowerScene.js`)
 Plaatswaarde-/stapelspel voor Adrian (eind groep 2 / start groep 3). Tik op
 `+1` / `+10` / `+100` om kubussen in de juiste kolom te stapelen tot ze samen
