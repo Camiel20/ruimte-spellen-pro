@@ -164,8 +164,7 @@ export default class MenuScene extends Phaser.Scene {
       // eerste keer: eerst het (woordeloze) verhaal van Baron Grauw
       { icon: '🦸', name: 'Getallen-Land',     color: 0xe8402c, go: () => this.scene.start(getSetting('introGezien') ? 'WorldMap' : 'Intro') },
       { icon: '🎹', name: 'Regenboog Piano',  color: 0xec4899, go: () => this.scene.start('Piano') },
-      // Stad Rijden past niet in een getallen-app; het blijft als verstopt
-      // extraatje bereikbaar via Instellingen (SettingsScene).
+      { icon: '🚚', name: 'Bezorg-Baas',      color: 0x22c55e, go: () => this.scene.start('Bezorg') },
       { icon: '🧱', name: 'Getallen Toren',   color: 0x14b8a6, go: () => this.scene.start('NumberTower') },
       { icon: '🚀', name: 'Nul-Raket',        color: 0x6366f1, go: () => this.scene.start('ZeroRocket') },
       { icon: '🐍', name: '3D Snake',         color: 0x06b6d4, go: () => this.launchSnake() },

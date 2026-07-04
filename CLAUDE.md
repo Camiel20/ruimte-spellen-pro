@@ -25,7 +25,7 @@ npm run build    # productie-build naar dist/
 
 ## Structuur
 - `src/main.js` — registreert alle spellen (scenes).
-- `src/scenes/*` — elk spel is een aparte Phaser-scene (o.a. `ClickerScene.js` = "Planeet Tikker", `NumberTowerScene.js` = "Getallen-Toren", `MathScene.js` = "Reken-Raket", `ZeroRocketScene.js` = "Nul-Raket", `StickerScene.js` = "Plakboek"). Getallen-Land = `WorldMapScene` + `AdventureScene`. Stad Rijden (`CityScene`) staat niet in het menu maar is bereikbaar via Instellingen.
+- `src/scenes/*` — elk spel is een aparte Phaser-scene (o.a. `ClickerScene.js` = "Planeet Tikker", `NumberTowerScene.js` = "Getallen-Toren", `MathScene.js` = "Reken-Raket", `ZeroRocketScene.js` = "Nul-Raket", `StickerScene.js` = "Plakboek", `BezorgScene.js` = "Bezorg-Baas"). Getallen-Land = `WorldMapScene` + `AdventureScene`.
 - `MenuScene.js` heeft een **Numberblocks-thema** (heldere lucht, zon, wolkjes, zwevende cijfer-kubussen; tegels als felle kubussen met dikke donkere rand).
 - `src/glyphs.js` — gedeelde cijfer-/letterpaden + `TraceChallenge` (schrijf-overlay), gebruikt door het schrijfspel én Planeet Tikker.
 - `src/progress.js` — voortgang (sterren, medailles, topscores, instellingen) in localStorage.
@@ -128,6 +128,26 @@ stickers per pakje); vul 4 thema-pagina's van 6 stickers (24 totaal).
   huisstijl), pakjes-open-overlay met NIEUW!/GLIMMER!-badges, pagina- en
   album-feest. Medailles `sticker_pagina` en `sticker_album` (Album-meester).
 - Thema's: Ballonnen-feest · De Ruimte · Getallen-vriendjes · Buiten spelen.
+
+## Bezorg-Baas (`src/scenes/BezorgScene.js`) — verving "Stad Rijden"
+Rij-/leerspel (menutegel 🚚, juli 2026): Nul rijdt een bezorgbusje door het
+Getallen-Dorp en brengt pakjes naar het juiste huis. Elk huis heeft een vast
+label — een getal (1–9) of een kort woord — en de bestelling vraagt erom als
+getal, **som (reken-adres: "3 + 4" → huis 7)** of woord. Traint getallen ÉN lezen.
+- **Logica los van Phaser** in `src/bezorgLogic.js` (vitest, `tests/bezorg.test.js`):
+  `labelDorp`, `kiesBestelling` (niveau 1 getal / 2 woord / 3 som), adaptieve
+  ladder, `sterrenVoorRonde`. Niveau blijft bewaard (`bezorgNiveau` in settings),
+  zodat het reken-adres pas na wat oefenen verschijnt (zoals Reken-Raket).
+- **Rij-model** hergebruikt uit het oude Stad Rijden (scalaire `carSpeed` +
+  grip-drift, gas/rem/stuur-knoppen). **GEEN camera-zoom** — anders schaalt de
+  scrollFactor(0)-HUD mee (valkuil). Bezorgen = dicht bij een huis stoppen
+  (`HUIS_RADIUS`, snelheid < `PARKEER_SNELHEID`); `huisOnderVan()` voorkomt een
+  valse fout-levering op het huis waar je net stopte.
+- **Eigen getekende voertuigen** (`maakVoertuigTexturen` → `generateTexture`):
+  busje + autootjes met gezichtjes. Hierdoor zijn de oude `car_*.png` weg
+  (auteursrecht-vraag opgelost) en is `CityScene.js` verwijderd.
+- Faal-vriendelijk (geen game-over; fout huis schudt "oeps, dat is 4!"),
+  gouden nullen verstopt in het dorp, medaille `bezorg_baas`. 6 leveringen/ronde.
 
 ## Getallen-Toren (`src/scenes/NumberTowerScene.js`)
 Plaatswaarde-/stapelspel voor Adrian (eind groep 2 / start groep 3). Tik op

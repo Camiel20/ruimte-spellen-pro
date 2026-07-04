@@ -9,7 +9,7 @@ import ClickerScene from './scenes/ClickerScene.js';
 import PianoScene from './scenes/PianoScene.js';
 import AwardsScene from './scenes/AwardsScene.js';
 import SettingsScene from './scenes/SettingsScene.js';
-import CityScene from './scenes/CityScene.js';
+import BezorgScene from './scenes/BezorgScene.js';
 import NumberTowerScene from './scenes/NumberTowerScene.js';
 import ZeroRocketScene from './scenes/ZeroRocketScene.js';
 import AdventureScene from './scenes/AdventureScene.js';
@@ -46,7 +46,7 @@ const config = {
     BootScene, MenuScene,
     BalloonScene, MathScene,
     TraceScene, TraceMenuScene, ClickerScene, PianoScene,
-    AwardsScene, SettingsScene, CityScene, NumberTowerScene, ZeroRocketScene,
+    AwardsScene, SettingsScene, BezorgScene, NumberTowerScene, ZeroRocketScene,
     AdventureScene, IntroScene, FeestScene, WorldMapScene, VillageScene, StatsScene,
     StickerScene,
   ],

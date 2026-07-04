@@ -12,7 +12,7 @@ const NAMES = {
   Clicker: 'Planeet Tikker',
   Piano: 'Regenboog Piano',
   Platform: 'Getallen Avontuur',
-  City: 'Stad Rijden',
+  Bezorg: 'Bezorg-Baas',
   NumberTower: 'Getallen Toren',
   ZeroRocket: 'Nul-Raket',
   NumberLand: 'Getallen-Land',

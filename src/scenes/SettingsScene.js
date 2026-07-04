@@ -35,18 +35,11 @@ export default class SettingsScene extends Phaser.Scene {
     this.nameRow(width / 2, 400);
 
     // Voortgang wissen
-    const reset = this.add.text(width / 2, height - 90, '🗑️ Voortgang wissen', {
+    const reset = this.add.text(width / 2, height - 60, '🗑️ Voortgang wissen', {
       fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#b91c1c',
       backgroundColor: '#ffffff', padding: { x: 16, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     reset.on('pointerdown', () => this.confirmReset());
-
-    // Verborgen extra (alleen voor de ouder): een topdown rijspel.
-    const city = this.add.text(this.scale.width / 2, this.scale.height - 22, '🚗 Stad Rijden', {
-      fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#3b5a72',
-      backgroundColor: '#ffffffbb', padding: { x: 14, y: 8 },
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    city.on('pointerdown', () => { SFX.click(); this.scene.start('City'); });
   }
 
   toggleRow(x, y, label, key) {

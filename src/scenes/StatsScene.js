@@ -8,7 +8,7 @@ import { luchtAchtergrond, terugKnop, schermTitel } from '../theme.js';
 
 const ICONS = {
   Balloon: '🎈', Math: '🛸', Trace: '✏️', Clicker: '🪐', Piano: '🎹',
-  Platform: '🦸', City: '🚗', NumberTower: '🧱', ZeroRocket: '🚀', NumberLand: '➕', Snake: '🐍',
+  Bezorg: '🚚', NumberTower: '🧱', ZeroRocket: '🚀', Snake: '🐍',
 };
 
 export default class StatsScene extends Phaser.Scene {

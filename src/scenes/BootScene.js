@@ -28,11 +28,6 @@ export default class BootScene extends Phaser.Scene {
     // De mooie glanzende ballon. Omdat hij wit/grijs is, kunnen we hem
     // met setTint() per getal een eigen kleur geven.
     this.load.image('balloon', 'assets/balloon.png');
-    // Auto's voor het verborgen rijspel (Stad Rijden)
-    this.load.image('car_player', 'assets/car_player.png');
-    this.load.image('car_red', 'assets/car_red.png');
-    this.load.image('car_blue', 'assets/car_blue.png');
-    this.load.image('car_green', 'assets/car_green.png');
     //
     // Meer voorbeelden (haal de // weg als je ze hebt):
     // this.load.image('astronaut', 'assets/astronaut.png');

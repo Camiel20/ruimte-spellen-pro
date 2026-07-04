@@ -18,6 +18,7 @@ const ALL_MEDALS = [
   { id: 'reken_nul', icon: '⭕', label: 'Nul-Planeet' },
   { id: 'sticker_pagina', icon: '📄', label: 'Pagina Vol' },
   { id: 'sticker_album', icon: '📖', label: 'Album-meester' },
+  { id: 'bezorg_baas', icon: '🚚', label: 'Bezorg-Baas' },
   { id: 'snake_50', icon: '🐍', label: 'Slangenmeester' },
 ];
 
