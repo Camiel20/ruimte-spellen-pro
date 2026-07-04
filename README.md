@@ -1,6 +1,6 @@
-# Ruimte Spellen Pro 🚀
+# Nul & Co ⭕ — spelen met getallen
 
-Adrian's ruimte-spellen, nu gebouwd met **Phaser 3** (game-engine) en
+Adrian's getallen-spellen (voorheen "Ruimte Spellen"), gebouwd met **Phaser 3** (game-engine) en
 **Vite** (bouwtool) voor een veel professionelere uitstraling.
 
 ## Snel starten

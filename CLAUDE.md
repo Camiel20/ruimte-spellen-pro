@@ -1,7 +1,20 @@
-# Ruimte Spellen Pro
+# Nul & Co (voorheen "Ruimte Spellen Pro")
 
 Een verzameling kinderspellen, gemaakt voor Adrian. Gebouwd met **Phaser 3**
 (game-engine) en **Vite** (bouwtool). Persoonlijk/privé project.
+
+## Merk & huisstijl (rebrand juli 2026)
+- **App-naam: "Nul & Co"** ("spelen met getallen"); mascotte = **Nul**, een
+  vrolijke ronde nul (`maakNul` in `src/theme.js`). De repo-naam en de
+  GitHub Pages-URL blijven `ruimte-spellen-pro` (anders breekt de link/deploy).
+- **`src/theme.js` = de huisstijl**: `luchtAchtergrond()` (lichte lucht, zon,
+  wolkjes, gras), `maakNul()`, `terugKnop()`, `schermTitel()`. Alle
+  systeemschermen (menu, prijzenkast, statistieken, instellingen, schrijf-menu)
+  gebruiken dit lichte thema; donkere ruimte-decors bestaan alleen nog BINNEN
+  spellen als bestemming (Nul-Raket, Planeet Tikker, e.d.).
+- `public/icon.png` (512, Nul-mascotte) wordt gegenereerd met een zelfgeschreven
+  Node-script (rasterisatie + PNG via node:zlib) — geen externe libraries.
+- Manifest/index/theme-color: licht (`#bfe3fb`); iOS-statusbalk `default`.
 
 ## Draaien
 ```bash
@@ -44,6 +57,48 @@ Idle/tik-spel. Recent toegevoegd voor Adrian (houdt van het cijfer 0):
 
 ### Openstaande ideeën (nog niet gebouwd)
 - Nullen-medailles in het prijzenscherm (`AwardsScene.js`).
+
+## Ballon-Feest (`src/scenes/BalloonScene.js`)
+Merge-spel (2048-stijl, menutegel 🎈 "Ballon-Feest") — in juli 2026 volledig
+opgeknapt: karakter-ballonnen met oogjes/lach/wangetjes/touwtje in een lucht-
+decor (wolken-parallax, zon, grasje), i.p.v. het oude donkere sterrenveld.
+- **Spellogica los van Phaser** in `src/balloonLogic.js`, unit-getest in
+  `tests/balloon.test.js`. De scene is alleen het "plaatje" (datamodel `vals`
+  eerst, sprites volgen — dezelfde bugvrije aanpak als voorheen).
+- **Kern-fix vastlopen:** spawns blijven altijd klein (`spawnOpties`: plafond =
+  hoogste/8, min 8, cap 64) — grote getallen maak je alleen zelf via merges.
+- **Vangnetten:** regenboog-joker (`RAINBOW = -1`, neemt de hoogste buurwaarde
+  aan; verschijnt als genade-drop bij een vol bord) en de prik-knop 📌
+  (3 ladingen, pop één ballon; merge ≥ 64 laadt een lading terug).
+- **Juice:** landings-hint (kolomglow + ghost), combo-kettingen, record-callout,
+  kroontje ≥ 64 / sterretjes ≥ 256, knipperende ogen, zachte game-over
+  (ballonnen zweven weg + witte kaart, "Nog een keer").
+- Medailles: `balloon_512` (Ballonkoning) en nieuw `balloon_2048`
+  (Ballon-Legende). Highscore-sleutel blijft `balloon`.
+
+## Reken-Raket (`src/scenes/MathScene.js`) — voorheen "Ruimte Rekenen"
+Automatiseer-spel voor groep 3 (juli 2026 volledig herbouwd). Sommen zijn
+brandstof: kies het antwoord door met de raket door de juiste antwoord-planeet
+te vliegen; 10 sommen per vlucht, daarna landing + sterren.
+- **Logica los van Phaser** in `src/rekenLogic.js` (getest in
+  `tests/reken.test.js`): leerlijn N1–N7 (t/m 5 → optellen/aftrekken t/m 10 →
+  dubbelen → t/m 20 zonder/met tientalsprong → **N7 "nul-magie"**: 900+100,
+  9.000+1.000), adaptieve ladder (3 goed → omhoog, 2 fout → zachtjes terug),
+  plausibele afleiders (±1/±2, cijferdraai; bij nul-magie een nul te veel/weinig).
+- **Geen keuzescherm meer**: `DiffScene` is verwijderd; de tegel 🛸 start
+  `Math` direct. De ladder onthoudt het niveau (settings `rekenNiveau`).
+- **Blokjes-hulp**: Numberblocks-torentjes onder de som; vervagen zodra een
+  niveau beheerst is (mastery ≥ 6), komen terug na een 2e fout (dan pulseert
+  ook het juiste antwoord). Geen timer, geen straf; snel antwoorden = TURBO
+  (dubbele meters).
+- **Gouden nullen**: nul-sommen (a+0, a−0, a−a) geven een gouden nul; bij 5
+  opent de geheime **NUL-PLANEET** (vlucht met alleen nul-magie, medal
+  `reken_nul`).
+- **Bestemmingen** op totaalhoogte: Wolk 400 / Maan 1.500 (`math_easy`) /
+  Mars 3.000 / Saturnus 6.000 (`math_medium`) / Melkweg 10.000 (`math_hard`)
+  — de oude medailles blijven zo verdienbaar.
+- Voortgang in settings: `rekenNiveau`, `rekenMastery`, `rekenNullen`,
+  `rekenHoogte`.
 
 ## Getallen-Toren (`src/scenes/NumberTowerScene.js`)
 Plaatswaarde-/stapelspel voor Adrian (eind groep 2 / start groep 3). Tik op

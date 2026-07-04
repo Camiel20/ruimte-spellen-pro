@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { SFX } from '../sound.js';
 import { getSetting, setSetting, resetProgress } from '../progress.js';
 import { setMusicEnabled } from '../music.js';
+import { luchtAchtergrond, terugKnop, schermTitel } from '../theme.js';
 
 // Instellingen — voor de ouder. Muziek aan/uit, moeilijkheid, naam van
 // het kind, en de mogelijkheid om alle voortgang te wissen.
@@ -11,71 +12,59 @@ export default class SettingsScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
-    this.add.rectangle(0, 0, width, height, 0x0b0d1a).setOrigin(0).setDepth(-1);
-    for (let i = 0; i < 40; i++) {
-      this.add.image(Phaser.Math.Between(0, width), Phaser.Math.Between(0, height), 'star')
-        .setAlpha(Phaser.Math.FloatBetween(0.15, 0.5));
-    }
-
-    const back = this.add.text(16, 16, '⬅ Terug', {
-      fontFamily: 'Arial', fontSize: '16px', color: '#94a3b8',
-      backgroundColor: '#1e293b', padding: { x: 10, y: 6 },
-    }).setInteractive();
-    back.on('pointerdown', () => this.scene.start('Menu'));
-
-    this.add.text(width / 2, 60, '⚙️ Instellingen', {
-      fontFamily: 'Arial', fontSize: '26px', fontStyle: 'bold', color: '#fff',
-    }).setOrigin(0.5);
+    luchtAchtergrond(this);
+    terugKnop(this);
+    schermTitel(this, 60, '⚙️ Instellingen');
 
     // Muziek aan/uit
     this.toggleRow(width / 2, 140, '🎵 Achtergrondmuziek', 'music');
 
     // Moeilijkheid
     this.add.text(width / 2, 210, '🎯 Moeilijkheid', {
-      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#fff',
+      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#1f2d3a',
     }).setOrigin(0.5);
     this.difficultyRow(width / 2, 250);
 
     // Naam van het kind
     this.add.text(width / 2, 330, '🌟 Naam van het kind', {
-      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#fff',
+      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#1f2d3a',
     }).setOrigin(0.5);
     this.add.text(width / 2, 360, '(gebruikt in het menu en bij "Mijn naam" schrijven)', {
-      fontFamily: 'Arial', fontSize: '12px', color: '#64748b',
+      fontFamily: 'Arial', fontSize: '12px', color: '#5b7083',
     }).setOrigin(0.5);
     this.nameRow(width / 2, 400);
 
     // Voortgang wissen
-    const reset = this.add.text(width / 2, height - 70, '🗑️ Voortgang wissen', {
-      fontFamily: 'Arial', fontSize: '15px', color: '#f87171',
-      backgroundColor: '#1e293b', padding: { x: 16, y: 10 },
+    const reset = this.add.text(width / 2, height - 90, '🗑️ Voortgang wissen', {
+      fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#b91c1c',
+      backgroundColor: '#ffffff', padding: { x: 16, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     reset.on('pointerdown', () => this.confirmReset());
 
     // Verborgen extra (alleen voor de ouder): een topdown rijspel.
-    const city = this.add.text(this.scale.width / 2, this.scale.height - 30, '🚗 Stad Rijden', {
-      fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#64748b',
-      backgroundColor: '#16203a', padding: { x: 14, y: 8 },
+    const city = this.add.text(this.scale.width / 2, this.scale.height - 22, '🚗 Stad Rijden', {
+      fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#3b5a72',
+      backgroundColor: '#ffffffbb', padding: { x: 14, y: 8 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     city.on('pointerdown', () => { SFX.click(); this.scene.start('City'); });
   }
 
   toggleRow(x, y, label, key) {
     this.add.text(x - 150, y, label, {
-      fontFamily: 'Arial', fontSize: '18px', color: '#fff',
+      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#1f2d3a',
     }).setOrigin(0, 0.5);
     const on = getSetting(key);
     const btn = this.add.text(x + 150, y, on ? 'AAN' : 'UIT', {
       fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold',
-      color: on ? '#1a1a2e' : '#94a3b8',
-      backgroundColor: on ? '#4ade80' : '#334155', padding: { x: 16, y: 8 },
+      color: on ? '#14532d' : '#64748b',
+      backgroundColor: on ? '#4ade80' : '#e2e8f0', padding: { x: 16, y: 8 },
     }).setOrigin(1, 0.5).setInteractive({ useHandCursor: true });
     btn.on('pointerdown', () => {
       const newVal = !getSetting(key);
       setSetting(key, newVal);
       btn.setText(newVal ? 'AAN' : 'UIT');
-      btn.setColor(newVal ? '#1a1a2e' : '#94a3b8');
-      btn.setBackgroundColor(newVal ? '#4ade80' : '#334155');
+      btn.setColor(newVal ? '#14532d' : '#64748b');
+      btn.setBackgroundColor(newVal ? '#4ade80' : '#e2e8f0');
       SFX.click();
       if (key === 'music') setMusicEnabled(newVal);
     });
@@ -90,8 +79,8 @@ export default class SettingsScene extends Phaser.Scene {
       const cur = getSetting('difficulty') === val;
       const b = this.add.text(bx, y, label, {
         fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold',
-        color: cur ? '#1a1a2e' : '#cbd5e1',
-        backgroundColor: cur ? '#' + color.toString(16).padStart(6, '0') : '#1e293b',
+        color: cur ? '#1a1a2e' : '#64748b',
+        backgroundColor: cur ? '#' + color.toString(16).padStart(6, '0') : '#e2e8f0',
         padding: { x: 12, y: 8 },
       }).setOrigin(0.5).setInteractive({ useHandCursor: true });
       b.val = val; b.color2 = color;
@@ -100,8 +89,8 @@ export default class SettingsScene extends Phaser.Scene {
         SFX.click();
         this.diffButtons.forEach((bb) => {
           const sel = bb.val === val;
-          bb.setColor(sel ? '#1a1a2e' : '#cbd5e1');
-          bb.setBackgroundColor(sel ? '#' + bb.color2.toString(16).padStart(6, '0') : '#1e293b');
+          bb.setColor(sel ? '#1a1a2e' : '#64748b');
+          bb.setBackgroundColor(sel ? '#' + bb.color2.toString(16).padStart(6, '0') : '#e2e8f0');
         });
       });
       this.diffButtons.push(b);
@@ -112,13 +101,13 @@ export default class SettingsScene extends Phaser.Scene {
     // Eenvoudige naam-kiezer met een paar voorinstellingen + handmatig via prompt.
     const cur = getSetting('childName') || 'Adrian';
     this.nameLabel = this.add.text(x, y, cur, {
-      fontFamily: 'Arial', fontSize: '22px', fontStyle: 'bold', color: '#f9a8d4',
-      backgroundColor: '#1e293b', padding: { x: 20, y: 8 },
+      fontFamily: 'Arial', fontSize: '22px', fontStyle: 'bold', color: '#be185d',
+      backgroundColor: '#ffffff', padding: { x: 20, y: 8 },
     }).setOrigin(0.5);
 
     const edit = this.add.text(x, y + 50, '✏️ Naam wijzigen', {
-      fontFamily: 'Arial', fontSize: '14px', color: '#60a5fa',
-      backgroundColor: '#1e293b', padding: { x: 14, y: 8 },
+      fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#1d4ed8',
+      backgroundColor: '#ffffff', padding: { x: 14, y: 8 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     edit.on('pointerdown', () => {
       SFX.click();

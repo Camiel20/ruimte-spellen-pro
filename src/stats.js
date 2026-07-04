@@ -7,7 +7,7 @@ const KEY = 'rsp_stats_v1';
 // Scene-key -> nette naam. Alleen deze tellen als "spel".
 const NAMES = {
   Balloon: 'Ballon Merge',
-  Math: 'Ruimte Rekenen',
+  Math: 'Reken-Raket',
   Trace: 'Schrijven',
   Clicker: 'Planeet Tikker',
   Piano: 'Regenboog Piano',

@@ -3,7 +3,6 @@ import BootScene from './scenes/BootScene.js';
 import MenuScene from './scenes/MenuScene.js';
 import BalloonScene from './scenes/BalloonScene.js';
 import MathScene from './scenes/MathScene.js';
-import DiffScene from './scenes/DiffScene.js';
 import TraceScene from './scenes/TraceScene.js';
 import TraceMenuScene from './scenes/TraceMenuScene.js';
 import ClickerScene from './scenes/ClickerScene.js';
@@ -29,7 +28,7 @@ import { installTracking } from './stats.js';
 const config = {
   type: Phaser.AUTO,
   parent: 'game',
-  backgroundColor: '#0b0d1a',
+  backgroundColor: '#bfe3fb',
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -45,7 +44,7 @@ const config = {
   },
   scene: [
     BootScene, MenuScene,
-    BalloonScene, MathScene, DiffScene,
+    BalloonScene, MathScene,
     TraceScene, TraceMenuScene, ClickerScene, PianoScene,
     AwardsScene, SettingsScene, CityScene, NumberTowerScene, ZeroRocketScene,
     NumberLandScene, AdventureScene, IntroScene, FeestScene, WorldMapScene, VillageScene, StatsScene,

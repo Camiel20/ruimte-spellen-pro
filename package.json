@@ -1,7 +1,7 @@
 {
   "name": "ruimte-spellen-pro",
   "version": "1.0.0",
-  "description": "Adrian's ruimte spellen - professionele versie met Phaser",
+  "description": "Nul & Co - Adrian's getallen-spellen (Phaser)",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -3,6 +3,7 @@ import { SFX, initAudio, toggleSound, isSoundOn } from '../sound.js';
 import { getStars, getMedalCount, getSetting } from '../progress.js';
 import { startMusic } from '../music.js';
 import { notePlay, startTimer, stopTimer } from '../stats.js';
+import { maakNul } from '../theme.js';
 
 export default class MenuScene extends Phaser.Scene {
   constructor() { super('Menu'); }
@@ -100,30 +101,55 @@ export default class MenuScene extends Phaser.Scene {
   }
 
   buildHeader(width) {
-    const title = this.add.text(width / 2, 36, '🔢 RUIMTE SPELLEN', {
+    // Het NUL & CO-logo: zwaaiende Nul-mascotte naast dikke witte letters
+    const logo = this.add.container(width / 2, 46).setDepth(10);
+
+    const stijl = {
       fontFamily: 'Arial Black, Arial, sans-serif',
-      fontSize: '30px', fontStyle: 'bold', color: '#ffffff',
-    }).setOrigin(0.5).setDepth(10).setStroke('#1f2d3a', 7);
-    title.setShadow(2, 3, '#1f2d3a', 4, true, true);
-    this.tweens.addCounter({
-      from: 0, to: 360, duration: 5000, repeat: -1,
-      onUpdate: (tw) => title.setTint(
-        Phaser.Display.Color.HSVToRGB(tw.getValue() / 360, 0.5, 1).color
-      ),
+      fontSize: '34px', fontStyle: 'bold', color: '#ffffff',
+    };
+    const t1 = this.add.text(0, 0, 'NUL', stijl).setOrigin(0, 0.5).setStroke('#1f2d3a', 8);
+    const t2 = this.add.text(0, 0, '&', {
+      ...stijl, fontSize: '26px', color: '#fbbf24',
+    }).setOrigin(0, 0.5).setStroke('#1f2d3a', 7);
+    const t3 = this.add.text(0, 0, 'CO', stijl).setOrigin(0, 0.5).setStroke('#1f2d3a', 8);
+    t1.setShadow(2, 3, '#1f2d3a', 4, true, true);
+    t3.setShadow(2, 3, '#1f2d3a', 4, true, true);
+
+    // Letters netjes achter elkaar, mascotte links ervan; geheel centreren
+    const nulR = 27;
+    t2.x = t1.width + 8;
+    t3.x = t2.x + t2.width + 8;
+    const tekstB = t3.x + t3.width;
+    const totaal = nulR * 2 + 16 + tekstB;
+    const links = -totaal / 2;
+    const nul = maakNul(this, links + nulR, 2, nulR);
+    [t1, t2, t3].forEach((t) => { t.x += links + nulR * 2 + 16; });
+    logo.add([nul, t1, t2, t3]);
+
+    this.tweens.add({ targets: logo, y: 42, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    // Nul zwaait je gedag en knippert af en toe
+    this.tweens.add({
+      targets: nul.arm, angle: { from: -6, to: 26 }, duration: 360,
+      yoyo: true, repeat: -1, repeatDelay: 1400, ease: 'Sine.inOut',
     });
-    this.tweens.add({ targets: title, y: 32, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.time.addEvent({ delay: 2800, loop: true, callback: () => nul.knipper() });
+
+    this.add.text(width / 2, 84, 'spelen met getallen', {
+      fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#3b5a72',
+    }).setOrigin(0.5).setDepth(10);
 
     const childName = getSetting('childName') || 'Adrian';
-    const nameTxt = this.add.text(width / 2, 72, `💖 ${childName} 💖`, {
-      fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#ffffff',
+    const nameTxt = this.add.text(width / 2, 108, `💖 ${childName} 💖`, {
+      fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5).setDepth(10).setStroke('#db2777', 5);
-    this.tweens.add({ targets: nameTxt, alpha: 0.5, duration: 1600, yoyo: true, repeat: -1 });
+    this.tweens.add({ targets: nameTxt, alpha: 0.55, duration: 1600, yoyo: true, repeat: -1 });
 
     const stars = getStars();
     const medals = getMedalCount();
-    const badge = this.add.text(width / 2, 100, `⭐ ${stars}   🏅 ${medals}`, {
-      fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#fbbf24',
-      backgroundColor: '#0e143099', padding: { x: 18, y: 7 },
+    const badge = this.add.text(width / 2, 138, `⭐ ${stars}   🏅 ${medals}`, {
+      fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#b45309',
+      backgroundColor: '#ffffffdd', padding: { x: 18, y: 7 },
     }).setOrigin(0.5).setDepth(10).setInteractive({ useHandCursor: true });
     badge.on('pointerdown', () => { SFX.click(); this.scene.start('Awards'); });
     this.tweens.add({ targets: badge, scale: 1.06, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
@@ -131,9 +157,9 @@ export default class MenuScene extends Phaser.Scene {
 
   buildGrid(width) {
     const GAMES = [
-      { icon: '🧮', name: 'Ruimte Rekenen',  color: 0x3b82f6, go: () => this.scene.start('Diff') },
+      { icon: '🛸', name: 'Reken-Raket',     color: 0x3b82f6, go: () => this.scene.start('Math') },
       { icon: '✏️', name: 'Schrijven',        color: 0xf97316, go: () => this.scene.start('TraceMenu') },
-      { icon: '🎈', name: 'Ballon Merge',     color: 0xa855f7, go: () => this.scene.start('Balloon') },
+      { icon: '🎈', name: 'Ballon-Feest',     color: 0xa855f7, go: () => this.scene.start('Balloon') },
       { icon: '🪐', name: 'Planeet Tikker',   color: 0xeab308, go: () => this.scene.start('Clicker') },
       // eerste keer: eerst het (woordeloze) verhaal van Baron Grauw
       { icon: '🦸', name: 'Getallen-Land',     color: 0xe8402c, go: () => this.scene.start(getSetting('introGezien') ? 'WorldMap' : 'Intro') },

@@ -1,13 +1,13 @@
 {
-  "name": "Ruimte Spellen",
-  "short_name": "Ruimte Spellen",
-  "description": "Educatieve ruimtespellen",
+  "name": "Nul & Co",
+  "short_name": "Nul & Co",
+  "description": "Spelen met getallen — rekenen, schrijven en avonturen met Nul en de getallen-vriendjes.",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",
   "orientation": "portrait",
-  "background_color": "#0b0d1a",
-  "theme_color": "#0b0d1a",
+  "background_color": "#bfe3fb",
+  "theme_color": "#bfe3fb",
   "icons": [
     { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]

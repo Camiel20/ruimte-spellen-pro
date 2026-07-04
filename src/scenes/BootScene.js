@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { maakNul, LUCHT_BOVEN, LUCHT_ONDER } from '../theme.js';
 
 // De BootScene draait als allereerste en bereidt alles voor.
 //
@@ -38,11 +39,36 @@ export default class BootScene extends Phaser.Scene {
     // this.load.image('planet-bg', 'assets/achtergrond.png');
     // this.load.audio('muziek', 'assets/achtergrondmuziek.mp3');
 
-    // Toon een laadbalk terwijl alles inlaadt (handig bij echte plaatjes)
+    // Laadscherm in huisstijl: lichte lucht, stuiterende Nul en een
+    // laadbalk van Numberblocks-blokjes die één voor één inkleuren.
     const { width, height } = this.scale;
-    const barBg = this.add.rectangle(width / 2, height / 2, 200, 20, 0x334155);
-    const bar = this.add.rectangle(width / 2 - 98, height / 2, 4, 14, 0x60a5fa).setOrigin(0, 0.5);
-    this.load.on('progress', (p) => { bar.width = 196 * p; });
+    const lucht = this.add.graphics();
+    lucht.fillGradientStyle(LUCHT_BOVEN, LUCHT_BOVEN, LUCHT_ONDER, LUCHT_ONDER, 1);
+    lucht.fillRect(0, 0, width, height);
+
+    const nul = maakNul(this, width / 2, height / 2 - 80, 44);
+    this.tweens.add({
+      targets: nul, y: height / 2 - 104, duration: 520,
+      yoyo: true, repeat: -1, ease: 'Sine.inOut',
+    });
+
+    this.add.text(width / 2, height / 2 + 6, 'NUL & CO', {
+      fontFamily: 'Arial Black, Arial', fontSize: '34px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5).setStroke('#1f2d3a', 8);
+
+    const SIG = [0xe8402c, 0xf08a24, 0xf6c624, 0x57b947, 0x38b6cf, 0x9b6dd6];
+    const blokjes = [];
+    const bw = 30, gap = 8;
+    const startX = width / 2 - (SIG.length * (bw + gap) - gap) / 2 + bw / 2;
+    for (let i = 0; i < SIG.length; i++) {
+      const b = this.add.rectangle(startX + i * (bw + gap), height / 2 + 64, bw, bw, 0xffffff, 0.45)
+        .setStrokeStyle(3, 0x334155);
+      blokjes.push(b);
+    }
+    this.load.on('progress', (p) => {
+      const vol = Math.ceil(p * SIG.length);
+      for (let i = 0; i < vol; i++) blokjes[i].setFillStyle(SIG[i], 1);
+    });
   }
 
   create() {
