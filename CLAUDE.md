@@ -149,6 +149,25 @@ getal, **som (reken-adres: "3 + 4" → huis 7)** of woord. Traint getallen ÉN l
 - Faal-vriendelijk (geen game-over; fout huis schudt "oeps, dat is 4!"),
   gouden nullen verstopt in het dorp, medaille `bezorg_baas`. 6 leveringen/ronde.
 
+## Tel-Slang (`src/snake3d.js`) — voorheen "3D Snake"
+Three.js slither-spel (menutegel 🐍, launcht als DOM-overlay via
+`MenuScene.launchSnake`). Juli 2026 herkaderd: **de slang ís het getal** — langer
+worden = hoger tellen naar 100.
+- **Telbare logica los** in `src/snakeLogic.js` (vitest, `tests/snake.test.js`):
+  tientallen (`gepasseerdeTientallen`, `tientalNaam`), `telHint` ("nog 2 tot 20"),
+  `voerWaarde` (1/2/3), `maakBestelling` ("eet de 7" + afleiders), `krimpBijBotsing`,
+  `MISSIES` + `missieVoortgang`.
+- **`count` ≠ fysieke lengte**: `player.count` is HET getal (groeit met hele
+  voer-waarden); de fysieke lijflengte is gecapt (`BODY_MAX`) voor perf/look.
+  Tientallen/getallenlijn/missies/regenboog kijken naar `count`.
+- **HUD (DOM)**: grote telling midden-boven, missie-chip, "Eet de N!"-banner,
+  en een **getallenlijn 0–100** onderin met meelopend lichtje. Cijfer-voer toont
+  zijn getal via een sprite (`digitTexture`/`digitSprite`).
+- **Faal-vriendelijk (geen game-over meer)**: rand = zacht terugsturen; grotere
+  slang = je wordt korter (`botBumpCd`-afkoeltijd); eigen-staart-dood eruit.
+  Topscore (`snake`) = hoogste telling, bewaard in `quit()`. Medals snake_50/100.
+- Behouden: neon-arena, bots, kroontje, regenboog-slang ≥25, gouden-nul-magneet.
+
 ## Getallen-Toren (`src/scenes/NumberTowerScene.js`)
 Plaatswaarde-/stapelspel voor Adrian (eind groep 2 / start groep 3). Tik op
 `+1` / `+10` / `+100` om kubussen in de juiste kolom te stapelen tot ze samen

@@ -16,7 +16,7 @@ const NAMES = {
   NumberTower: 'Getallen Toren',
   ZeroRocket: 'Nul-Raket',
   NumberLand: 'Getallen-Land',
-  Snake: '3D Snake',
+  Snake: 'Tel-Slang',
 };
 
 function load() {

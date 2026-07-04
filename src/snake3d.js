@@ -1,7 +1,12 @@
 // Three.js zit LOKAAL in het project (src/vendor/three.module.js).
 import * as THREE from './vendor/three.module.js';
 import { SFX, initAudio } from './sound.js';
-import { getHigh, saveHigh, addStars, giveMedal, getStars } from './progress.js';
+import { Voice } from './voice.js';
+import { saveHigh, addStars, giveMedal } from './progress.js';
+import {
+  gepasseerdeTientallen, tientalNaam, telHint, getallenlijnFractie,
+  voerWaarde, maakBestelling, krimpBijBotsing, MISSIES, missieVoortgang,
+} from './snakeLogic.js';
 
 // ===== 3D SNAKE (Slither-stijl) =====
 // Een groot speelveld met andere slangen die rondkruipen. Laat de kop van
@@ -16,6 +21,7 @@ const TURN_RATE = 3.2;     // hoe snel de speler draait (radialen/sec)
 const SEG_SPACING = 0.35;  // afstand tussen lijf-bollen
 const TRAIL_STEP = 0.12;
 const MAX_BOTS = 6;
+const BODY_MAX = 42;   // fysieke lijflengte-cap (perf + oogt goed); de TELLING groeit door
 
 export function launchSnake3D(onExit) {
   initAudio();
@@ -162,6 +168,28 @@ export function launchSnake3D(onExit) {
   }
   const schubbenTex = maakSchubbenTextuur();
 
+  // Cijfer-labels voor het voer: een sprite (kijkt altijd naar de camera) met
+  // een wit cijfer + donkere rand, per cijfer één keer gemaakt (cache).
+  const digitTexCache = {};
+  function digitTexture(n) {
+    if (digitTexCache[n]) return digitTexCache[n];
+    const sz = 64, cv = document.createElement('canvas');
+    cv.width = sz; cv.height = sz;
+    const c = cv.getContext('2d');
+    c.font = '900 46px Arial';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.lineWidth = 8; c.strokeStyle = '#0b1026'; c.strokeText(String(n), sz / 2, sz / 2 + 3);
+    c.fillStyle = '#ffffff'; c.fillText(String(n), sz / 2, sz / 2 + 3);
+    const t = new THREE.CanvasTexture(cv);
+    digitTexCache[n] = t;
+    return t;
+  }
+  function digitSprite(n, schaal = 0.75) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: digitTexture(n), transparent: true, depthTest: false }));
+    s.scale.set(schaal, schaal, 1);
+    return s;
+  }
+
   // ===== Slang-klasse (zowel speler als bots) =====
   class Snake {
     constructor(x, z, palette, isPlayer) {
@@ -170,6 +198,9 @@ export function launchSnake3D(onExit) {
       this.pos = { x, z };
       this.angle = Math.random() * Math.PI * 2;
       this.length = isPlayer ? 5 : 2.5 + Math.random() * 3;
+      // De speler telt: `count` is HET getal (de slang ís het getal). De
+      // fysieke lijflengte groeit langzamer mee en is gecapt (perf + look).
+      this.count = isPlayer ? 5 : 0;
       this.speed = isPlayer ? PLAYER_SPEED : 3.5 + Math.random() * 1.5;
       this.trail = [];
       for (let i = 0; i < 200; i++) this.trail.push({ x: x - Math.cos(this.angle) * i * TRAIL_STEP, z: z - Math.sin(this.angle) * i * TRAIL_STEP });
@@ -227,6 +258,12 @@ export function launchSnake3D(onExit) {
       if (this.kroon) scene.remove(this.kroon);
       this.bodyMeshes.forEach((m) => scene.remove(m));
       this.bodyMeshes = [];
+    }
+
+    // Groei de TELLING met n (heel getal) en werk de fysieke lijflengte bij.
+    groeiTelling(n) {
+      this.count += n;
+      this.length = Math.min(BODY_MAX, 5 + this.count * 0.35);
     }
 
     // Geef de wereldposities van de lijf-punten (voor botsdetectie)
@@ -317,12 +354,30 @@ export function launchSnake3D(onExit) {
   // ===== Eten (losse bolletjes) =====
   const foods = []; // {mesh, x, z, value, power}
   const starGeoPU = new THREE.OctahedronGeometry(0.6, 0);
-  function addFood(x, z, value = 1, color = 0xffd54d) {
+  function addFood(x, z, value = 1, color = 0xffd54d, cijfer = null, extra = {}) {
     const m = new THREE.Mesh(foodGeo, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5, roughness: 0.2 }));
     m.position.set(x, 0.4, z);
-    m.scale.setScalar(0.7 + value * 0.3);
+    m.scale.setScalar(0.7 + value * 0.25);
     scene.add(m);
-    foods.push({ mesh: m, x, z, value });
+    const f = Object.assign({ mesh: m, x, z, value }, extra);
+    if (cijfer != null) {
+      const spr = digitSprite(cijfer, 0.6 + value * 0.06);
+      spr.position.set(x, 0.9, z);
+      scene.add(spr);
+      f.label = spr; f.cijfer = cijfer;
+    }
+    foods.push(f);
+    return f;
+  }
+  function removeFoodAt(i) {
+    const f = foods[i];
+    scene.remove(f.mesh);
+    if (f.label) scene.remove(f.label);
+    foods.splice(i, 1);
+  }
+  function clearFoods() {
+    foods.forEach((f) => { scene.remove(f.mesh); if (f.label) scene.remove(f.label); });
+    foods.length = 0;
   }
   function addPowerUp(x, z) {
     const m = new THREE.Mesh(starGeoPU, new THREE.MeshStandardMaterial({ color: 0xffe14d, emissive: 0xffaa00, emissiveIntensity: 0.8, roughness: 0.1, metalness: 0.4 }));
@@ -343,8 +398,33 @@ export function launchSnake3D(onExit) {
   function scatterFood(n) {
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, r = Math.random() * (FIELD - 4);
-      addFood(Math.cos(a) * r, Math.sin(a) * r, 1, ETEN_KLEUREN[Math.floor(Math.random() * ETEN_KLEUREN.length)]);
+      const v = voerWaarde();  // cijfer-voer: 1, 2 of 3 — eten wordt optellen
+      addFood(Math.cos(a) * r, Math.sin(a) * r, v, ETEN_KLEUREN[Math.floor(Math.random() * ETEN_KLEUREN.length)], v);
     }
+  }
+
+  // --- Bestelling "Eet de N!": een paar grote genummerde bollen, één is goed ---
+  let bestelling = null;      // { doel, orbs:[foodRefs] } of null
+  function startBestelling() {
+    if (bestelling || !alive) return;
+    const b = maakBestelling(Math.random, 2);
+    const orbs = [];
+    b.opties.forEach((n, i) => {
+      const a = (i / b.opties.length) * Math.PI * 2 + Math.random();
+      const r = 8 + Math.random() * (FIELD - 18);
+      const kleur = n === b.doel ? 0xfde047 : 0x8aa0c8;
+      const f = addFood(Math.cos(a) * r, Math.sin(a) * r, 3, kleur, n, { bestel: true, cijfer: n });
+      orbs.push(f);
+    });
+    bestelling = { doel: b.doel, orbs, leven: 30 };
+    toonBestelHud(b.doel);
+  }
+  function eindigBestelling(gelukt) {
+    // ruim resterende bestel-orbs op
+    for (let i = foods.length - 1; i >= 0; i--) if (foods[i].bestel) removeFoodAt(i);
+    bestelling = null;
+    toonBestelHud(null);
+    if (gelukt) { addStars(1); Voice.cue('star'); }
   }
 
   // ===== Deeltjes =====
@@ -365,22 +445,32 @@ export function launchSnake3D(onExit) {
   let powerTimer = 10;
   let nulTimer = 16;        // wanneer de volgende Gouden Nul verschijnt
   let magnetTimer = 0;      // Gouden Nul actief: eten vliegt naar je toe
-  let lastTiental = 0;      // laatste gevierde lengte-tiental (10, 20, …)
+  let lastTiental = 0;      // laatste gevierde tel-tiental (10, 20, …)
   let rainbowT = 0;         // regenboog-slang animatieklok
+  let missieIndex = 0;      // welke missie is bezig
+  let nullenDezeMissie = 0; // gouden nullen sinds de missie begon
+  let bestelTimer = 18;     // wanneer de volgende "Eet de N!" verschijnt
+  let lastTelHintDoel = 0;  // laatst getoonde tel-hint ("nog 2 tot 20")
+  let botBumpCd = 0;        // afkoeltijd na botsing met een grotere slang
 
-  // Tellen met tientallen — net als in Getallen-Land!
-  const TIENTAL_NAMEN = ['TIEN!', 'TWINTIG!', 'DERTIG!', 'VEERTIG!', 'VIJFTIG!', 'ZESTIG!', 'ZEVENTIG!', 'TACHTIG!', 'NEGENTIG!', 'HONDERD!!!'];
+  // Tellen met tientallen — namen (TIEN!…HONDERD!) komen uit snakeLogic.js.
   const RAINBOW = [0xf87171, 0xfb923c, 0xfbbf24, 0x4ade80, 0x22d3ee, 0x6e9bff, 0xb06eff];
 
-  function tientalFeest(n) {
-    SFX.fanfare();
-    burst(player.pos.x, player.pos.z, 0xffe14d);
+  // Een zwevende tekst midden in beeld (voor tiental-feest én tel-hints).
+  function zweefTekst(tekst, kleur = '#ffe14d', maat = 46, top = '36%') {
     const el = document.createElement('div');
-    el.textContent = TIENTAL_NAMEN[Math.min(n / 10, 10) - 1] || `${n}!`;
-    el.style.cssText = 'position:absolute;top:38%;left:0;right:0;text-align:center;font-family:Arial Black,Arial;font-size:46px;font-weight:900;color:#ffe14d;text-shadow:0 3px 12px rgba(0,0,0,.7);pointer-events:none;transition:all 1.2s ease;z-index:2;';
+    el.textContent = tekst;
+    el.style.cssText = `position:absolute;top:${top};left:0;right:0;text-align:center;font-family:Arial Black,Arial;font-size:${maat}px;font-weight:900;color:${kleur};text-shadow:0 3px 12px rgba(0,0,0,.7);pointer-events:none;transition:all 1.2s ease;z-index:2;`;
     root.appendChild(el);
     requestAnimationFrame(() => { el.style.transform = 'translateY(-70px) scale(1.35)'; el.style.opacity = '0'; });
     setTimeout(() => el.remove(), 1300);
+  }
+
+  function tientalFeest(n) {
+    SFX.fanfare();
+    Voice.cue('cheer');
+    burst(player.pos.x, player.pos.z, 0xffe14d);
+    zweefTekst(tientalNaam(n), '#ffe14d', 48);
   }
 
   function spawnBot() {
@@ -395,7 +485,7 @@ export function launchSnake3D(onExit) {
     snake.alive = false;
     // Laat eten achter langs het lijf
     const pts = snake.bodyPoints();
-    pts.forEach((p, i) => { if (i % 2 === 0) addFood(p.x, p.z, 2, snake.palette[i % snake.palette.length]); });
+    pts.forEach((p, i) => { if (i % 2 === 0) addFood(p.x, p.z, 1, snake.palette[i % snake.palette.length]); });
     burst(snake.pos.x, snake.pos.z, snake.palette[0]);
     snake.destroy();
   }
@@ -403,8 +493,8 @@ export function launchSnake3D(onExit) {
   function reset() {
     if (player) player.destroy();
     if (bots) bots.forEach((b) => b.destroy());
-    foods.forEach((f) => scene.remove(f.mesh));
-    foods.length = 0;
+    clearFoods();
+    bestelling = null;
     player = new Snake(0, 0, PALETTES[0], true);
     bots = [];
     for (let i = 0; i < 4; i++) spawnBot();
@@ -415,27 +505,82 @@ export function launchSnake3D(onExit) {
     nulTimer = 16;
     magnetTimer = 0;
     lastTiental = 0;
+    missieIndex = 0;
+    nullenDezeMissie = 0;
+    bestelTimer = 18;
+    lastTelHintDoel = 0;
     alive = true;
-    document.getElementById('snakeScore').textContent = '🍎 0';
-    document.getElementById('snakeLen').textContent = '📏 5';
+    updateTelHud();
+    toonMissie();
+    toonBestelHud(null);
   }
 
   // ===== HUD =====
+  // Bovenbalk: missie-chip links, titel rechts
   const hud = document.createElement('div');
-  hud.style.cssText = `position:absolute;top:max(16px,env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:space-between;padding:0 20px;font-family:Arial,sans-serif;color:#fff;font-size:22px;font-weight:800;pointer-events:none;text-shadow:0 2px 6px rgba(0,0,0,.6);`;
-  hud.innerHTML = `<span id="snakeScore">🍎 0</span><span id="snakeLen">📏 5</span><span>🐍 Snake</span>`;
+  hud.style.cssText = `position:absolute;top:max(14px,env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:0 16px;font-family:Arial,sans-serif;color:#fff;font-weight:800;pointer-events:none;text-shadow:0 2px 6px rgba(0,0,0,.6);z-index:2;`;
+  hud.innerHTML = `<span id="snakeMissie" style="font-size:13px;background:rgba(11,16,38,.72);border:1px solid #3a4680;border-radius:12px;padding:6px 12px;max-width:62%;"></span><span style="font-size:16px">🐍 Tel-Slang</span>`;
   root.appendChild(hud);
+
+  // De grote TELLING (het getal) midden-boven
+  const countEl = document.createElement('div');
+  countEl.id = 'snakeCount';
+  countEl.style.cssText = `position:absolute;top:max(44px,calc(env(safe-area-inset-top) + 28px));left:0;right:0;text-align:center;font-family:Arial Black,Arial;font-size:42px;font-weight:900;color:#ffe14d;text-shadow:0 3px 10px rgba(0,0,0,.7);pointer-events:none;z-index:2;`;
+  countEl.textContent = '5';
+  root.appendChild(countEl);
+
+  // Bestelling-banner ("Eet de 7!")
+  const bestelEl = document.createElement('div');
+  bestelEl.id = 'snakeBestel';
+  bestelEl.style.cssText = `position:absolute;top:max(98px,calc(env(safe-area-inset-top) + 82px));left:0;right:0;text-align:center;font-family:Arial Black,Arial;font-size:20px;font-weight:900;color:#fff;pointer-events:none;z-index:2;display:none;`;
+  root.appendChild(bestelEl);
+
+  // Getallenlijn 0..100 onderin — het lichtje schuift mee terwijl je telt
+  const lijn = document.createElement('div');
+  lijn.style.cssText = `position:absolute;bottom:max(34px,calc(env(safe-area-inset-bottom) + 22px));left:26px;right:26px;height:32px;pointer-events:none;z-index:2;`;
+  lijn.innerHTML = `
+    <div style="position:absolute;top:13px;left:0;right:0;height:5px;background:#232a5e;border-radius:3px;"></div>
+    <div id="snakeLijnVul" style="position:absolute;top:13px;left:0;width:5%;height:5px;background:#ffe14d;border-radius:3px;"></div>
+    <div id="snakeLijnMarker" style="position:absolute;top:8px;left:5%;width:15px;height:15px;margin-left:-7px;background:#ff6ec7;border:2px solid #fff;border-radius:50%;box-shadow:0 0 8px #ff6ec7;"></div>
+    <div style="position:absolute;top:20px;left:0;right:0;display:flex;justify-content:space-between;font-family:Arial;font-size:10px;font-weight:700;color:#8b98d8;">
+      <span>0</span><span>20</span><span>40</span><span>60</span><span>80</span><span>100</span></div>`;
+  root.appendChild(lijn);
 
   const backBtn = document.createElement('button');
   backBtn.textContent = '⬅ Terug';
-  backBtn.style.cssText = `position:absolute;top:max(50px,calc(env(safe-area-inset-top) + 34px));left:20px;font-family:Arial;font-size:15px;font-weight:600;color:#cbd5e1;background:rgba(30,41,59,.85);border:none;border-radius:10px;padding:8px 14px;z-index:2;`;
+  backBtn.style.cssText = `position:absolute;bottom:max(78px,calc(env(safe-area-inset-bottom) + 60px));left:20px;font-family:Arial;font-size:14px;font-weight:600;color:#cbd5e1;background:rgba(30,41,59,.85);border:none;border-radius:10px;padding:8px 14px;z-index:3;`;
   backBtn.onclick = () => quit();
   root.appendChild(backBtn);
 
-  const hint = document.createElement('div');
-  hint.textContent = 'Houd vast en stuur · eet slangen · vang de Gouden Nul! ⭕';
-  hint.style.cssText = `position:absolute;bottom:max(20px,env(safe-area-inset-bottom));left:0;right:0;text-align:center;font-family:Arial;font-size:13px;color:#94a3b8;pointer-events:none;`;
-  root.appendChild(hint);
+  // HUD-updaters (function-declaraties → beschikbaar in reset())
+  function updateTelHud() {
+    const n = Math.floor(player.count);
+    countEl.textContent = String(n);
+    const pct = getallenlijnFractie(n, 100) * 100;
+    document.getElementById('snakeLijnVul').style.width = pct + '%';
+    document.getElementById('snakeLijnMarker').style.left = pct + '%';
+  }
+  function toonMissie() {
+    const el = document.getElementById('snakeMissie');
+    const m = MISSIES[missieIndex];
+    if (!m) { el.textContent = '🎉 Blijf tellen!'; return; }
+    const vp = missieVoortgang(m, { lengte: player.count, nullenDezeMissie });
+    el.textContent = `📋 ${m.tekst}  (${vp.huidig}/${vp.doel})`;
+  }
+  function toonBestelHud(doel) {
+    if (doel == null) { bestelEl.style.display = 'none'; return; }
+    bestelEl.textContent = `Eet de ${doel}! 🍽️`;
+    bestelEl.style.display = 'block';
+  }
+  function missieVoltooid(m) {
+    addStars(2);
+    SFX.levelup(); Voice.cue('cheer');
+    zweefTekst('Missie klaar! +2 ⭐', '#4ade80', 34, '44%');
+    burst(player.pos.x, player.pos.z, 0x4ade80);
+    missieIndex += 1;
+    nullenDezeMissie = 0;
+    toonMissie();
+  }
 
   // ===== Besturing: stuur naar waar je vinger/muis is =====
   let pointerActive = false;
@@ -520,8 +665,13 @@ export function launchSnake3D(onExit) {
       steerPlayer(dt);
       player.update(dt);
 
-      // Speler buiten veld?
-      if (Math.hypot(player.pos.x, player.pos.z) > FIELD - 1) { gameOver(); }
+      // Speler tegen de rand? Zacht terugsturen naar het midden (geen game-over).
+      const distRand = Math.hypot(player.pos.x, player.pos.z);
+      if (distRand > FIELD - 1.5) {
+        player.angle = Math.atan2(-player.pos.z, -player.pos.x);
+        const k = (FIELD - 1.6) / distRand;
+        player.pos.x *= k; player.pos.z *= k;
+      }
 
       // Bots
       bots.forEach((b) => { updateBot(b, dt); b.update(dt); });
@@ -532,34 +682,47 @@ export function launchSnake3D(onExit) {
         spawnBot(); botSpawnTimer = 4 + Math.random() * 4;
       }
 
-      // Eten oppikken (speler)
+      // Eten oppikken (speler) — eten is TELLEN: je telling groeit met hele getallen
       for (let i = foods.length - 1; i >= 0; i--) {
         const f = foods[i];
-        const reach = f.power ? 1.3 : 1.0;
-        if (Math.hypot(f.x - player.pos.x, f.z - player.pos.z) < reach) {
-          if (f.power === 'magneet') {
-            // GOUDEN NUL: 6 seconden lang komt al het eten naar jou toe!
-            magnetTimer = 6.0;
-            score += 10;
-            player.length += 1;
-            burst(f.x, f.z, 0xffd54d);
-            SFX.fanfare();
-          } else if (f.power === 'boost') {
-            // Power-up: extra groei + tijdelijke snelheidsboost
-            player.length += 2;
-            score += 5;
-            boostTimer = 3.0;
-            burst(f.x, f.z, 0xffe14d);
+        const reach = (f.power || f.bestel) ? 1.4 : 1.0;
+        if (Math.hypot(f.x - player.pos.x, f.z - player.pos.z) >= reach) continue;
+
+        if (f.power === 'magneet') {
+          // GOUDEN NUL: 6 seconden lang komt al het eten naar jou toe!
+          magnetTimer = 6.0;
+          player.groeiTelling(3);
+          nullenDezeMissie += 1;
+          burst(f.x, f.z, 0xffd54d);
+          SFX.fanfare(); Voice.cue('star');
+        } else if (f.power === 'boost') {
+          player.groeiTelling(2);
+          boostTimer = 3.0;
+          burst(f.x, f.z, 0xffe14d);
+          SFX.levelup();
+        } else if (f.bestel) {
+          if (f.cijfer === (bestelling && bestelling.doel)) {
+            player.groeiTelling(3);
+            burst(f.x, f.z, 0xfde047);
+            zweefTekst(`Goed! de ${f.cijfer} 🎉`, '#4ade80', 30, '40%');
             SFX.levelup();
+            removeFoodAt(i);
+            eindigBestelling(true);
+            updateTelHud();
+            continue;
           } else {
-            player.length += f.value * 0.4;
-            score += f.value;
-            SFX.coin();
+            // verkeerde bestel-bol: telt gewoon als +1, zachte oeps
+            player.groeiTelling(1);
+            SFX.oops(); Voice.cue('oops');
+            zweefTekst('oeps!', '#ff9db0', 24, '40%');
           }
-          document.getElementById('snakeScore').textContent = '🍎 ' + score;
-          scene.remove(f.mesh);
-          foods.splice(i, 1);
+        } else {
+          player.groeiTelling(f.value);
+          score += f.value;
+          SFX.coin();
         }
+        removeFoodAt(i);
+        updateTelHud();
       }
       // Power-up zo nu en dan laten verschijnen
       powerTimer -= dt;
@@ -574,6 +737,14 @@ export function launchSnake3D(onExit) {
         nulTimer = 20 + Math.random() * 12;
         const a = Math.random() * Math.PI * 2, r = Math.random() * (FIELD - 6);
         addGoudenNul(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      // Bestelling "Eet de N!" — verschijnt af en toe, verdwijnt na een tijdje
+      if (bestelling) {
+        bestelling.leven -= dt;
+        if (bestelling.leven <= 0) eindigBestelling(false);
+      } else {
+        bestelTimer -= dt;
+        if (bestelTimer <= 0) { startBestelling(); bestelTimer = 22 + Math.random() * 10; }
       }
       // Magneet actief: eten zweeft naar je toe (en je kop gloeit goud)
       if (magnetTimer > 0) {
@@ -592,13 +763,25 @@ export function launchSnake3D(onExit) {
       } else {
         player.head.material.emissiveIntensity = 0.12;
       }
-      // Lengte in de HUD + FEEST bij elk nieuw tiental (10, 20, … 100)
-      const lengte = Math.floor(player.length);
-      document.getElementById('snakeLen').textContent = '📏 ' + lengte;
-      const tiental = Math.floor(lengte / 10) * 10;
-      if (tiental > lastTiental && tiental >= 10) {
-        lastTiental = tiental;
-        tientalFeest(tiental);
+      // Tellen: HUD bij, tel-hint bij naderen tiental, feest bij elk tiental
+      const telling = Math.floor(player.count);
+      updateTelHud();
+      const hintT = telHint(telling);
+      if (hintT && hintT.doel !== lastTelHintDoel) {
+        lastTelHintDoel = hintT.doel;
+        zweefTekst(`nog ${hintT.rest} tot ${hintT.woord}`, '#a5b4fc', 26, '30%');
+      }
+      if (telling > lastTiental) {
+        gepasseerdeTientallen(lastTiental, telling).forEach((t) => tientalFeest(t));
+        lastTiental = telling;
+      }
+      if (telling >= 50) giveMedal('snake_50');
+      if (telling >= 100) giveMedal('snake_100');
+      // Missie-voortgang (geen game-over: elke missie klaar = ster + volgende)
+      const mis = MISSIES[missieIndex];
+      if (mis) {
+        const vp = missieVoortgang(mis, { lengte: player.count, nullenDezeMissie });
+        if (vp.klaar) missieVoltooid(mis); else toonMissie();
       }
       // Snelheidsboost aftellen
       if (boostTimer > 0) {
@@ -620,28 +803,37 @@ export function launchSnake3D(onExit) {
             break;
           }
         }
-        // Kop-tegen-kop: speler wint meestal (kindvriendelijk).
-        // Alleen als een bot véél langer is verliest de speler.
+        // Kop-tegen-kop: speler wint meestal (kindvriendelijk). Tegen een véél
+        // grotere slang word je KORTER i.p.v. dood — nooit game-over.
         if (bot.alive && Math.hypot(player.pos.x - bot.pos.x, player.pos.z - bot.pos.z) < 1.0) {
-          if (player.length >= bot.length - 3) killSnake(bot);
-          else gameOver();
+          if (player.length >= bot.length - 3) {
+            killSnake(bot);
+          } else if (botBumpCd <= 0) {
+            botBumpCd = 1.2;
+            player.count = krimpBijBotsing(player.count);
+            player.length = Math.min(BODY_MAX, 5 + player.count * 0.35);
+            const away = Math.atan2(player.pos.z - bot.pos.z, player.pos.x - bot.pos.x);
+            player.pos.x += Math.cos(away) * 2.4; player.pos.z += Math.sin(away) * 2.4;
+            player.angle = away;
+            burst(player.pos.x, player.pos.z, 0xff6ec7);
+            SFX.oops(); Voice.cue('oops');
+            zweefTekst('oeps, korter!', '#ff9db0', 28, '40%');
+            updateTelHud();
+          }
         }
       });
+      if (botBumpCd > 0) botBumpCd -= dt;
+      // (geen eigen-staart-dood meer — faal-vriendelijk)
 
-      // Botsing: speler-kop tegen ander bot-lijf is hierboven; nu speler tegen eigen lijf
-      const myPts = player.bodyPoints();
-      for (let k = 12; k < myPts.length; k++) {
-        if (Math.hypot(player.pos.x - myPts[k].x, player.pos.z - myPts[k].z) < 0.55) { gameOver(); break; }
-      }
-
-      // Bots eten ook gewoon (groeien) en kunnen elkaar negeren voor de eenvoud
+      // Bots eten ook gewoon (maar niet de bestel-bollen)
       bots.forEach((bot) => {
         if (!bot.alive) return;
         for (let i = foods.length - 1; i >= 0; i--) {
           const f = foods[i];
+          if (f.bestel || f.power) continue;
           if (Math.hypot(f.x - bot.pos.x, f.z - bot.pos.z) < 0.9) {
             bot.length += f.value * 0.3;
-            scene.remove(f.mesh); foods.splice(i, 1);
+            removeFoodAt(i);
           }
         }
       });
@@ -652,8 +844,8 @@ export function launchSnake3D(onExit) {
       player.layout(now);
       bots.forEach((b) => b.layout(now));
 
-      // REGENBOOG-SLANG: vanaf lengte 25 golven alle kleuren door je lijf.
-      if (player.length >= 25) {
+      // REGENBOOG-SLANG: vanaf telling 25 golven alle kleuren door je lijf.
+      if (player.count >= 25) {
         rainbowT += dt * 8;
         const off = Math.floor(rainbowT);
         player.head.material.color.setHex(RAINBOW[off % RAINBOW.length]);
@@ -677,6 +869,7 @@ export function launchSnake3D(onExit) {
         f.mesh.rotation.y += 0.05;
         f.mesh.position.y = 0.4 + Math.sin(now * 0.004 + f.x) * 0.1;
       }
+      if (f.label) f.label.position.set(f.x, f.mesh.position.y + 0.6, f.z);
     });
 
     // Deeltjes
@@ -709,40 +902,11 @@ export function launchSnake3D(onExit) {
     renderer.render(scene, camera);
   }
 
-  function gameOver() {
-    if (!alive) return;
-    alive = false;
-    SFX.gameover();
-    const panel = document.createElement('div');
-    panel.style.cssText = `position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(0,0,0,.75);font-family:Arial,sans-serif;color:#fff;text-align:center;z-index:3;`;
-    panel.innerHTML = `<div style="font-size:60px">🐍</div><div style="font-size:30px;font-weight:800">Game Over!</div><div style="font-size:18px;color:#94a3b8">Score: ${score}</div>`;
-    const isRecord = saveHigh('snake', score);
-    if (score >= 50) giveMedal('snake_50');
-    if (score >= 100) giveMedal('snake_100'); // Slangen-Koning!
-    const earned = Math.max(1, Math.floor(score / 3));
-    addStars(earned);
-    const rec = document.createElement('div');
-    rec.style.cssText = `font-size:15px;font-weight:700;color:${isRecord ? '#fbbf24' : '#64748b'};`;
-    rec.textContent = isRecord ? '🌟 Nieuw record! 🌟' : 'Record: ' + getHigh('snake');
-    panel.appendChild(rec);
-    const starsLine = document.createElement('div');
-    starsLine.style.cssText = `font-size:18px;font-weight:800;color:#fbbf24;`;
-    starsLine.textContent = `+${earned} ⭐`;
-    panel.appendChild(starsLine);
-    const again = document.createElement('button');
-    again.textContent = 'Opnieuw 🔄';
-    again.style.cssText = `font-family:Arial;font-size:20px;font-weight:800;color:#1a1a2e;background:#ffd54d;border:none;border-radius:14px;padding:12px 28px;margin-top:8px;`;
-    again.onclick = () => { panel.remove(); reset(); };
-    const home = document.createElement('button');
-    home.textContent = '🏠 Menu';
-    home.style.cssText = `font-family:Arial;font-size:16px;font-weight:600;color:#fff;background:#334155;border:none;border-radius:12px;padding:10px 20px;`;
-    home.onclick = () => quit();
-    panel.appendChild(again); panel.appendChild(home);
-    root.appendChild(panel);
-  }
-
+  // Geen game-over meer (faal-vriendelijk): de "score" is hoe hoog je telde.
+  // Die bewaren we bij het verlaten van het spel.
   function quit() {
     running = false;
+    if (player) saveHigh('snake', Math.floor(player.count));
     window.removeEventListener('resize', resize);
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);

@@ -167,7 +167,7 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '🚚', name: 'Bezorg-Baas',      color: 0x22c55e, go: () => this.scene.start('Bezorg') },
       { icon: '🧱', name: 'Getallen Toren',   color: 0x14b8a6, go: () => this.scene.start('NumberTower') },
       { icon: '🚀', name: 'Nul-Raket',        color: 0x6366f1, go: () => this.scene.start('ZeroRocket') },
-      { icon: '🐍', name: '3D Snake',         color: 0x06b6d4, go: () => this.launchSnake() },
+      { icon: '🐍', name: 'Tel-Slang',        color: 0x06b6d4, go: () => this.launchSnake() },
       { icon: '📖', name: 'Plakboek',         color: 0xf59e0b, go: () => this.scene.start('Sticker') },
     ];
 
