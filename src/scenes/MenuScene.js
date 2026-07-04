@@ -171,9 +171,11 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '📖', name: 'Plakboek',         color: 0xf59e0b, go: () => this.scene.start('Sticker') },
     ];
 
-    const cardW = 213, cardH = 125, gapX = 8, gapY = 8;
+    // 11 tegels = 6 rijen. Compact genoeg zodat álles (ook de laatste rij)
+    // op het scherm van 800px past — anders viel het 11e tegeltje eronder.
+    const cardW = 213, cardH = 98, gapX = 8, gapY = 7;
     const startX = (width - cardW * 2 - gapX) / 2 + cardW / 2;
-    const startY = 198;
+    const startY = 210;
 
     GAMES.forEach((game, i) => {
       const col = i % 2;
@@ -200,7 +202,7 @@ export default class MenuScene extends Phaser.Scene {
 
     // Groot emoji-icoon (in de bovenste helft)
     const iconTxt = this.add.text(0, -h * 0.16, icon, {
-      fontSize: '46px',
+      fontSize: '40px',
     }).setOrigin(0.5);
 
     // Naam op een donker pilletje, zodat het op elke kleur leesbaar is
