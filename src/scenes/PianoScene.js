@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { initAudio, getAudioContext } from '../sound.js';
+import { luchtAchtergrond, terugKnop } from '../theme.js';
 
 // Regenboog Piano — 8 toetsen, echte pianotonen, regenboogkleuren.
 // Vrij spelen of een liedje volgen (oplichtende toetsen).
@@ -57,20 +58,13 @@ export default class PianoScene extends Phaser.Scene {
     this.audioCtx = getAudioContext();
     this.input.on('pointerdown', () => { if (this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume(); });
 
-    for (let i = 0; i < 30; i++) {
-      this.add.image(Phaser.Math.Between(0, width), Phaser.Math.Between(0, height), 'star')
-        .setAlpha(Phaser.Math.FloatBetween(0.15, 0.5)).setDepth(-1);
-    }
-
-    const back = this.add.text(16, 16, '⬅ Terug', {
-      fontFamily: 'Arial', fontSize: '16px', color: '#94a3b8',
-      backgroundColor: '#1e293b', padding: { x: 10, y: 6 },
-    }).setInteractive().setDepth(50);
-    back.on('pointerdown', () => this.scene.start('Menu'));
+    luchtAchtergrond(this, { gras: false });
+    terugKnop(this);
 
     this.display = this.add.text(width / 2, 60, 'Tik op de toetsen! 🌈', {
-      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#fff',
-    }).setOrigin(0.5);
+      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#1f2d3a',
+      backgroundColor: '#ffffffcc', padding: { x: 12, y: 6 },
+    }).setOrigin(0.5).setDepth(10);
 
     // Modusknoppen
     this.mode = 'free';
@@ -87,9 +81,9 @@ export default class PianoScene extends Phaser.Scene {
     names.forEach((name, i) => {
       const bx = width / 2 - totalW / 2 + i * 110 + 55;
       const b = this.add.text(bx, 150, '🎵 ' + name, {
-        fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: '#fff',
-        backgroundColor: '#1e293b', padding: { x: 8, y: 6 },
-      }).setOrigin(0.5).setInteractive().setVisible(false);
+        fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: '#1f2d3a',
+        backgroundColor: '#ffffff', padding: { x: 8, y: 6 },
+      }).setOrigin(0.5).setInteractive().setVisible(false).setDepth(10);
       b.on('pointerdown', () => this.startSong(name, b));
       this.songButtons.push(b);
     });
@@ -138,8 +132,8 @@ export default class PianoScene extends Phaser.Scene {
   makeModeButton(x, y, label, mode) {
     const b = this.add.text(x, y, label, {
       fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold',
-      color: mode === 'free' ? '#fff' : '#94a3b8',
-      backgroundColor: mode === 'free' ? '#7c3aed' : '#1e293b',
+      color: mode === 'free' ? '#fff' : '#64748b',
+      backgroundColor: mode === 'free' ? '#7c3aed' : '#e2e8f0',
       padding: { x: 14, y: 8 },
     }).setOrigin(0.5).setInteractive();
     b.modeName = mode;
@@ -156,8 +150,8 @@ export default class PianoScene extends Phaser.Scene {
     this.clearHints();
     this.modeButtons.forEach((b) => {
       const active = b.modeName === mode;
-      b.setColor(active ? '#fff' : '#94a3b8');
-      b.setBackgroundColor(active ? '#7c3aed' : '#1e293b');
+      b.setColor(active ? '#fff' : '#64748b');
+      b.setBackgroundColor(active ? '#7c3aed' : '#e2e8f0');
     });
     this.songButtons.forEach((b) => b.setVisible(mode === 'song'));
     this.display.setText(mode === 'free' ? 'Tik op de toetsen! 🌈' : 'Kies een liedje! 🎵');
@@ -166,8 +160,8 @@ export default class PianoScene extends Phaser.Scene {
   startSong(name, btn) {
     this.songSeq = SONGS[name].slice();
     this.songStep = 0;
-    this.songButtons.forEach((b) => b.setBackgroundColor('#1e293b'));
-    btn.setBackgroundColor('#16a34a');
+    this.songButtons.forEach((b) => { b.setBackgroundColor('#ffffff'); b.setColor('#1f2d3a'); });
+    btn.setBackgroundColor('#16a34a'); btn.setColor('#ffffff');
     this.display.setText('Volg de oplichtende toetsen! ✨');
     this.showHint();
   }
@@ -234,7 +228,7 @@ export default class PianoScene extends Phaser.Scene {
           this.display.setText('Goed gedaan! 🌈🎉');
           this.confetti();
           this.songSeq = null;
-          this.songButtons.forEach((b) => b.setBackgroundColor('#1e293b'));
+          this.songButtons.forEach((b) => { b.setBackgroundColor('#ffffff'); b.setColor('#1f2d3a'); });
           this.clearHints();
         } else {
           this.showHint();

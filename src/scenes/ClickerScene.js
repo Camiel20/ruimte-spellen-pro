@@ -47,17 +47,25 @@ export default class ClickerScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale;
+
+    // Eigen donkere kosmos-achtergrond. Planeet Tikker is een ruimte-spel
+    // (zoals Nul-Raket): de donkere ruimte hoort bij de "bestemming". Zonder
+    // deze fill zou de lichtblauwe app-canvas doorschijnen (wit-op-lichtblauw).
+    const bg = this.add.graphics().setDepth(-2);
+    bg.fillGradientStyle(0x0b1026, 0x0b1026, 0x201347, 0x201347, 1);
+    bg.fillRect(0, 0, width, height);
     for (let i = 0; i < 40; i++) {
       const s = this.add.image(Phaser.Math.Between(0, width), Phaser.Math.Between(0, height), 'star')
         .setAlpha(Phaser.Math.FloatBetween(0.2, 0.6)).setDepth(-1);
       this.tweens.add({ targets: s, alpha: 0.1, duration: Phaser.Math.Between(1500, 3000), yoyo: true, repeat: -1 });
     }
 
+    // Terug-pil in de huisstijl (wit pilletje, prunt mooi op het donker)
     const back = this.add.text(16, 16, '⬅ Terug', {
-      fontFamily: 'Arial', fontSize: '16px', color: '#94a3b8',
-      backgroundColor: '#1e293b', padding: { x: 10, y: 6 },
-    }).setInteractive();
-    back.on('pointerdown', () => { this.saveData(); this.scene.start('Menu'); });
+      fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#334155',
+      backgroundColor: '#ffffff', padding: { x: 12, y: 7 },
+    }).setDepth(50).setInteractive({ useHandCursor: true });
+    back.on('pointerdown', () => { SFX.click(); this.saveData(); this.scene.start('Menu'); });
 
     // Laad opgeslagen data
     this.loadData();

@@ -164,7 +164,8 @@ export default class MenuScene extends Phaser.Scene {
       // eerste keer: eerst het (woordeloze) verhaal van Baron Grauw
       { icon: '🦸', name: 'Getallen-Land',     color: 0xe8402c, go: () => this.scene.start(getSetting('introGezien') ? 'WorldMap' : 'Intro') },
       { icon: '🎹', name: 'Regenboog Piano',  color: 0xec4899, go: () => this.scene.start('Piano') },
-      { icon: '🚗', name: 'Stad Rijden',      color: 0x22c55e, go: () => this.scene.start('City') },
+      // Stad Rijden past niet in een getallen-app; het blijft als verstopt
+      // extraatje bereikbaar via Instellingen (SettingsScene).
       { icon: '🧱', name: 'Getallen Toren',   color: 0x14b8a6, go: () => this.scene.start('NumberTower') },
       { icon: '🚀', name: 'Nul-Raket',        color: 0x6366f1, go: () => this.scene.start('ZeroRocket') },
       { icon: '🐍', name: '3D Snake',         color: 0x06b6d4, go: () => this.launchSnake() },
@@ -314,20 +315,4 @@ export default class MenuScene extends Phaser.Scene {
     });
   }
 
-  launchPlatform3D() {
-    const canvas = this.game.canvas;
-    const loading = this.add.text(this.scale.width / 2, this.scale.height / 2, '3D laden... 🦸', {
-      fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#fff',
-    }).setOrigin(0.5).setDepth(100);
-    notePlay('Platform'); startTimer('Platform');
-    import('../platform3d.js').then(({ launchPlatform3D }) => {
-      loading.destroy();
-      canvas.style.display = 'none';
-      launchPlatform3D(() => {
-        stopTimer();
-        canvas.style.display = 'block';
-        this.scene.restart();
-      });
-    });
-  }
 }

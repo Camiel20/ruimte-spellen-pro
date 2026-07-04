@@ -25,7 +25,7 @@ npm run build    # productie-build naar dist/
 
 ## Structuur
 - `src/main.js` — registreert alle spellen (scenes).
-- `src/scenes/*` — elk spel is een aparte Phaser-scene (o.a. `ClickerScene.js` = "Planeet Tikker", `NumberTowerScene.js` = "Getallen-Toren", `PlatformScene.js` = "Getallen-Avontuur", `ZeroRocketScene.js` = "Nul-Raket").
+- `src/scenes/*` — elk spel is een aparte Phaser-scene (o.a. `ClickerScene.js` = "Planeet Tikker", `NumberTowerScene.js` = "Getallen-Toren", `MathScene.js` = "Reken-Raket", `ZeroRocketScene.js` = "Nul-Raket", `StickerScene.js` = "Plakboek"). Getallen-Land = `WorldMapScene` + `AdventureScene`. Stad Rijden (`CityScene`) staat niet in het menu maar is bereikbaar via Instellingen.
 - `MenuScene.js` heeft een **Numberblocks-thema** (heldere lucht, zon, wolkjes, zwevende cijfer-kubussen; tegels als felle kubussen met dikke donkere rand).
 - `src/glyphs.js` — gedeelde cijfer-/letterpaden + `TraceChallenge` (schrijf-overlay), gebruikt door het schrijfspel én Planeet Tikker.
 - `src/progress.js` — voortgang (sterren, medailles, topscores, instellingen) in localStorage.
@@ -54,6 +54,10 @@ Idle/tik-spel. Recent toegevoegd voor Adrian (houdt van het cijfer 0):
 - Cijfer-0 toegevoegd aan de schrijf-oefeningen (`glyphs.js`), met extra kans.
 - Doorgroeien tot triljoen (10^18): meer planeten, kleuren, mijlpalen en winkel-upgrades.
 - Gouden nullen vangen voor een bonus.
+- **Ruimte-spel = eigen donkere kosmos-achtergrond** (gradient + sterren, `depth -2`).
+  Net als Nul-Raket mag het donker zijn (bestemming). BELANGRIJK: scenes die geen
+  eigen achtergrond tekenen schijnen nu de lichte app-canvas (`#bfe3fb`) door —
+  elk ruimte-spel MOET dus zelf een achtergrond vullen (rebrand-valkuil, juli 2026).
 
 ### Openstaande ideeën (nog niet gebouwd)
 - Nullen-medailles in het prijzenscherm (`AwardsScene.js`).
@@ -148,7 +152,12 @@ Honderd-held (voorbij 100), Nul-meester (ronde honderdtallen).
 - Optie 3: eigen ingesproken stemmetjes als geluidsbestandjes in `public/`
   (pappa/mamma's stem), als alternatief voor de browser-stem.
 
-## Getallen-Land (`src/scenes/NumberLandScene.js`)
+## ~~Getallen-Land (oude `NumberLandScene.js`)~~ — VERWIJDERD juli 2026
+> Let op: onderstaande beschrijft de OUDE verkenbare wereld (`NumberLandScene`,
+> nu verwijderd). Het huidige "Getallen-Land" is de platformer (`WorldMapScene`
+> + `AdventureScene`, zie het geheugen + `GAME-DESIGN.md`). Onderstaande blijft
+> als historische referentie voor herbruikbare technieken.
+
 Het hoofdmenu-tegeltje **"Getallen-Land"** (scene-key `NumberLand`) is een
 **verkenbare Numberblocks-wereld** (100% zelf getekend, geen auteursrechtelijke
 beelden/audio). Een grote verticale vallei (`WORLD` = 480×1560) met camera die
@@ -204,13 +213,11 @@ meebeweegt; je loopt rond en helpt getallen-vriendjes.
   Numberblock wacht) en meerdere vrij te spelen gebieden met eigen landschap.
 - Meer geheimen (grotten, regenbogen, verborgen paadjes) en verzamelobjecten.
 
-### Oudere Avontuur-versies (niet meer in het menu)
-- `src/platform3d.js` — een **3D-renner** (Three.js, Crossy-Road-stijl): groei
-  van 1 naar het doelgetal, ontwijk/stamp min-monsters, haal de vlag. Werkt,
-  maar voelde te veel als tech-demo; vervangen door Getallen-Land. Kan later
-  als bonus-tegel terugkomen (`MenuScene.launchPlatform3D` staat nog klaar).
-- `src/scenes/PlatformScene.js` — de allereerste 2D-platformer. Nog geregistreerd
-  maar niet meer gekoppeld aan een tegel.
+### Oudere Avontuur-versies (VERWIJDERD juli 2026)
+- `src/scenes/NumberLandScene.js` (verkenbare wereld), `src/scenes/PlatformScene.js`
+  (eerste 2D-platformer) en `src/platform3d.js` (3D-renner) zijn **verwijderd** in
+  de opruim-sprint: ze waren niet meer bereikbaar vanuit een tegel (vervangen door
+  Getallen-Land). Ook `MenuScene.launchPlatform3D` is weg. Terughalen? → uit git.
 
 ## Nul-Raket (`src/scenes/ZeroRocketScene.js`)
 Machten-van-10-spel voor Adrian (dol op nullen/grote getallen). Tik op **+0**
