@@ -76,6 +76,15 @@ decor (wolken-parallax, zon, grasje), i.p.v. het oude donkere sterrenveld.
 - Medailles: `balloon_512` (Ballonkoning) en nieuw `balloon_2048`
   (Ballon-Legende). Highscore-sleutel blijft `balloon`.
 
+## Schrijven (`src/scenes/TraceScene.js` + `TraceMenuScene.js`)
+Overtrek-spel (cijfers 0–10, letters, eigen naam) — juli 2026 opgefrist naar de
+huisstijl: wit "schriftje" met liniatuur op de lichte lucht, Nul als
+schrijfcoach (juicht/schudt/knippert), regenboog-krijtje per teken,
+voortgangs-bolletjes, `Voice.number()` bij elk cijfer. De teken-engine
+(sequentiële checkpoints, afdwaal-detectie, moeilijkheid via instellingen)
+is ongewijzigd; paden komen nu uit `src/glyphs.js` (dedupe — cijfer 0 doet
+daardoor ook mee in de cijfer-reeks).
+
 ## Reken-Raket (`src/scenes/MathScene.js`) — voorheen "Ruimte Rekenen"
 Automatiseer-spel voor groep 3 (juli 2026 volledig herbouwd). Sommen zijn
 brandstof: kies het antwoord door met de raket door de juiste antwoord-planeet

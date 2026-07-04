@@ -16,7 +16,7 @@ export default class TraceMenuScene extends Phaser.Scene {
 
     const childName = (getSetting('childName') || 'Adrian');
 
-    this.card(width / 2, 210, '🔢  Cijfers', '1 tot en met 10', 0x60a5fa, 'digits');
+    this.card(width / 2, 210, '🔢  Cijfers', '0 tot en met 10', 0x60a5fa, 'digits');
     this.card(width / 2, 320, '🔤  Letters', 'het hele alfabet A-Z', 0xfb923c, 'letters');
     this.card(width / 2, 430, `🌟  Mijn naam`, `schrijf "${childName}"`, 0xec4899, 'name');
   }

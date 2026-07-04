@@ -1,66 +1,14 @@
 import Phaser from 'phaser';
 import { SFX } from '../sound.js';
+import { Voice } from '../voice.js';
 import { showReward } from '../reward.js';
 import { getSetting } from '../progress.js';
+import { DIGIT_PATHS, LETTER_PATHS, RAINBOW } from '../glyphs.js';
+import { luchtAchtergrond, terugKnop, maakNul } from '../theme.js';
 
-// Schrijven — volg cijfers, letters of je eigen naam met je vinger.
-// Per goed geschreven teken punten + sterren.
-
-// Cijferpaden, genormaliseerd 0-1. Elk teken = lijst van strokes.
-const DIGIT_PATHS = {
-  1: [[[.35, .28], [.5, .15], [.5, .85]]],
-  2: [[[.28, .3], [.32, .2], [.42, .14], [.56, .14], [.68, .22], [.7, .36],
-       [.62, .5], [.46, .62], [.3, .76], [.26, .85], [.74, .85]]],
-  3: [[[.3, .24], [.4, .15], [.56, .14], [.68, .22], [.68, .36], [.56, .46],
-       [.44, .49], [.58, .52], [.7, .62], [.68, .78], [.54, .86], [.38, .85], [.28, .76]]],
-  4: [[[.6, .14], [.26, .62], [.78, .62]], [[.6, .14], [.6, .86]]],
-  5: [[[.68, .15], [.34, .15], [.3, .42], [.36, .38], [.52, .36], [.66, .44],
-       [.7, .6], [.64, .78], [.48, .85], [.32, .82], [.26, .74]]],
-  6: [[[.66, .18], [.5, .15], [.38, .24], [.3, .42], [.28, .62], [.32, .78],
-       [.46, .86], [.6, .84], [.68, .72], [.66, .58], [.54, .5], [.4, .52], [.31, .6]]],
-  7: [[[.28, .16], [.74, .16], [.62, .42], [.5, .64], [.42, .86]]],
-  8: [[[.5, .15], [.36, .2], [.32, .32], [.42, .43], [.5, .48], [.58, .43],
-       [.68, .32], [.64, .2], [.5, .15]],
-      [[.5, .48], [.36, .56], [.3, .7], [.38, .82], [.5, .86], [.62, .82],
-       [.7, .7], [.64, .56], [.5, .48]]],
-  9: [[[.66, .42], [.6, .52], [.46, .55], [.34, .48], [.3, .34], [.36, .22],
-       [.5, .15], [.62, .2], [.68, .34], [.68, .54], [.6, .72], [.48, .85], [.34, .85]]],
-  10: [[[.16, .28], [.26, .15], [.26, .85]],
-       [[.58, .16], [.46, .24], [.42, .42], [.42, .58], [.46, .76], [.58, .85],
-        [.7, .76], [.74, .58], [.74, .42], [.7, .24], [.58, .16]]],
-};
-
-// Hoofdletter-paden (eenvoudige, kindvriendelijke vormen).
-const LETTER_PATHS = {
-  A: [[[.2, .85], [.5, .15], [.8, .85]], [[.32, .55], [.68, .55]]],
-  B: [[[.28, .15], [.28, .85]], [[.28, .15], [.6, .2], [.64, .35], [.5, .48], [.28, .5]], [[.28, .5], [.58, .54], [.68, .7], [.58, .82], [.28, .85]]],
-  C: [[[.72, .26], [.56, .16], [.38, .2], [.28, .4], [.28, .6], [.38, .8], [.56, .84], [.72, .74]]],
-  D: [[[.28, .15], [.28, .85]], [[.28, .15], [.58, .2], [.72, .4], [.72, .6], [.58, .8], [.28, .85]]],
-  E: [[[.7, .15], [.3, .15], [.3, .85], [.7, .85]], [[.3, .5], [.58, .5]]],
-  F: [[[.7, .15], [.3, .15], [.3, .85]], [[.3, .5], [.58, .5]]],
-  G: [[[.72, .26], [.56, .16], [.38, .2], [.28, .4], [.28, .6], [.38, .8], [.58, .84], [.72, .72], [.72, .55], [.54, .55]]],
-  H: [[[.28, .15], [.28, .85]], [[.72, .15], [.72, .85]], [[.28, .5], [.72, .5]]],
-  I: [[[.5, .15], [.5, .85]]],
-  J: [[[.7, .15], [.7, .68], [.6, .82], [.42, .84], [.32, .7]]],
-  K: [[[.28, .15], [.28, .85]], [[.7, .15], [.28, .5], [.7, .85]]],
-  L: [[[.3, .15], [.3, .85], [.7, .85]]],
-  M: [[[.22, .85], [.22, .15], [.5, .55], [.78, .15], [.78, .85]]],
-  N: [[[.28, .85], [.28, .15], [.72, .85], [.72, .15]]],
-  O: [[[.5, .15], [.32, .24], [.26, .5], [.32, .76], [.5, .85], [.68, .76], [.74, .5], [.68, .24], [.5, .15]]],
-  P: [[[.3, .85], [.3, .15], [.6, .2], [.68, .35], [.6, .48], [.3, .52]]],
-  Q: [[[.5, .15], [.32, .24], [.26, .5], [.32, .76], [.5, .85], [.68, .76], [.74, .5], [.68, .24], [.5, .15]], [[.58, .68], [.78, .9]]],
-  R: [[[.3, .85], [.3, .15], [.6, .2], [.68, .35], [.6, .48], [.3, .52]], [[.45, .52], [.72, .85]]],
-  S: [[[.7, .24], [.54, .15], [.38, .18], [.3, .32], [.4, .46], [.6, .54], [.7, .68], [.62, .82], [.44, .85], [.3, .76]]],
-  T: [[[.2, .15], [.8, .15]], [[.5, .15], [.5, .85]]],
-  U: [[[.28, .15], [.28, .65], [.38, .82], [.5, .85], [.62, .82], [.72, .65], [.72, .15]]],
-  V: [[[.24, .15], [.5, .85], [.76, .15]]],
-  W: [[[.18, .15], [.34, .85], [.5, .4], [.66, .85], [.82, .15]]],
-  X: [[[.28, .15], [.72, .85]], [[.72, .15], [.28, .85]]],
-  Y: [[[.28, .15], [.5, .5], [.72, .15]], [[.5, .5], [.5, .85]]],
-  Z: [[[.28, .15], [.72, .15], [.28, .85], [.72, .85]]],
-};
-
-const RAINBOW = [0xf87171, 0xfb923c, 0xfbbf24, 0x4ade80, 0x22d3ee, 0x60a5fa, 0xa855f7];
+// Schrijven — volg cijfers, letters of je eigen naam met je vinger op een
+// wit "schriftje" met liniatuur. Nul kijkt mee en moedigt aan.
+// De teken-paden komen uit src/glyphs.js (gedeeld met Planeet Tikker).
 
 export default class TraceScene extends Phaser.Scene {
   constructor() { super('Trace'); }
@@ -78,40 +26,62 @@ export default class TraceScene extends Phaser.Scene {
     this.tolFactor = diff === 'makkelijk' ? 0.085 : diff === 'moeilijk' ? 0.05 : 0.062;
     this.passThreshold = diff === 'makkelijk' ? 0.78 : diff === 'moeilijk' ? 0.95 : 0.9;
 
-    for (let i = 0; i < 40; i++) {
-      this.add.image(Phaser.Math.Between(0, width), Phaser.Math.Between(0, height), 'star')
-        .setAlpha(Phaser.Math.FloatBetween(0.15, 0.5)).setDepth(-1);
-    }
-
-    const back = this.add.text(16, 16, '⬅ Terug', {
-      fontFamily: 'Arial', fontSize: '16px', color: '#94a3b8',
-      backgroundColor: '#1e293b', padding: { x: 10, y: 6 },
-    }).setInteractive().setDepth(50);
-    back.on('pointerdown', () => this.scene.start('Menu'));
+    luchtAchtergrond(this);
+    terugKnop(this);
 
     // Bouw de reeks tekens op basis van de modus.
     this.items = this.buildItems();
     this.index = 0;
     this.score = 0;
 
-    this.hud = this.add.text(width / 2, 30, '', {
-      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#fff',
-    }).setOrigin(0.5);
+    this.hud = this.add.text(width / 2, 28, '', {
+      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#1f2d3a',
+      backgroundColor: '#ffffffdd', padding: { x: 14, y: 6 },
+    }).setOrigin(0.5).setDepth(10);
     this.msg = this.add.text(width / 2, 64, '', {
-      fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#fbbf24',
-    }).setOrigin(0.5);
+      fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#3b5a72',
+    }).setOrigin(0.5).setDepth(10);
 
-    // Tekengebied
-    this.area = { x: 40, y: 100, w: width - 80, h: width - 80 };
-    this.graphics = this.add.graphics();
-    this.userGraphics = this.add.graphics();
+    // Tekengebied: een wit "schriftje" met zachte liniatuur
+    this.area = { x: 40, y: 92, w: width - 80, h: width - 80 };
+    const kaart = this.add.graphics().setDepth(1);
+    kaart.fillStyle(0xffffff, 0.95);
+    kaart.fillRoundedRect(this.area.x - 14, this.area.y - 10, this.area.w + 28, this.area.h + 20, 22);
+    kaart.lineStyle(3, 0xbcd9ee, 1);
+    kaart.strokeRoundedRect(this.area.x - 14, this.area.y - 10, this.area.w + 28, this.area.h + 20, 22);
+    kaart.lineStyle(1.5, 0xdbeafe, 1);
+    for (let ly = this.area.y + 40; ly < this.area.y + this.area.h; ly += 44) {
+      kaart.lineBetween(this.area.x, ly, this.area.x + this.area.w, ly);
+    }
+
+    this.graphics = this.add.graphics().setDepth(3);
+    this.userGraphics = this.add.graphics().setDepth(4);
+
+    // Voortgangs-bolletjes: één per teken in de reeks
+    this.bolletjes = [];
+    const bTussen = Math.min(20, (width - 60) / this.items.length);
+    const bStart = width / 2 - ((this.items.length - 1) * bTussen) / 2;
+    for (let i = 0; i < this.items.length; i++) {
+      this.bolletjes.push(
+        this.add.circle(bStart + i * bTussen, this.area.y + this.area.h + 32, 6, 0xffffff, 0.8)
+          .setStrokeStyle(1.5, 0x94a3b8).setDepth(10)
+      );
+    }
+
+    // Nul kijkt mee en moedigt aan
+    this.nulCoach = maakNul(this, 66, height - 116, 34).setDepth(10);
+    this.tweens.add({
+      targets: this.nulCoach, y: height - 122, duration: 1300,
+      yoyo: true, repeat: -1, ease: 'Sine.inOut',
+    });
+    this.time.addEvent({ delay: 2800, loop: true, callback: () => this.nulCoach.knipper() });
 
     // Retry knop
-    const retry = this.add.text(width / 2, this.area.y + this.area.h + 40, '↻ Opnieuw', {
+    const retry = this.add.text(width / 2, height - 108, '↻ Opnieuw', {
       fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold',
-      color: '#60a5fa', backgroundColor: '#1e293b', padding: { x: 18, y: 10 },
-    }).setOrigin(0.5).setInteractive();
-    retry.on('pointerdown', () => this.loadDigit());
+      color: '#1d4ed8', backgroundColor: '#ffffff', padding: { x: 18, y: 10 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(10);
+    retry.on('pointerdown', () => { SFX.click(); this.loadDigit(); });
 
     // Teken-input
     this.drawing = false;
@@ -133,8 +103,8 @@ export default class TraceScene extends Phaser.Scene {
       const arr = name.split('').filter((ch) => LETTER_PATHS[ch]);
       return arr.length ? arr : ['A', 'D', 'R', 'I', 'A', 'N'];
     }
-    // cijfers 1..10
-    return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    // cijfers 0..10 — de nul hoort erbij! (Adrian's favoriet)
+    return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   }
 
   // Het huidige teken (cijfer of letter)
@@ -203,19 +173,30 @@ export default class TraceScene extends Phaser.Scene {
     const prefix = this.mode === 'name' ? 'Naam' : kind;
     this.hud.setText(`📝 ${prefix}: ${this.curLabel()}    🏆 ${this.score.toLocaleString('nl-NL')}`);
     this.msg.setText('Volg de lijn met je vinger! ✏️');
+    // Cijfers worden "voorgelezen" met een vrolijk klankje
+    if (typeof this.curItem() === 'number') Voice.number(this.curItem());
+    this.updateBolletjes();
     this.drawGuide();
+  }
+
+  updateBolletjes() {
+    this.bolletjes.forEach((b, i) => {
+      b.setFillStyle(i < this.index ? 0x57b947 : 0xffffff, i < this.index ? 1 : 0.8);
+      if (i === this.index) b.setStrokeStyle(2.5, 0x3b82f6);
+      else b.setStrokeStyle(1.5, 0x94a3b8);
+    });
   }
 
   drawGuide() {
     const g = this.graphics;
     g.clear();
 
-    // Toon het teken groot en vaag op de achtergrond ter herkenning
+    // Toon het teken groot en vaag op het schriftje ter herkenning
     if (!this.ghostText) {
       const ghostSize = Math.min(220, Math.round(this.area.h * 0.55));
       this.ghostText = this.add.text(this.area.x + this.area.w / 2, this.area.y + this.area.h / 2, this.curLabel(), {
-        fontFamily: 'Arial', fontSize: `${ghostSize}px`, fontStyle: 'bold', color: '#1e293b',
-      }).setOrigin(0.5).setDepth(-1);
+        fontFamily: 'Arial', fontSize: `${ghostSize}px`, fontStyle: 'bold', color: '#e8eef5',
+      }).setOrigin(0.5).setDepth(2).setScale(1);
     }
     const label = this.curLabel();
     // Verberg de achtergrond-letter bij meerletterige tekens (zoals 10)
@@ -224,14 +205,14 @@ export default class TraceScene extends Phaser.Scene {
 
     const lineW = Math.max(16, this.area.w * 0.055);
     for (const st of this.strokes) {
-      // Buitenrand (donker) voor diepte
-      g.lineStyle(lineW + 4, 0x1e3a8a, 0.4);
+      // Buitenrand (blauw) voor diepte
+      g.lineStyle(lineW + 4, 0x3b82f6, 0.3);
       g.beginPath();
       g.moveTo(st[0].x, st[0].y);
       for (let i = 1; i < st.length; i++) g.lineTo(st[i].x, st[i].y);
       g.strokePath();
-      // Binnenlijn (lichtblauw)
-      g.lineStyle(lineW, 0x60a5fa, 0.3);
+      // Binnenbaan (heel licht blauw — de "schrijfweg" op het witte schriftje)
+      g.lineStyle(lineW, 0xdbeafe, 1);
       g.beginPath();
       g.moveTo(st[0].x, st[0].y);
       for (let i = 1; i < st.length; i++) g.lineTo(st[i].x, st[i].y);
@@ -309,7 +290,9 @@ export default class TraceScene extends Phaser.Scene {
     if (this.strayed) {
       // Te ver van de lijn geweest: deze lijn telt niet
       this.msg.setText('Blijf op de lijn! Probeer nog eens ✏️');
-      SFX.wrong();
+      SFX.oops();
+      Voice.cue('oops');
+      this.tweens.add({ targets: this.nulCoach, x: '+=5', duration: 55, yoyo: true, repeat: 3 });
       idxs.forEach((i) => { this.checkHit[i] = false; });
       this.strokeProgress[this.activeStroke] = 0;
       this.userPts = [];
@@ -372,9 +355,10 @@ export default class TraceScene extends Phaser.Scene {
   }
 
   drawUser() {
+    // Je "krijtje" heeft per teken een eigen regenboogkleur
     const g = this.userGraphics;
     g.clear();
-    g.lineStyle(Math.max(5, this.area.w * 0.018), 0xffffff, 1);
+    g.lineStyle(Math.max(6, this.area.w * 0.02), RAINBOW[this.index % RAINBOW.length], 1);
     g.beginPath();
     g.moveTo(this.userPts[0].x, this.userPts[0].y);
     for (let i = 1; i < this.userPts.length; i++) g.lineTo(this.userPts[i].x, this.userPts[i].y);
@@ -385,10 +369,17 @@ export default class TraceScene extends Phaser.Scene {
     this.done = true;
     this.score += 10000;
     SFX.levelup();
+    Voice.cue(this.index % 3 === 2 ? 'cheer' : 'great');
     const kind = (typeof this.curItem() === 'number') ? 'Cijfer' : 'Letter';
     this.hud.setText(`📝 ${kind}: ${this.curLabel()}    🏆 ${this.score.toLocaleString('nl-NL')}`);
     this.msg.setText(`Super! ${this.curLabel()} geschreven! 🎉`);
     this.confetti();
+    // Nul juicht: zwaaien + hupje; het teken maakt een vreugdesprongetje
+    this.tweens.add({ targets: this.nulCoach.arm, angle: { from: -8, to: 30 }, duration: 130, yoyo: true, repeat: 4 });
+    this.tweens.add({ targets: this.nulCoach, y: '-=16', duration: 170, yoyo: true, repeat: 1, ease: 'Quad.easeOut' });
+    if (this.ghostText.visible) {
+      this.tweens.add({ targets: this.ghostText, scale: 1.15, duration: 200, yoyo: true, ease: 'Back.easeOut' });
+    }
     this.time.delayedCall(1400, () => {
       if (this.index >= this.items.length - 1) {
         this.win();
