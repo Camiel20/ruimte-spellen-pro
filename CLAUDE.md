@@ -85,9 +85,10 @@ Overtrek-spel (cijfers 0–10, letters, eigen naam) — juli 2026 opgefrist naar
 huisstijl: wit "schriftje" met liniatuur op de lichte lucht, Nul als
 schrijfcoach (juicht/schudt/knippert), regenboog-krijtje per teken,
 voortgangs-bolletjes, `Voice.number()` bij elk cijfer. De teken-engine
-(sequentiële checkpoints, afdwaal-detectie, moeilijkheid via instellingen)
-is ongewijzigd; paden komen nu uit `src/glyphs.js` (dedupe — cijfer 0 doet
-daardoor ook mee in de cijfer-reeks).
+(sequentiële checkpoints, afdwaal-detectie) is ongewijzigd met een vaste
+kindvriendelijke strengheid (de globale moeilijkheids-knop is juli 2026
+verwijderd — spellen regelen moeilijkheid nu zelf/adaptief). Paden komen uit
+`src/glyphs.js` (dedupe — cijfer 0 doet daardoor ook mee in de cijfer-reeks).
 
 ## Reken-Raket (`src/scenes/MathScene.js`) — voorheen "Ruimte Rekenen"
 Automatiseer-spel voor groep 3 (juli 2026 volledig herbouwd). Sommen zijn
