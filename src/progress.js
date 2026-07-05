@@ -76,6 +76,27 @@ function save() {
   try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
 }
 
+// ---- Bewaar-code: voortgang exporteren/importeren als tekst-code ----
+// Safari's "geschiedenis wissen" gooit localStorage weg; met een bewaar-code
+// (te delen via WhatsApp/Notities) kan een ouder alles terugzetten.
+export function exportProgress() {
+  try {
+    return 'NULCO1.' + btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  } catch (e) { return null; }
+}
+
+export function importProgress(code) {
+  try {
+    const schoon = String(code || '').trim();
+    const b64 = schoon.startsWith('NULCO1.') ? schoon.slice(7) : schoon;
+    const parsed = JSON.parse(decodeURIComponent(escape(atob(b64))));
+    if (!parsed || typeof parsed !== 'object' || parsed.settings === undefined) return false;
+    data = deepMerge(DEFAULT, parsed);
+    save();
+    return true;
+  } catch (e) { return false; }
+}
+
 // --- Sterren ---
 export function getStars() { return data.stars || 0; }
 export function addStars(n) { data.stars = (data.stars || 0) + n; save(); return data.stars; }

@@ -43,8 +43,15 @@ function startVerdeel(s) {
   s.mode = 'bakkerij';
   s.player.body.setVelocity(0, 0);
 
+  // LET OP: géén scrollFactor(0)-container — interactieve kinderen van zo'n
+  // container krijgen hun tik-zones verschoven zodra de camera gescrold is
+  // (Phaser-valkuil; hierdoor "werkte het pizza-tikken niet" op de iPad).
+  // In plaats daarvan: camera stilzetten en de overlay in WERELD-coördinaten
+  // op de camerapositie zetten — dan klopt de hit-test gewoon.
+  const cam = s.cameras.main;
+  cam.stopFollow();
   const W = s.scale.width, H = s.scale.height;
-  const ov = s.add.container(0, 0).setDepth(80).setScrollFactor(0);
+  const ov = s.add.container(cam.scrollX, cam.scrollY).setDepth(80);
   B.overlay = ov;
 
   const dim = s.add.rectangle(W / 2, H / 2, W, H, 0x1a0e08, 0.72).setInteractive();
@@ -175,6 +182,7 @@ function bak(s) {
     }
     s.time.delayedCall(bw / stap * 140 + 400, () => {
       s.mode = 'explore';
+      s.cameras.main.startFollow(s.player, true, 0.12, 0.12); // follow weer aan
       s.checkpoint = { x: B.x, bottom: B.groundTop };
       s.questText.setText('De pizzapunten-brug is klaar — ren eroverheen! 🍕🚩');
       s.vierMijlpaal(B.x);

@@ -66,3 +66,10 @@ if (import.meta.env && import.meta.env.DEV) window.__game = game;
 if (!import.meta.env.DEV && 'serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
 }
+
+// Vraag de browser om de opslag te beschermen tegen automatisch opruimen.
+// (Geen garantie tegen "geschiedenis wissen" — daarvoor is de bewaar-code
+// in Instellingen — maar het helpt tegen stille schoonmaak-acties.)
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().catch(() => {});
+}

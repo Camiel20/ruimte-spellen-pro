@@ -169,11 +169,12 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '🚀', name: 'Nul-Raket',        color: 0x6366f1, go: () => this.scene.start('ZeroRocket') },
       { icon: '🐍', name: 'Tel-Slang',        color: 0x06b6d4, go: () => this.launchSnake() },
       { icon: '📖', name: 'Plakboek',         color: 0xf59e0b, go: () => this.scene.start('Sticker') },
-      { icon: '🧪', name: 'Toverwinkel',      color: 0x7c3aed, go: () => this.scene.start('Toverwinkel') },
-    ];
+      // test: true = nog niet klaar voor Adrian — alleen zichtbaar in de
+      // Ouder-modus (testversie). De Toverwinkel wacht op de speelgoed-pass.
+      { icon: '🧪', name: 'Toverwinkel', test: true, color: 0x7c3aed, go: () => this.scene.start('Toverwinkel') },
+    ].filter((g) => !g.test || getSetting('ouderModus'));
 
-    // 11 tegels = 6 rijen. Compact genoeg zodat álles (ook de laatste rij)
-    // op het scherm van 800px past — anders viel het 11e tegeltje eronder.
+    // Compact rooster zodat álles (ook de laatste rij) op 800px hoogte past.
     const cardW = 213, cardH = 98, gapX = 8, gapY = 7;
     const startX = (width - cardW * 2 - gapX) / 2 + cardW / 2;
     const startY = 210;

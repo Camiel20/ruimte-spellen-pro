@@ -219,6 +219,16 @@ export function validateLevel(L) {
     if (x - w / 2 < 0 || x + w / 2 > L.worldW) err(`kantel-punt ${i + 1} steekt buiten de wereld`);
   });
 
+  // Nul-feest (geheime wereld): alles binnen de wereld.
+  if (L.nulFeest) {
+    (L.nulFeest.nullen || []).forEach(([x, y], i) => {
+      if (x < 0 || x > L.worldW || y < 0 || y > L.worldH) err(`feest-nul ${i + 1} ligt buiten de wereld`);
+    });
+    (L.nulFeest.ringen || []).forEach(([x, y], i) => {
+      if (x < 0 || x > L.worldW || y < 0 || y > L.worldH) err(`nul-ring ${i + 1} ligt buiten de wereld`);
+    });
+  }
+
   // Pizza-Bakkerij: eerlijk te verdelen (toppings = pizzas × per), oven op
   // de grond, en de brug moet echt ergens heen leiden (binnen de wereld).
   if (L.bakkerij) {

@@ -683,41 +683,56 @@ export default class AdventureScene extends Phaser.Scene {
     }).setOrigin(0.5).setScrollFactor(0).setDepth(61);
   }
 
-  // ============================================================ DEV: LEVEL-KIEZER
-  // Alleen in `npm run dev` (import.meta.env.DEV). Strip met knopjes onderin om
-  // direct naar elk level te springen — zo hoef je niet alles door te spelen.
-  // Verdwijnt automatisch in de productie-build (GitHub Pages).
+  // ============================================================ TEST: LEVEL-KIEZER
+  // In dev (import.meta.env.DEV) én in de Ouder-modus. INKLAPBAAR paneel:
+  // een klein 🔧-knopje rechtsboven opent een overlay met alle levels —
+  // de oude strip onderin zat namelijk óver de spring/loop-knoppen heen.
   buildDevLevelPicker() {
     const W = this.scale.width;
-    // Meerdere rijen: met 25+ levels past één rij niet meer op 480px breed.
-    const perRow = 14, rowH = 25;
-    const chipW = (W - 24) / perRow;
-    const rows = Math.ceil(LEVELS.length / perRow);
-    const yTop = this.scale.height - 22 - (rows - 1) * rowH;
+    this.testPanelItems = null;
+    const chip = this.add.text(W - 10, 54, '🔧 ' + this.level.id, {
+      fontFamily: 'Arial Black, Arial', fontSize: '13px', fontStyle: 'bold',
+      color: '#ffe16b', backgroundColor: '#16202bcc', padding: { x: 10, y: 6 },
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(95).setInteractive({ useHandCursor: true });
+    chip.on('pointerdown', () => { SFX.click(); this.toggleTestPanel(); });
+  }
 
-    const strip = this.add.graphics().setScrollFactor(0).setDepth(90);
-    strip.fillStyle(0x16202b, 0.55);
-    strip.fillRoundedRect(6, yTop - 14, W - 12, rows * rowH + 6, 10);
+  toggleTestPanel() {
+    if (this.testPanelItems) {
+      this.testPanelItems.forEach((o) => o.destroy());
+      this.testPanelItems = null;
+      return;
+    }
+    const W = this.scale.width, H = this.scale.height;
+    const items = [];
+    // dim-laag: vangt alle tikken; tik = sluiten
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x0a1420, 0.85)
+      .setScrollFactor(0).setDepth(240).setInteractive();
+    dim.on('pointerdown', () => this.toggleTestPanel());
+    items.push(dim);
+    items.push(this.add.text(W / 2, 96, '🔧 Spring naar een level', {
+      fontFamily: 'Arial Black, Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffe16b',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(241));
 
+    const perRow = 6, chipW = 74, rowH = 44;
+    const startX = W / 2 - ((perRow - 1) * chipW) / 2;
     LEVELS.forEach((lvl, i) => {
       const active = i === this.levelIndex;
-      const cx = 12 + (i % perRow) * chipW + chipW / 2;
-      const cy = yTop + Math.floor(i / perRow) * rowH;
-      const chip = this.add.text(cx, cy, lvl.id, {
-        fontFamily: 'Arial Black, Arial', fontSize: '11px', fontStyle: 'bold',
+      const cx = startX + (i % perRow) * chipW;
+      const cy = 150 + Math.floor(i / perRow) * rowH;
+      const c = this.add.text(cx, cy, lvl.id, {
+        fontFamily: 'Arial Black, Arial', fontSize: '15px', fontStyle: 'bold',
         color: active ? '#16202b' : '#ffffff',
         backgroundColor: active ? '#ffe16b' : '#2b3d52',
-        padding: { x: 4, y: 3 },
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(91).setInteractive({ useHandCursor: true });
-      chip.on('pointerdown', () => {
-        SFX.click();
-        this.scene.restart({ levelIndex: i });
-      });
+        padding: { x: 9, y: 7 },
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setInteractive({ useHandCursor: true });
+      c.on('pointerdown', () => { SFX.click(); this.scene.restart({ levelIndex: i }); });
+      items.push(c);
     });
-
-    this.add.text(8, yTop - 25, 'DEV', {
-      fontFamily: 'Arial Black, Arial', fontSize: '10px', fontStyle: 'bold', color: '#ffe16b',
-    }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(91);
+    items.push(this.add.text(W / 2, 150 + Math.ceil(LEVELS.length / perRow) * rowH + 8, 'tik ernaast om te sluiten', {
+      fontFamily: 'Arial', fontSize: '13px', color: '#94a3b8',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(241));
+    this.testPanelItems = items;
   }
 
   // ============================================================ BOUW-MODUS

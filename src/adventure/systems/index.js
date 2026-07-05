@@ -19,5 +19,6 @@ import grauwMuren from './grauwmuren.js';
 import geisers from './geisers.js';
 import kantels from './kantels.js';
 import bakkerij from './bakkerij.js';
+import nulFeest from './nulfeest.js';
 
-export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij];
+export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest];

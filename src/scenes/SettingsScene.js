@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { SFX } from '../sound.js';
-import { getSetting, setSetting, resetProgress } from '../progress.js';
+import { getSetting, setSetting, resetProgress, exportProgress, importProgress } from '../progress.js';
 import { setMusicEnabled } from '../music.js';
 import { luchtAchtergrond, terugKnop, schermTitel } from '../theme.js';
 
@@ -50,12 +50,65 @@ export default class SettingsScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.nameRow(width / 2, 360);
 
+    // ---- Voortgang bewaren & terugzetten (bewaar-code) ----
+    // Safari's "geschiedenis wissen" gooit alles weg; hiermee kan een ouder
+    // de voortgang veiligstellen (delen naar WhatsApp/Notities) en terugzetten.
+    this.add.text(width / 2, 470, '💾 Voortgang veiligstellen', {
+      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#1f2d3a',
+    }).setOrigin(0.5);
+    this.add.text(width / 2, 498, '(bewaar de code in Notities of WhatsApp — dan ben je\nniets kwijt als Safari-gegevens gewist worden)', {
+      fontFamily: 'Arial', fontSize: '12px', color: '#5b7083', align: 'center',
+    }).setOrigin(0.5);
+
+    const bewaarBtn = this.add.text(width / 2 - 90, 552, '📤 Code delen', {
+      fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#14532d',
+      backgroundColor: '#bbf7d0', padding: { x: 14, y: 9 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    bewaarBtn.on('pointerdown', () => this.deelBewaarCode());
+
+    const herstelBtn = this.add.text(width / 2 + 90, 552, '📥 Code terugzetten', {
+      fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#1d4ed8',
+      backgroundColor: '#dbeafe', padding: { x: 14, y: 9 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    herstelBtn.on('pointerdown', () => this.zetBewaarCodeTerug());
+
     // Voortgang wissen
     const reset = this.add.text(width / 2, height - 60, '🗑️ Voortgang wissen', {
       fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#b91c1c',
       backgroundColor: '#ffffff', padding: { x: 16, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     reset.on('pointerdown', () => this.confirmReset());
+  }
+
+  deelBewaarCode() {
+    SFX.click();
+    const code = exportProgress();
+    if (!code) { this.toast('Er ging iets mis 😕'); return; }
+    // iOS/Android: het echte deelmenu (Notities, WhatsApp, …); anders kopiëren.
+    if (navigator.share) {
+      navigator.share({ title: 'Nul & Co bewaar-code', text: code }).catch(() => {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code)
+        .then(() => this.toast('📋 Code gekopieerd!'))
+        .catch(() => { try { window.prompt('Kopieer deze bewaar-code:', code); } catch (e) {} });
+    } else {
+      try { window.prompt('Kopieer deze bewaar-code:', code); } catch (e) {}
+    }
+  }
+
+  zetBewaarCodeTerug() {
+    SFX.click();
+    let code = null;
+    try { code = window.prompt('Plak hier de bewaar-code:'); } catch (e) {}
+    if (!code) return;
+    if (importProgress(code)) {
+      SFX.fanfare();
+      this.toast('✅ Voortgang teruggezet!');
+      this.time.delayedCall(1000, () => this.scene.restart());
+    } else {
+      SFX.oops();
+      this.toast('❌ Die code klopt niet — plak de hele code');
+    }
   }
 
   toast(tekst) {
