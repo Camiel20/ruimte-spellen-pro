@@ -186,7 +186,13 @@ op in de winkel (kleur keert terug).
 - **Opslag**: `progress.recepten` (Toverboek, `markRecept`/`hasRecept`), medaille
   `tover_start` (Leerling-Tovenaar) bij het eerste drankje.
 - **Bloei**: `bloei()` laat per gelukt drankje een bloemetje opbloeien in het
-  grauwe-paarse winkeldecor — mini-versie van "de wereld kleurt terug".
+  grauwe-paarse winkeldecor, én een `warmte`-gloedlaag klaart de winkel steeds
+  verder op — "de wereld kleurt terug".
+- **Magie-pass (2026-07-05)**: niet-lezer-vriendelijk + magischer gemaakt. Het
+  toverwoord staat LICHTGRIJS voorgedrukt (kopiëren); aantallen zijn STIPJES i.p.v.
+  breuken; een wijs-handje (`_wijzer`) + puls (`updateHint`) wijzen de volgende stap;
+  Nul reageert overal (`nulReactie`: blij/wow/spannend/juich); het kleurmengen wordt
+  gevierd (`mixFeest`: "GROEN!"/"PAARS!"…); en de poef heeft meer aanloop.
 
 ## Getallen-Toren (`src/scenes/NumberTowerScene.js`)
 Plaatswaarde-/stapelspel voor Adrian (eind groep 2 / start groep 3). Tik op

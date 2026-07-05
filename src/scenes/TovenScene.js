@@ -31,7 +31,12 @@ export default class TovenScene extends Phaser.Scene {
     this.buildWinkel();
     this.buildKetel();
     this.nulHelper = maakNul(this, 60, 512, 26).setDepth(20);
+    this._nulY = 512;
     this.time.addEvent({ delay: 3200, loop: true, callback: () => { if (!this.bezig) this.nulHelper.knipper(); } });
+    // wijs-handje dat boven de volgende stap zweeft (begeleiding voor niet-lezers)
+    this._puls = []; this._pulsDoelen = [];
+    this._wijzer = this.add.text(0, 0, '👇', { fontSize: '26px' }).setOrigin(0.5).setDepth(45).setVisible(false);
+    this.tweens.add({ targets: this._wijzer, scale: 1.25, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
     // Terug-pil
     const back = this.add.text(16, 16, '⬅ Terug', {
@@ -78,6 +83,10 @@ export default class TovenScene extends Phaser.Scene {
       const s = this.add.circle(Phaser.Math.Between(20, width - 20), Phaser.Math.Between(80, height - 40), Phaser.Math.FloatBetween(1, 2.4), 0xffe9a8, 0.6).setDepth(1);
       this.tweens.add({ targets: s, y: s.y - Phaser.Math.Between(20, 50), alpha: 0.1, duration: Phaser.Math.Between(2500, 5000), yoyo: true, repeat: -1, ease: 'Sine.inOut', delay: Phaser.Math.Between(0, 2000) });
     }
+
+    // warme gloed-laag: de winkel klaart zichtbaar op naarmate er meer bloeit
+    // ("de kleur keert terug"). Onder de kaarten (depth 30), boven het decor.
+    this.warmte = this.add.rectangle(width / 2, height / 2, width, height, 0xffd9a0).setDepth(2).setAlpha(0).setBlendMode(Phaser.BlendModes.ADD);
   }
 
   buildKetel() {
@@ -131,6 +140,8 @@ export default class TovenScene extends Phaser.Scene {
     this.buildKaart();
     this.buildKnoppen();
     this.buildLetters();
+    this._vorigStatus = { druppelsOk: false, sterrenOk: false, roerOk: false, woordOk: false };
+    this.updateHint();
   }
 
   buildKlant() {
@@ -205,27 +216,26 @@ export default class TovenScene extends Phaser.Scene {
     c.add(bg);
     c.add(this.add.text(0, -34, this.recept.naam, { fontFamily: 'Arial Black, Arial', fontSize: '15px', fontStyle: 'bold', color: '#7c4a1e' }).setOrigin(0.5));
 
-    // stap-chips (druppels per kleur, sterren, roer) op een rij
+    // stap-chips met STIPJES (○/●) — tellen wat je ziet, geen breuk lezen
     const chips = [];
-    this.recept.druppels.forEach((d) => chips.push({ type: 'druppel', kleur: d.kleur, nodig: d.aantal }));
-    chips.push({ type: 'sterren', nodig: this.recept.sterren });
-    chips.push({ type: 'roer', nodig: this.recept.roer });
+    this.recept.druppels.forEach((d) => chips.push({ key: 'd_' + d.kleur, kleur: d.kleur, nodig: d.aantal }));
+    chips.push({ key: 'sterren', icon: '⭐', nodig: this.recept.sterren });
+    chips.push({ key: 'roer', icon: '🥄', nodig: this.recept.roer });
+    this.kaartRefs.pips = {};
     const chipW = (width - 60) / chips.length;
     chips.forEach((ch, i) => {
-      const x = -width / 2 + 30 + chipW * i + chipW / 2;
-      const y = -6;
-      if (ch.type === 'druppel') {
-        c.add(this.add.circle(x - 14, y, 7, KLEUREN[ch.kleur]).setStrokeStyle(1.5, 0x0006));
-      } else {
-        c.add(this.add.text(x - 20, y, ch.type === 'sterren' ? '⭐' : '🥄', { fontSize: '15px' }).setOrigin(0.5));
+      const cx = -width / 2 + 30 + chipW * i + chipW / 2, y = -6;
+      if (ch.kleur) c.add(this.add.circle(cx - 26, y, 7, KLEUREN[ch.kleur]).setStrokeStyle(1.5, 0x00000066));
+      else c.add(this.add.text(cx - 30, y, ch.icon, { fontSize: '15px' }).setOrigin(0.5));
+      const pips = [];
+      for (let k = 0; k < ch.nodig; k++) {
+        const pip = this.add.circle(cx - 6 + k * 13, y, 4.5, 0xe4d3ad).setStrokeStyle(1.5, 0xb08a4a);
+        c.add(pip); pips.push(pip);
       }
-      const key = ch.type === 'druppel' ? 'd_' + ch.kleur : ch.type;
-      const txt = this.add.text(x + 2, y, `0/${ch.nodig}`, { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#5a3d28' }).setOrigin(0, 0.5);
-      c.add(txt);
-      this.kaartRefs[key] = txt;
+      this.kaartRefs.pips[ch.key] = pips;
     });
 
-    // woord-slots onderaan de kaart
+    // woord-slots — het toverwoord staat LICHTGRIJS voorgedrukt (om te kopiëren)
     const woord = this.recept.woord;
     this.kaartRefs.woordSlots = [];
     const slotW = 26, totW = woord.length * (slotW + 4);
@@ -235,7 +245,7 @@ export default class TovenScene extends Phaser.Scene {
       box.fillStyle(0xffffff, 0.8); box.fillRoundedRect(sx - slotW / 2, 20, slotW, 24, 5);
       box.lineStyle(1.5, 0xc9a76a, 1); box.strokeRoundedRect(sx - slotW / 2, 20, slotW, 24, 5);
       c.add(box);
-      const t = this.add.text(sx, 32, '', { fontFamily: 'Arial Black, Arial', fontSize: '16px', fontStyle: 'bold', color: '#7c4a1e' }).setOrigin(0.5);
+      const t = this.add.text(sx, 32, ch, { fontFamily: 'Arial Black, Arial', fontSize: '16px', fontStyle: 'bold', color: '#d8c19a' }).setOrigin(0.5);
       c.add(t);
       this.kaartRefs.woordSlots.push(t);
     });
@@ -243,15 +253,14 @@ export default class TovenScene extends Phaser.Scene {
   }
 
   updateKaart() {
-    const st = brouwStatus(this.recept, this.staat);
-    this.recept.druppels.forEach((d) => {
-      const heb = this.staat.druppels[d.kleur] || 0;
-      const ref = this.kaartRefs['d_' + d.kleur];
-      if (ref) ref.setText(`${heb}/${d.aantal}`).setColor(heb >= d.aantal ? '#2e6b1e' : '#5a3d28');
-    });
-    if (this.kaartRefs.sterren) this.kaartRefs.sterren.setText(`${this.staat.sterren}/${this.recept.sterren}`).setColor(st.sterrenOk ? '#2e6b1e' : '#5a3d28');
-    if (this.kaartRefs.roer) this.kaartRefs.roer.setText(`${this.staat.roer}/${this.recept.roer}`).setColor(st.roerOk ? '#2e6b1e' : '#5a3d28');
-    this.kaartRefs.woordSlots.forEach((t, i) => t.setText(i < this.staat.gespeld ? this.recept.woord[i] : ''));
+    const vul = (key, aantal) => {
+      const pips = this.kaartRefs.pips[key]; if (!pips) return;
+      pips.forEach((p, i) => p.setFillStyle(i < aantal ? 0x57b947 : 0xe4d3ad));
+    };
+    this.recept.druppels.forEach((d) => vul('d_' + d.kleur, this.staat.druppels[d.kleur] || 0));
+    vul('sterren', this.staat.sterren);
+    vul('roer', this.staat.roer);
+    this.kaartRefs.woordSlots.forEach((t, i) => t.setColor(i < this.staat.gespeld ? '#2e6b1e' : '#d8c19a'));
   }
 
   // ------------------------------------------------------ knoppen & letters
@@ -264,12 +273,15 @@ export default class TovenScene extends Phaser.Scene {
     this.recept.druppels.forEach((d) => items.push({ soort: 'druppel', kleur: d.kleur }));
     items.push({ soort: 'ster' });
     items.push({ soort: 'roer' });
+    this.knopRefs = { druppel: {}, ster: null, roer: null };
     const bw = 78, gap = 8, totW = items.length * bw + (items.length - 1) * gap;
     let x = width / 2 - totW / 2 + bw / 2;
     items.forEach((it) => {
       const label = it.soort === 'druppel' ? 'druppel' : it.soort === 'ster' ? 'sterretje' : 'roeren';
       const kleur = it.soort === 'druppel' ? KLEUREN[it.kleur] : it.soort === 'ster' ? 0xf6c624 : 0x9b6dd6;
       const knop = this.maakKnop(x, 0, label, kleur, it);
+      if (it.soort === 'druppel') this.knopRefs.druppel[it.kleur] = knop;
+      else this.knopRefs[it.soort] = knop;
       c.add(knop);
       x += bw + gap;
     });
@@ -338,14 +350,19 @@ export default class TovenScene extends Phaser.Scene {
   addDruppel(kleur) {
     const nodig = (this.recept.druppels.find((d) => d.kleur === kleur) || {}).aantal || 0;
     if ((this.staat.druppels[kleur] || 0) >= nodig) return;
+    const uniekVoor = new Set(this.dropArray()).size;
     this.staat.druppels[kleur] = (this.staat.druppels[kleur] || 0) + 1;
     // druppel valt in de ketel
     const drop = this.add.circle(KETEL_X + Phaser.Math.Between(-30, 30), 590, 8, KLEUREN[kleur]).setDepth(12);
     this.tweens.add({ targets: drop, y: KETEL_Y - 20, duration: 260, ease: 'Quad.easeIn', onComplete: () => { drop.destroy(); this.plons(KLEUREN[kleur]); } });
     SFX.pick();
-    this.setKetelKleur(ketelKleur(this.dropArray()));
+    const arr = this.dropArray();
+    const kleurNaam = ketelKleur(arr);
+    this.setKetelKleur(kleurNaam);
+    // KLEURMENG-FEESTJE: net twee kleuren → een nieuwe kleur ontstaat!
+    if (new Set(arr).size === 2 && uniekVoor === 1) this.mixFeest(kleurNaam);
     this.updateKaart();
-    this.checkKlaar();
+    this.naActie();
   }
 
   addSter() {
@@ -355,7 +372,7 @@ export default class TovenScene extends Phaser.Scene {
     this.tweens.add({ targets: st, y: KETEL_Y - 22, scale: 0.4, angle: 240, duration: 300, ease: 'Quad.easeIn', onComplete: () => { st.destroy(); this.plons(0xfff2a8); } });
     SFX.sparkle();
     this.updateKaart();
-    this.checkKlaar();
+    this.naActie();
   }
 
   addRoer() {
@@ -368,7 +385,7 @@ export default class TovenScene extends Phaser.Scene {
     this.tweens.add({ targets: this.liquid, scaleX: 1.08, duration: 120, yoyo: true });
     SFX.combine ? SFX.combine(2) : SFX.pick();
     this.updateKaart();
-    this.checkKlaar();
+    this.naActie();
   }
 
   tapLetter(tegel) {
@@ -382,7 +399,7 @@ export default class TovenScene extends Phaser.Scene {
       this.tweens.add({ targets: spark, x: KETEL_X, y: KETEL_Y - 20, scale: 0, duration: 400, ease: 'Quad.easeIn', onComplete: () => spark.destroy() });
       SFX.coin();
       this.updateKaart();
-      this.checkKlaar();
+      this.naActie();
     } else {
       this.tweens.add({ targets: tegel, x: tegel.x + 5, duration: 50, yoyo: true, repeat: 3 });
       SFX.oops(); Voice.cue('oops');
@@ -394,6 +411,77 @@ export default class TovenScene extends Phaser.Scene {
     this.time.delayedCall(300, () => p.destroy());
   }
 
+  // Na elke handeling: Nul juicht bij een net-afgeronde stap, en de volgende
+  // stap gaat pulseren zodat een niet-lezer weet wat te doen.
+  naActie() {
+    const st = brouwStatus(this.recept, this.staat);
+    const v = this._vorigStatus || {};
+    const netKlaar = (st.druppelsOk && !v.druppelsOk) || (st.sterrenOk && !v.sterrenOk) || (st.roerOk && !v.roerOk) || (st.woordOk && !v.woordOk);
+    if (netKlaar && !st.klaar) this.nulReactie('blij');
+    this._vorigStatus = st;
+    this.updateHint();
+    this.checkKlaar();
+  }
+
+  // Laat de volgende stap pulseren + een wijs-handje erboven.
+  updateHint() {
+    (this._puls || []).forEach((t) => t.stop());
+    (this._pulsDoelen || []).forEach((o) => o && o.setScale && o.setScale(1));
+    this._puls = []; this._pulsDoelen = [];
+    if (this._wijzer) this._wijzer.setVisible(false);
+    if (this.bezig || !this.knopRefs) return;
+    const st = brouwStatus(this.recept, this.staat);
+    let doelen = [], baseY = 610;
+    if (!st.druppelsOk) {
+      this.recept.druppels.forEach((d) => { if ((this.staat.druppels[d.kleur] || 0) < d.aantal && this.knopRefs.druppel[d.kleur]) doelen.push(this.knopRefs.druppel[d.kleur]); });
+    } else if (!st.sterrenOk) doelen = [this.knopRefs.ster];
+    else if (!st.roerOk) doelen = [this.knopRefs.roer];
+    else if (!st.woordOk) {
+      baseY = 700;
+      const next = this.recept.woord[this.staat.gespeld];
+      const tile = this.lettersC.list.find((o) => o.letter === next && !o.gebruikt);
+      if (tile) doelen = [tile];
+    }
+    doelen = doelen.filter(Boolean);
+    doelen.forEach((o) => { this._puls.push(this.tweens.add({ targets: o, scale: 1.12, duration: 480, yoyo: true, repeat: -1, ease: 'Sine.inOut' })); this._pulsDoelen.push(o); });
+    if (doelen.length && this._wijzer) this._wijzer.setVisible(true).setPosition(doelen[0].x, baseY - 36);
+  }
+
+  // Nul komt tot leven — reageert op alles (het emotionele kompas).
+  nulReactie(kind) {
+    const n = this.nulHelper; if (!n) return;
+    if (kind === 'spannend') {
+      this.tweens.add({ targets: n, scaleX: 0.84, scaleY: 0.9, duration: 260, yoyo: true, hold: 180 });
+      return;
+    }
+    const groot = kind === 'juich';
+    this.tweens.add({ targets: n, y: this._nulY - (groot ? 24 : 12), duration: 170, yoyo: true, repeat: groot ? 1 : 0, ease: 'Quad.easeOut', onComplete: () => n.setY(this._nulY) });
+    if (n.arm) this.tweens.add({ targets: n.arm, angle: { from: -6, to: groot ? 34 : 22 }, duration: 150, yoyo: true, repeat: groot ? 2 : 0, onComplete: () => n.arm.setAngle(0) });
+    if (kind !== 'blij') {
+      const e = this.add.text(n.x, this._nulY - 40, groot ? '🎉' : '✨', { fontSize: groot ? '24px' : '18px' }).setOrigin(0.5).setDepth(30);
+      this.tweens.add({ targets: e, y: e.y - 26, alpha: 0, duration: 850, onComplete: () => e.destroy() });
+    }
+    if (kind === 'wow') Voice.cue('star');
+    if (kind === 'juich') Voice.cue('cheer');
+  }
+
+  // Het kleurmeng-feestje: twee kleuren worden een nieuwe — vier het!
+  mixFeest(kleurNaam) {
+    const namen = { groen: 'GROEN!', paars: 'PAARS!', oranje: 'ORANJE!', bruin: 'oei, modder…' };
+    const hex = KLEUREN[kleurNaam] || 0xffffff;
+    const label = this.add.text(KETEL_X, KETEL_Y - 66, namen[kleurNaam] || '', {
+      fontFamily: 'Arial Black, Arial', fontSize: '26px', fontStyle: 'bold',
+      color: '#' + hex.toString(16).padStart(6, '0'), stroke: '#ffffff', strokeThickness: 5,
+    }).setOrigin(0.5).setDepth(50).setScale(0.3);
+    this.tweens.add({
+      targets: label, scale: 1.1, duration: 220, ease: 'Back.easeOut',
+      onComplete: () => this.tweens.add({ targets: label, y: label.y - 28, alpha: 0, duration: 600, delay: 450, onComplete: () => label.destroy() }),
+    });
+    this.plons(hex);
+    SFX.sparkle();
+    this.nulReactie('wow');
+  }
+
   // ------------------------------------------------------ het wonder
 
   checkKlaar() {
@@ -403,20 +491,23 @@ export default class TovenScene extends Phaser.Scene {
 
   brouwKlaar() {
     this.bezig = true;
+    this.updateHint(); // pulsen + wijzer weg
     if (this.klantC && this.klantC.wolkje) this.klantC.wolkje.destroy();
+    this.nulReactie('spannend'); // Nul houdt z'n adem in…
 
-    // opbouw: ketel gloeit en zwelt
+    // opbouw: ketel gloeit, trilt en zwelt (anticipatie vóór de knal)
     this.setKetelKleur(this.recept.doelkleur);
-    this.tweens.add({ targets: this.ketelGloed, alpha: 0.5, scale: 1.3, duration: 260, yoyo: true });
+    this.tweens.add({ targets: this.ketelGloed, alpha: 0.55, scale: 1.35, duration: 300, yoyo: true, repeat: 1 });
+    this.tweens.add({ targets: this.liquid, x: KETEL_X + 2, duration: 40, yoyo: true, repeat: 8 });
     this.tweens.add({
-      targets: this.liquid, scaleX: 1.15, scaleY: 1.3, duration: 300, ease: 'Sine.inOut',
-      onComplete: () => this.poef(),
+      targets: this.liquid, scaleX: 1.18, scaleY: 1.35, duration: 480, ease: 'Sine.inOut',
+      onComplete: () => { this.liquid.setX(KETEL_X); this.poef(); },
     });
   }
 
   poef() {
-    // POEF! grote uitbarsting + camera-tik
-    SFX.fanfare(); Voice.cue('cheer');
+    // POEF! grote uitbarsting + camera-tik + Nul juicht
+    SFX.fanfare(); this.nulReactie('juich');
     this.cameras.main.shake(180, 0.006);
     this.cameras.main.flash(200, 255, 245, 210);
     const kleur = KLEUREN[this.recept.doelkleur];
@@ -515,5 +606,7 @@ export default class TovenScene extends Phaser.Scene {
     this.tweens.add({ targets: bloem, scale: 1, duration: 500, ease: 'Back.easeOut' });
     this.tweens.add({ targets: bloem, angle: { from: -6, to: 6 }, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     confettiBurst(this, 60);
+    // de winkel wordt een tikje warmer/vrolijker met elke bloei
+    if (this.warmte) this.tweens.add({ targets: this.warmte, alpha: Math.min(0.26, this.warmte.alpha + 0.035), duration: 700 });
   }
 }
