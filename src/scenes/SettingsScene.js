@@ -16,8 +16,29 @@ export default class SettingsScene extends Phaser.Scene {
     terugKnop(this);
     schermTitel(this, 60, '⚙️ Instellingen');
 
+    // GEHEIME OUDER-MODUS: 5× snel op de titel tikken → toggle. Geeft op
+    // productie de level-kiezer + alle werelden open in Getallen-Land, zodat
+    // een ouder nieuwe levels kan testen zonder alles uit te spelen.
+    this.titelTikken = 0;
+    const titelZone = this.add.zone(width / 2, 66, 300, 70).setInteractive();
+    titelZone.on('pointerdown', () => {
+      this.titelTikken += 1;
+      if (this.titelTikTimer) this.titelTikTimer.remove();
+      this.titelTikTimer = this.time.delayedCall(1600, () => { this.titelTikken = 0; });
+      if (this.titelTikken >= 5) {
+        const nieuw = !getSetting('ouderModus');
+        setSetting('ouderModus', nieuw);
+        SFX.fanfare();
+        this.toast(nieuw ? '🔧 Ouder-modus AAN' : '🔧 Ouder-modus UIT');
+        this.time.delayedCall(900, () => this.scene.restart()); // toont/verbergt de rij
+      }
+    });
+
     // Muziek aan/uit
     this.toggleRow(width / 2, 180, '🎵 Achtergrondmuziek', 'music');
+
+    // Zichtbare uit-knop zolang de ouder-modus aanstaat
+    if (getSetting('ouderModus')) this.toggleRow(width / 2, 232, '🔧 Ouder-modus', 'ouderModus');
 
     // Naam van het kind. (De oude globale moeilijkheids-knop is verwijderd:
     // de spellen regelen hun moeilijkheid nu zelf, adaptief per spel.)
@@ -35,6 +56,16 @@ export default class SettingsScene extends Phaser.Scene {
       backgroundColor: '#ffffff', padding: { x: 16, y: 10 },
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
     reset.on('pointerdown', () => this.confirmReset());
+  }
+
+  toast(tekst) {
+    const { width } = this.scale;
+    const t = this.add.text(width / 2, 120, tekst, {
+      fontFamily: 'Arial Black, Arial', fontSize: '17px', fontStyle: 'bold', color: '#ffffff',
+      backgroundColor: '#1f2d3a', padding: { x: 16, y: 10 },
+    }).setOrigin(0.5).setDepth(300).setScale(0.4);
+    this.tweens.add({ targets: t, scale: 1, duration: 220, ease: 'Back.out' });
+    this.tweens.add({ targets: t, alpha: 0, delay: 1400, duration: 400, onComplete: () => t.destroy() });
   }
 
   toggleRow(x, y, label, key) {

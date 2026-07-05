@@ -22,21 +22,24 @@ export const LEVEL_7_1 = {
   startStamp: true,
   startDuw: true,
   startMega: true,
-  intro: 'Welkom in de Pizza-Vulkaan! Spring op de saus-geisers omhoog! 🍕⛲',
+  intro: 'De vlag staat HOOG — laat de saus-geisers je lanceren! 🍕⛲',
 
-  // Les 1: de saus-geiser. Hoge kaas-richels die je alleen haalt door op
-  // het juiste moment in de geiser-zuil te staan.
+  // Les 1: de saus-geiser. Hoge kaas-richels onderweg om te oefenen, en de
+  // vlag staat op een hoge eind-richel: zonder geiser-lancering kom je er
+  // niet — hier MOET je het nieuwe werkwoord gebruiken.
   platforms: [
     [0, 660, 2800, 140],     // doorlopende kaas-vlakte
     [560, 430, 190, 26],     // hoge richel boven geiser 1
     [1330, 380, 190, 26],    // nóg hoger boven geiser 2
     [2050, 430, 190, 26],    // richel boven geiser 3
+    [2540, 400, 240, 26],    // de EIND-RICHEL met de vlag (alleen via geiser 4)
   ],
 
   geisers: [
     { x: 470, hoogte: 300 },
     { x: 1240, hoogte: 350, offset: 900 },
     { x: 1960, hoogte: 300, offset: 1800 },
+    { x: 2460, hoogte: 340, offset: 600 },  // de lancering naar de vlag
   ],
 
   pickups: [
@@ -55,7 +58,7 @@ export const LEVEL_7_1 = {
   // Ster hoog boven de middelste geiser — timing!
   star: { x: 1425, y: 250 },
 
-  goal: { x: 2720, y: 588, value: 7 },
+  goal: { x: 2660, y: 328, value: 7 }, // op de hoge eind-richel!
 
   reward: {
     title: 'Level 7-1 gehaald! 🏆',

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { SFX } from '../sound.js';
-import { getLevelRecord, getLevelSterren, getAdventureCurrent, getStars, telGoudenNullen } from '../progress.js';
+import { getLevelRecord, getLevelSterren, getAdventureCurrent, getStars, telGoudenNullen, getSetting } from '../progress.js';
 import { sig } from '../adventure/palette.js';
 import { WORLDS } from '../levels/index.js';
 
@@ -85,6 +85,8 @@ export default class WorldMapScene extends Phaser.Scene {
   // Een level is speelbaar als het gehaald is, of het eerstvolgende is —
   // én de wereld-poort open is (genoeg verdiende sterren).
   isUnlocked(id) {
+    // Ouder-modus (geheime toggle in Instellingen): alles open om te testen.
+    if (getSetting('ouderModus')) return true;
     const rec = getLevelRecord(id);
     if (rec && rec.done) return true; // al gehaald blijft altijd open
     const entry = this.entries.find((e) => e.type === 'level' && e.lvl.id === id);

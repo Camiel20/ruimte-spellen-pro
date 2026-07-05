@@ -3,7 +3,7 @@ import { SFX, initAudio } from '../sound.js';
 import { Voice } from '../voice.js';
 import { startMusic, muziekVoorTerrein } from '../music.js';
 import { confettiBurst, showReward } from '../reward.js';
-import { addStars, getStars, markLevelDone, setAdventureCurrent, getAdventureCurrent, heeftGoudenNul, markGoudenNul, telGoudenNullen } from '../progress.js';
+import { addStars, getStars, markLevelDone, setAdventureCurrent, getAdventureCurrent, heeftGoudenNul, markGoudenNul, telGoudenNullen, getSetting } from '../progress.js';
 import { sig, lighten, darker } from '../adventure/palette.js';
 import BuildOverlay from '../adventure/BuildOverlay.js';
 import { drawCubeStack, addNumberDisc, addFeet, makeSleepingFriend, drawAwakeFriendInto } from '../adventure/art.js';
@@ -112,7 +112,9 @@ export default class AdventureScene extends Phaser.Scene {
     buildNul(this); // je maatje zweeft met je mee
     this.buildTouchControls();
     this.buildHud();
-    if (import.meta.env && import.meta.env.DEV) this.buildDevLevelPicker();
+    // Level-kiezer: altijd in dev, en op productie via de Ouder-modus
+    // (geheime toggle in Instellingen — 5× op de titel tikken).
+    if ((import.meta.env && import.meta.env.DEV) || getSetting('ouderModus')) this.buildDevLevelPicker();
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(140, 220);
