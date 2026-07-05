@@ -135,6 +135,51 @@ export function buildBackground(scene, L) {
     return;
   }
 
+  if (L.terrain === 'pannenkoek') {
+    // PANNENKOEKEN-PARADIJS (Wereld 8): honing-warme lucht, slagroom-wolken,
+    // en in de verte reuzen-pannenkoekentorens met druipende stroop.
+    const zon = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
+    const zg = scene.add.circle(0, 0, 54, 0xffe9a8, 0.42);
+    zon.add([zg, scene.add.circle(0, 0, 32, 0xffd24d)]);
+    scene.tweens.add({ targets: zg, scale: 1.18, alpha: 0.55, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // pannenkoekentorens in de verte (met stroop en boter)
+    const torens = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    [[90, 9, 62], [330, 13, 78], [430, 7, 50]].forEach(([tx, lagen, tw]) => {
+      const vb = scene.scale.height - 140;
+      for (let k = 0; k < lagen; k++) {
+        torens.fillStyle(k % 2 ? 0xdca050 : 0xc98a3d, 0.92);
+        torens.fillEllipse(tx, vb - k * 13, tw - (k % 3) * 5, 20);
+      }
+      // stroop die over de bovenste laag druipt + botertje
+      torens.fillStyle(0xb96a1e, 0.85);
+      torens.fillEllipse(tx, vb - lagen * 13 + 2, tw * 0.7, 12);
+      torens.fillRoundedRect(tx - tw * 0.28, vb - lagen * 13 + 4, 7, 22, 3);
+      torens.fillRoundedRect(tx + tw * 0.14, vb - lagen * 13 + 4, 6, 16, 3);
+      torens.fillStyle(0xffe16b, 1); torens.fillRoundedRect(tx - 9, vb - lagen * 13 - 8, 18, 9, 3);
+    });
+
+    // dikke slagroom-wolken
+    scene.clouds = [];
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(60, 240);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5);
+      const g = scene.add.graphics();
+      g.fillStyle(0xffffff, 0.96);
+      [[-30, 6, 18], [-8, -10, 26], [18, -2, 22], [38, 8, 15], [4, 12, 28]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+      g.fillStyle(0xffe9f2, 0.8); g.fillCircle(-14, 12, 16); // zachte roze onderkant
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 10);
+      scene.clouds.push(c);
+    }
+    // aardbei-heuvels in de verte
+    const heuvels = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    heuvels.fillStyle(0xe89aa8, 0.7);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) heuvels.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
   // Zon (licht parallax)
   const sun = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
   const glow = scene.add.circle(0, 0, 54, 0xfff3b0, 0.35);
@@ -163,15 +208,20 @@ export function buildBackground(scene, L) {
 }
 
 // Water is alleen visueel: vallen in zee wordt door killY/respawn afgehandeld.
-// In de Pizza-Vulkaan is het "water" een rivier van tomatensaus.
+// In de Pizza-Vulkaan is het "water" tomatensaus; in het Pannenkoeken-
+// Paradijs is het een meer van warme stroop.
 export function buildWater(scene, L) {
   const saus = L.terrain === 'pizza';
+  const stroop = L.terrain === 'pannenkoek';
+  const kleuren = saus
+    ? [0xd0331f, 0xf07c5a, 0xffc14d]
+    : stroop ? [0xb96a1e, 0xdca050, 0xffe16b] : [0x3fa9e0, 0x7fd0f0, 0xffffff];
   (L.water || []).forEach(([x, y, w, h]) => {
     const g = scene.add.graphics().setDepth(-14);
-    g.fillStyle(saus ? 0xd0331f : 0x3fa9e0, 1); g.fillRect(x, y, w, h);
-    g.fillStyle(saus ? 0xf07c5a : 0x7fd0f0, 0.5);
+    g.fillStyle(kleuren[0], 1); g.fillRect(x, y, w, h);
+    g.fillStyle(kleuren[1], 0.5);
     for (let wx = x; wx < x + w; wx += 42) g.fillEllipse(wx + 21, y + 12, 26, 8);
-    g.fillStyle(saus ? 0xffc14d : 0xffffff, 0.25);
+    g.fillStyle(kleuren[2], 0.25);
     for (let wx = x; wx < x + w; wx += 60) g.fillEllipse(wx + 30, y + 26, 18, 5);
     scene.tweens.add({ targets: g, alpha: 0.82, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   });
@@ -315,6 +365,36 @@ export function drawGround(scene, x, y, w, h) {
         g.fillStyle(0x57b947, 1); g.fillEllipse(fx, y - 3, 16, 9);
         g.lineStyle(1.5, 0x2f7d33, 1);
         g.beginPath(); g.moveTo(fx - 7, y - 3); g.lineTo(fx + 7, y - 3); g.strokePath();
+      }
+    }
+  } else if (scene.level.terrain === 'pannenkoek') {
+    // PANNENKOEKEN-PARADIJS (Wereld 8): de grond is een stapel pannenkoeken
+    // met een strooplaag bovenop; om en om een aardbei en een slagroomtoef.
+    g.fillStyle(0xc98a3d, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0xb5762f, 0.7);
+    for (let ry = y + 26; ry < y + h - 6; ry += 22) { // pannenkoek-lagen
+      for (let ex = x + 20; ex < x + w - 10; ex += 68) g.fillEllipse(ex, ry, 52, 9);
+    }
+    g.fillStyle(0xdca050, 1); g.fillRect(x, y, w, 16);   // bovenste pannenkoek
+    g.fillStyle(0xeab86a, 1); g.fillRect(x, y, w, 6);
+    // stroop die over de rand druipt
+    g.fillStyle(0xb96a1e, 0.9);
+    for (let dx = x + 26; dx < x + w - 10; dx += 62) {
+      g.fillRoundedRect(dx, y + 12, 8, 12 + (dx % 3) * 5, 4);
+    }
+    // om en om: aardbei en slagroomtoef
+    let pk = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      pk = !pk;
+      if (pk) {
+        g.fillStyle(0xe8402c, 1); g.fillCircle(fx, y - 5, 7);
+        g.fillTriangle(fx - 7, y - 7, fx + 7, y - 7, fx, y + 2);
+        g.fillStyle(0x57b947, 1); g.fillEllipse(fx, y - 11, 10, 4);
+        g.fillStyle(0xffe16b, 1); g.fillCircle(fx - 2, y - 5, 1); g.fillCircle(fx + 3, y - 3, 1);
+      } else {
+        g.fillStyle(0xffffff, 1);
+        g.fillCircle(fx - 5, y - 4, 5); g.fillCircle(fx + 5, y - 4, 5); g.fillCircle(fx, y - 9, 6);
+        g.fillStyle(0xe8402c, 1); g.fillCircle(fx, y - 15, 3);
       }
     }
   } else if (scene.level.terrain === 'bos') {

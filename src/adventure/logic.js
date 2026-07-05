@@ -219,6 +219,53 @@ export function validateLevel(L) {
     if (x - w / 2 < 0 || x + w / 2 > L.worldW) err(`kantel-punt ${i + 1} steekt buiten de wereld`);
   });
 
+  // Flipperpannen: binnen de wereld (mogen zweven).
+  (L.flippers || []).forEach(([x, y], i) => {
+    if (x < 0 || x > L.worldW || y < 0 || y > L.worldH) err(`flipperpan ${i + 1} hangt buiten de wereld`);
+  });
+
+  // Boter-glijbanen: op doorlopende grond (anders glij je een spookbaan op).
+  (L.glijbanen || []).forEach(([x, w, dir, y], i) => {
+    if (x < 0 || x + w > L.worldW) err(`glijbaan ${i + 1} steekt buiten de wereld`);
+    if (dir !== 1 && dir !== -1) err(`glijbaan ${i + 1}: richting moet 1 of -1 zijn`);
+    const top = y != null ? y : groundTop;
+    const support = L.platforms.some(([px, py, pw]) => py === top && px <= x && px + pw >= x + w);
+    if (!support) err(`glijbaan ${i + 1} (x=${x}..${x + w}) ligt niet op doorlopende grond`);
+  });
+
+  // Pannenkoeken-toren: haalbaar doel + trap binnen de wereld.
+  if (L.stapel) {
+    const ST = L.stapel;
+    if (!ST.doel || ST.doel < 3) err('stapel: doel moet minstens 3 zijn (anders valt er niets te tellen)');
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= ST.x && px + pw >= ST.x);
+    if (!support) err('stapel: het bak-station staat niet op de grond');
+    if (!Array.isArray(ST.trap) || !ST.trap.length) err('stapel mist een trap [[x,y,w],…]');
+    (ST.trap || []).forEach(([x, , w], i) => {
+      if (x - w / 2 < 0 || x + w / 2 > L.worldW) err(`stapel-trede ${i + 1} steekt buiten de wereld`);
+    });
+  }
+
+  // Reuzenflips: binnen de wereld.
+  (L.reuzenflips || []).forEach(([x, y, w], i) => {
+    if (x - w / 2 < 0 || x + w / 2 > L.worldW || y < 0 || y > L.worldH) err(`reuzenflip ${i + 1} hangt buiten de wereld`);
+  });
+
+  // Patroon-pannenkoek: elk rondje heeft precies één goed antwoord dat ook
+  // echt tussen de opties staat.
+  if (L.patroon) {
+    const P = L.patroon;
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= P.x && px + pw >= P.x + 130);
+    if (!support) err('patroon: het bord (of de slagboom erachter) staat niet op de grond');
+    if (!Array.isArray(P.rondes) || !P.rondes.length) err('patroon heeft geen rondes');
+    (P.rondes || []).forEach((R, i) => {
+      if (!Array.isArray(R.reeks) || R.reeks.length < 3) err(`patroon-ronde ${i + 1}: reeks te kort (min 3)`);
+      if (!Array.isArray(R.opties) || R.opties.length < 2) err(`patroon-ronde ${i + 1}: minstens 2 opties nodig`);
+      else if (!R.opties.includes(R.antwoord)) err(`patroon-ronde ${i + 1}: het antwoord zit niet tussen de opties`);
+      else if (R.opties.filter((o) => o === R.antwoord).length !== 1) err(`patroon-ronde ${i + 1}: het antwoord staat er dubbel in`);
+    });
+    if (L.goal && L.goal.x < P.x + 130) err('patroon: de vlag staat vóór de slagboom');
+  }
+
   // Nul-feest (geheime wereld): alles binnen de wereld.
   if (L.nulFeest) {
     (L.nulFeest.nullen || []).forEach(([x, y], i) => {

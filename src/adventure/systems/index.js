@@ -20,5 +20,10 @@ import geisers from './geisers.js';
 import kantels from './kantels.js';
 import bakkerij from './bakkerij.js';
 import nulFeest from './nulfeest.js';
+import flippers from './flippers.js';
+import glijbanen from './glijbanen.js';
+import stapel from './stapel.js';
+import reuzenflip from './reuzenflip.js';
+import patroon from './patroon.js';
 
-export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest];
+export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon];
