@@ -207,6 +207,36 @@ export function validateLevel(L) {
     if (Z.x < 0 || Z.x + Z.w > L.worldW) err(`maan-zone ${i + 1} ligt buiten de wereld`);
   });
 
+  // Saus-geisers (Pizza-Vulkaan): op de grond en binnen de wereld.
+  (L.geisers || []).forEach((G, i) => {
+    if (G.x < 0 || G.x > L.worldW) err(`geiser ${i + 1} staat buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= G.x && px + pw >= G.x);
+    if (!support) err(`geiser ${i + 1} (x=${G.x}) staat niet op de grond`);
+  });
+
+  // Kantel-punten binnen de wereld.
+  (L.kantels || []).forEach(([x, , w], i) => {
+    if (x - w / 2 < 0 || x + w / 2 > L.worldW) err(`kantel-punt ${i + 1} steekt buiten de wereld`);
+  });
+
+  // Pizza-Bakkerij: eerlijk te verdelen (toppings = pizzas × per), oven op
+  // de grond, en de brug moet echt ergens heen leiden (binnen de wereld).
+  if (L.bakkerij) {
+    const B = L.bakkerij;
+    if (!B.pizzas || B.pizzas < 2) err('bakkerij: minstens 2 pizza\'s nodig (anders valt er niets te verdelen)');
+    if (!B.per || B.per < 1) err('bakkerij: per (toppings per pizza) ontbreekt');
+    const nodig = (B.pizzas || 0) * (B.per || 0);
+    const aantal = (B.toppings || []).length;
+    if (aantal !== nodig) err(`bakkerij: ${aantal} toppings maar ${B.pizzas} × ${B.per} = ${nodig} nodig — eerlijk delen moet precies kloppen`);
+    (B.toppings || []).forEach(([x], i) => {
+      if (x < 0 || x > L.worldW) err(`bakkerij-topping ${i + 1} ligt buiten de wereld`);
+    });
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= B.x && px + pw >= B.x);
+    if (!support) err('bakkerij: de oven staat niet op de grond');
+    if (!Array.isArray(B.brug) || B.brug.length !== 3) err('bakkerij mist een brug [x, y, w]');
+    else if (B.brug[0] < 0 || B.brug[0] + B.brug[2] > L.worldW) err('bakkerij: de brug steekt buiten de wereld');
+  }
+
   // Raket: precies vol te tanken (vaatjes van 10) + vertrek en landing op grond.
   if (L.raket) {
     const R = L.raket;

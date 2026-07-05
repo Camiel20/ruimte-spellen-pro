@@ -79,6 +79,62 @@ export function buildBackground(scene, L) {
     return;
   }
 
+  if (L.terrain === 'pizza') {
+    // PIZZA-VULKAAN (Wereld 7): warme lucht, in de verte de grote rokende
+    // pizza-oven-vulkaan, en drijvende kaas-wolkjes.
+    const zon = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
+    const zg = scene.add.circle(0, 0, 54, 0xffe9a8, 0.4);
+    zon.add([zg, scene.add.circle(0, 0, 32, 0xffd24d)]);
+    scene.tweens.add({ targets: zg, scale: 1.18, alpha: 0.55, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // de Pizza-Vulkaan zelf: een afgeplatte korst-berg met borrelende saus-krater
+    const vulkaan = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    const vx = 130, vb = scene.scale.height - 140;
+    vulkaan.fillStyle(0xc98a3d, 0.95);
+    vulkaan.beginPath();
+    vulkaan.moveTo(vx - 150, vb); vulkaan.lineTo(vx - 44, vb - 280);
+    vulkaan.lineTo(vx + 44, vb - 280); vulkaan.lineTo(vx + 150, vb);
+    vulkaan.closePath(); vulkaan.fillPath();
+    vulkaan.fillStyle(0xdca050, 0.9);
+    vulkaan.beginPath();
+    vulkaan.moveTo(vx - 116, vb); vulkaan.lineTo(vx - 40, vb - 264);
+    vulkaan.lineTo(vx - 14, vb - 264); vulkaan.lineTo(vx - 26, vb);
+    vulkaan.closePath(); vulkaan.fillPath();
+    // saus-krater in de afgeplatte top + druipers langs de hellingen
+    vulkaan.fillStyle(0xe8402c, 1); vulkaan.fillEllipse(vx, vb - 280, 84, 20);
+    vulkaan.fillStyle(0xe8402c, 0.95);
+    vulkaan.fillRoundedRect(vx - 40, vb - 278, 12, 40, 6);
+    vulkaan.fillRoundedRect(vx - 4, vb - 274, 10, 58, 5);
+    vulkaan.fillRoundedRect(vx + 28, vb - 278, 11, 30, 5);
+    // rook uit de krater
+    scene.time.addEvent({
+      delay: 1300, loop: true, callback: () => {
+        if (!scene.scene.isActive()) return;
+        const r = scene.add.circle(vx + Phaser.Math.Between(-16, 16), vb - 306, Phaser.Math.Between(8, 13), 0xf0e6da, 0.45).setDepth(-27).setScrollFactor(0.3);
+        scene.tweens.add({ targets: r, y: r.y - 90, scale: 2, alpha: 0, duration: 3200, onComplete: () => r.destroy() });
+      },
+    });
+
+    // kaas-gele wolkjes
+    scene.clouds = [];
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(70, 250);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5).setAlpha(0.85);
+      const g = scene.add.graphics();
+      g.fillStyle(0xfff3cf, 0.95);
+      [[-26, 4, 17], [-6, -8, 23], [16, 0, 20], [34, 7, 14]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(5, 12);
+      scene.clouds.push(c);
+    }
+    // verre kaas-heuvels
+    const heuvels = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    heuvels.fillStyle(0xe0b054, 0.75);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) heuvels.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
   // Zon (licht parallax)
   const sun = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
   const glow = scene.add.circle(0, 0, 54, 0xfff3b0, 0.35);
@@ -107,13 +163,15 @@ export function buildBackground(scene, L) {
 }
 
 // Water is alleen visueel: vallen in zee wordt door killY/respawn afgehandeld.
+// In de Pizza-Vulkaan is het "water" een rivier van tomatensaus.
 export function buildWater(scene, L) {
+  const saus = L.terrain === 'pizza';
   (L.water || []).forEach(([x, y, w, h]) => {
     const g = scene.add.graphics().setDepth(-14);
-    g.fillStyle(0x3fa9e0, 1); g.fillRect(x, y, w, h);
-    g.fillStyle(0x7fd0f0, 0.5);
+    g.fillStyle(saus ? 0xd0331f : 0x3fa9e0, 1); g.fillRect(x, y, w, h);
+    g.fillStyle(saus ? 0xf07c5a : 0x7fd0f0, 0.5);
     for (let wx = x; wx < x + w; wx += 42) g.fillEllipse(wx + 21, y + 12, 26, 8);
-    g.fillStyle(0xffffff, 0.25);
+    g.fillStyle(saus ? 0xffc14d : 0xffffff, 0.25);
     for (let wx = x; wx < x + w; wx += 60) g.fillEllipse(wx + 30, y + 26, 18, 5);
     scene.tweens.add({ targets: g, alpha: 0.82, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   });
@@ -230,6 +288,33 @@ export function drawGround(scene, x, y, w, h) {
       } else {
         g.fillStyle(0xcfd6dd, 1); g.fillRect(fx - 1, y - 20, 2, 20);
         g.fillStyle(0xffe16b, 1); g.fillTriangle(fx + 1, y - 20, fx + 1, y - 11, fx + 13, y - 16);
+      }
+    }
+  } else if (scene.level.terrain === 'pizza') {
+    // PIZZA-VULKAAN (Wereld 7): goudbruine korst met een gesmolten kaas-toplaag,
+    // druipende kaas en om en om een salami en een basilicumblaadje.
+    g.fillStyle(0xc98a3d, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0xb5762f, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8); // korst-bobbels
+    g.fillStyle(0xf6c624, 1); g.fillRect(x, y, w, 16);                            // kaaslaag
+    g.fillStyle(0xffe16b, 1); g.fillRect(x, y, w, 6);                             // kaas-glans
+    // druipende kaas over de korstrand
+    g.fillStyle(0xf6c624, 1);
+    for (let dx = x + 20; dx < x + w - 10; dx += 56) {
+      g.fillRoundedRect(dx, y + 14, 9, 10 + (dx % 3) * 4, 4);
+    }
+    // om en om: salami en basilicumblaadje bovenop
+    let piz = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      piz = !piz;
+      if (piz) {
+        g.fillStyle(0xb93227, 1); g.fillCircle(fx, y - 2, 9);
+        g.fillStyle(0xe8402c, 1); g.fillCircle(fx, y - 2, 7);
+        g.fillStyle(0x8a1d12, 1); g.fillCircle(fx - 2, y - 4, 1.6); g.fillCircle(fx + 3, y, 1.4);
+      } else {
+        g.fillStyle(0x57b947, 1); g.fillEllipse(fx, y - 3, 16, 9);
+        g.lineStyle(1.5, 0x2f7d33, 1);
+        g.beginPath(); g.moveTo(fx - 7, y - 3); g.lineTo(fx + 7, y - 3); g.strokePath();
       }
     }
   } else if (scene.level.terrain === 'bos') {

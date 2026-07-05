@@ -25,6 +25,7 @@ export function muziekVoorTerrein(terrain) {
     berg: { pitch: 0.841, tempo: 1.0 },    // −3: stoer
     ruimte: { pitch: 1.189, tempo: 0.9 },  // +3, trager: zweven
     fort: { pitch: 0.749, tempo: 0.88 },   // −5, traag: hier woont Grauw
+    pizza: { pitch: 1.059, tempo: 1.08 },  // +1, vlotter: smikkel-feest
   }[terrain] || { pitch: 1, tempo: 1 };
 }
 

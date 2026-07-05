@@ -520,6 +520,84 @@ export function drawGrauwWolkje(scene, x, y) {
   return c;
 }
 
+// KAAS-GROMMEL (Wereld 7, de Pizza-Vulkaan): een grote boze kaaswig met
+// gaten, die alle toppings van het dorp gestolen heeft.
+export function drawKaasBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 70).setDepth(7);
+  const kaas = 0xf6c624, kaasLicht = 0xffe16b, kaasDonker = 0xc9940f;
+  // gestolen toppings-berg achter hem (zijn buit!)
+  const buit = scene.add.graphics();
+  buit.fillStyle(0xb93227, 0.9);
+  [[-78, 44, 11], [-96, 30, 9], [-64, 22, 10], [-88, 8, 8]].forEach(([bx, by, br]) => { buit.fillCircle(bx, by, br); });
+  buit.fillStyle(0xb08a5a, 0.9); buit.fillEllipse(-78, -6, 22, 13); buit.fillEllipse(-98, 46, 18, 11);
+  c.add(buit);
+  // romp: dikke kaaswig
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 74, 130, 20);
+  g.fillStyle(kaas, 1);
+  g.beginPath(); g.moveTo(-66, 70); g.lineTo(70, 70); g.lineTo(70, 26); g.lineTo(-66, -62); g.closePath(); g.fillPath();
+  g.fillStyle(kaasLicht, 0.8);
+  g.beginPath(); g.moveTo(-60, 62); g.lineTo(-8, 62); g.lineTo(-60, -40); g.closePath(); g.fillPath();
+  g.lineStyle(4, kaasDonker, 1);
+  g.beginPath(); g.moveTo(-66, 70); g.lineTo(70, 70); g.lineTo(70, 26); g.lineTo(-66, -62); g.closePath(); g.strokePath();
+  // kaas-gaten
+  g.fillStyle(kaasDonker, 0.8);
+  g.fillEllipse(28, 50, 18, 14); g.fillEllipse(-14, 34, 13, 10); g.fillEllipse(46, 14, 11, 9); g.fillEllipse(8, 8, 9, 7);
+  c.add(g);
+  // boos gezicht
+  const eL = scene.add.circle(8, -14, 11, 0xffffff).setStrokeStyle(3, kaasDonker);
+  const eR = scene.add.circle(40, -8, 11, 0xffffff).setStrokeStyle(3, kaasDonker);
+  const pL = scene.add.circle(8, -11, 4.5, 0x4a3505), pR = scene.add.circle(40, -5, 4.5, 0x4a3505);
+  const br = scene.add.graphics(); br.lineStyle(4.5, kaasDonker, 1);
+  br.beginPath(); br.moveTo(-4, -32); br.lineTo(18, -24); br.strokePath();
+  br.beginPath(); br.moveTo(52, -24); br.lineTo(31, -19); br.strokePath();
+  const m = scene.add.graphics(); m.lineStyle(4, kaasDonker, 1);
+  m.beginPath(); m.arc(26, 32, 12, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.bodyG = g; c.brow = br; c.mouth = m; c.eyes = [eL, eR];
+
+  // tekstwolkje
+  const bub = scene.add.container(84, -66);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  // knorrig wiebelen
+  scene.tweens.add({ targets: c, y: c.y - 6, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// De verslagen Kaas-Grommel wordt lief: hij lacht, deelt zijn toppings uit
+// en krijgt een basilicum-feesthoedje.
+export function happyKaasBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear(); c.mouth.lineStyle(4, 0xc9940f, 1);
+  c.mouth.beginPath(); c.mouth.arc(26, 28, 13, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+  // basilicum-feesthoedje op de punt
+  c.bodyG.fillStyle(0x57b947, 1); c.bodyG.fillEllipse(-58, -68, 26, 14);
+  c.bodyG.fillStyle(0x2f7d33, 1); c.bodyG.fillEllipse(-58, -70, 14, 7);
+  // blosjes
+  c.bodyG.fillStyle(0xf07c5a, 0.55); c.bodyG.fillEllipse(0, 4, 12, 8); c.bodyG.fillEllipse(48, 10, 12, 8);
+}
+
+// Rollend kaaswiel (de aanval van de Kaas-Grommel) — physics regelt de scene.
+export function drawKaasWiel(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const shadow = scene.add.graphics();
+  shadow.fillStyle(0x000000, 0.14); shadow.fillEllipse(0, 0, 30, 7);
+  c.add(shadow);
+  const inner = scene.add.container(0, -15);
+  const g = scene.add.graphics();
+  g.fillStyle(0xc9940f, 1); g.fillCircle(0, 0, 15);
+  g.fillStyle(0xf6c624, 1); g.fillCircle(0, 0, 12);
+  g.fillStyle(0xc9940f, 0.85); g.fillEllipse(-4, -3, 6, 5); g.fillEllipse(5, 4, 5, 4); g.fillEllipse(3, -6, 3.5, 3);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: -360, duration: 600, repeat: -1 }); // hij rólt
+  return c;
+}
+
 // Klein rollend golfje (de aanval van de Golf-Baas) — alleen het uiterlijk;
 // physics/beweging regelt de scene.
 export function drawWaveMinion(scene, x, y) {

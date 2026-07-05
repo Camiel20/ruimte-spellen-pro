@@ -11,6 +11,7 @@ import {
   drawCrystalBoss, happyCrystalBoss, drawCrystalShard,
   drawMeteorBoss, happyMeteorBoss, drawFireball,
   drawGrauwBoss, happyGrauwBoss, drawGrauwWolkje,
+  drawKaasBoss, happyKaasBoss, drawKaasWiel,
 } from './enemyArt.js';
 import { sig } from './palette.js';
 
@@ -56,6 +57,14 @@ export const BOSS_LOOKS = {
     projectile: drawFireball,
     speed: -235,
     waarschuwing: 'Pas op — een vuurbal! Spring! ☄️',
+  },
+  // Kaas-Grommel (W7, de Pizza-Vulkaan): rollende kaaswielen.
+  kaas: {
+    draw: (s, x, groundTop) => drawKaasBoss(s, x, groundTop),
+    happy: (s, c) => happyKaasBoss(s, c),
+    projectile: drawKaasWiel,
+    speed: -225,
+    waarschuwing: 'Pas op — een kaaswiel! Spring! 🧀',
   },
   // BARON GRAUW (W6, de finale): grauw-wolkjes — het allersnelst.
   grauw: {

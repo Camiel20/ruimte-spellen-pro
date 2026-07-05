@@ -155,6 +155,43 @@ describe('puzzellogica', () => {
     expect(validateLevel(goed)).toEqual([]);
   });
 
+  it('validateLevel: vangt een bakkerij die niet eerlijk te verdelen is', () => {
+    const basis = {
+      id: 'x-10', worldW: 3000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 1500, 140], [2400, 660, 600, 140]],
+      goal: { x: 2900, y: 588, value: 3 },
+    };
+    // 5 toppings over 2 pizza's à 3 = 6 nodig → onoplosbaar
+    const kapot = { ...basis, bakkerij: { x: 1400, pizzas: 2, per: 3, toppings: [[100, 600], [200, 600], [300, 600], [400, 600], [500, 600]], brug: [1500, 660, 900] } };
+    expect(validateLevel(kapot).some((e) => e.includes('eerlijk delen'))).toBe(true);
+    // met 6 toppings klopt het precies
+    const goed = { ...kapot, bakkerij: { ...kapot.bakkerij, toppings: [[100, 600], [200, 600], [300, 600], [400, 600], [500, 600], [600, 600]] } };
+    expect(validateLevel(goed)).toEqual([]);
+  });
+
+  it('validateLevel: vangt een geiser die niet op de grond staat', () => {
+    const kapot = {
+      id: 'x-11', worldW: 1000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 400, 140], [760, 660, 240, 140]],
+      geisers: [{ x: 500 }], // midden in de kloof
+      goal: { x: 900, y: 588, value: 3 },
+    };
+    expect(validateLevel(kapot).some((e) => e.includes('geiser'))).toBe(true);
+  });
+
+  it('validateLevel: vangt een kantel-punt buiten de wereld', () => {
+    const kapot = {
+      id: 'x-12', worldW: 1000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 1000, 140]],
+      kantels: [[980, 600, 130]], // steekt buiten de wereld
+      goal: { x: 900, y: 588, value: 3 },
+    };
+    expect(validateLevel(kapot).some((e) => e.includes('kantel-punt'))).toBe(true);
+  });
+
   it('validateLevel: vangt een maan-zone buiten de wereld', () => {
     const kapot = {
       id: 'x-8', worldW: 1000, worldH: 800, killY: 720,
