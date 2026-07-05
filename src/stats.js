@@ -17,6 +17,7 @@ const NAMES = {
   ZeroRocket: 'Nul-Raket',
   NumberLand: 'Getallen-Land',
   Snake: 'Tel-Slang',
+  Toverwinkel: 'Toverwinkel',
 };
 
 function load() {

@@ -16,6 +16,7 @@ const DEFAULT = {
   stars: 0,                 // totaal verzamelde sterren over alle spellen
   medals: {},               // bv. { balloon: true, adventure_1_1: true }
   stickers: {},             // sticker-id -> aantal (Plakboek); >=2 = glimmer
+  recepten: {},             // recept-id -> true (Toverwinkel: gebrouwen recepten)
   high: {},                 // topscores per spel
   levels: {},               // per level-id: { done: true, star: true, sterren: 0-3 }
   goudenNullen: {},         // per level-id: true als de Gouden Nul daar gevonden is
@@ -95,6 +96,17 @@ export function addSticker(id) {
   save();
   return data.stickers[id];
 }
+
+// --- Recepten (Toverwinkel-toverboek) ---
+export function hasRecept(id) { return !!(data.recepten && data.recepten[id]); }
+export function markRecept(id) {
+  if (!data.recepten) data.recepten = {};
+  const isNew = !data.recepten[id];
+  data.recepten[id] = true;
+  save();
+  return isNew;
+}
+export function getReceptCount() { return data.recepten ? Object.keys(data.recepten).length : 0; }
 
 // --- Medailles ---
 export function hasMedal(id) { return !!(data.medals && data.medals[id]); }

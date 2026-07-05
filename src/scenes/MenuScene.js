@@ -169,6 +169,7 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '🚀', name: 'Nul-Raket',        color: 0x6366f1, go: () => this.scene.start('ZeroRocket') },
       { icon: '🐍', name: 'Tel-Slang',        color: 0x06b6d4, go: () => this.launchSnake() },
       { icon: '📖', name: 'Plakboek',         color: 0xf59e0b, go: () => this.scene.start('Sticker') },
+      { icon: '🧪', name: 'Toverwinkel',      color: 0x7c3aed, go: () => this.scene.start('Toverwinkel') },
     ];
 
     // 11 tegels = 6 rijen. Compact genoeg zodat álles (ook de laatste rij)

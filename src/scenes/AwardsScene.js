@@ -22,6 +22,7 @@ const ALL_MEDALS = [
   { id: 'bezorg_baas', icon: '🚚', label: 'Bezorg-Baas' },
   { id: 'snake_50', icon: '🐍', label: 'Slangenmeester' },
   { id: 'snake_100', icon: '👑', label: 'Slangen-Koning' },
+  { id: 'tover_start', icon: '🧪', label: 'Leerling-Tovenaar' },
 ];
 
 export default class AwardsScene extends Phaser.Scene {

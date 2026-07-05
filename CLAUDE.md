@@ -169,6 +169,25 @@ worden = hoger tellen naar 100.
   Topscore (`snake`) = hoogste telling, bewaard in `quit()`. Medals snake_50/100.
 - Behouden: neon-arena, bots, kroontje, regenboog-slang ≥25, gouden-nul-magneet.
 
+## Nul's Toverwinkel (`src/scenes/TovenScene.js`) — FASE 1 (juli 2026)
+Magisch brouw-/lees-/tel-flagship (menutegel 🧪, scene-key `Toverwinkel`).
+Vlaggenschip-ontwerp staat in het geheugen ([[toverwinkel-plan]]); **fase 1 = de
+magische kern** is gebouwd, fasen 2-4 (klanten-cast, groeiende wereld, verhaal)
+nog niet. Kern-loop: klant met wens → brouw het drankje (kleuren mengen, sterren,
+roeren, toverwoord spellen) → POEF → klant transformeert → een bloemetje bloeit
+op in de winkel (kleur keert terug).
+- **Logica los** in `src/toverLogic.js` (vitest, `tests/tover.test.js`): `KLEUREN`,
+  `mengKleur` (blauw+geel=groen, blauw+rood=paars, rood+geel=oranje, rest=bruin),
+  `ketelKleur` (live ketelkleur uit de druppels), `RECEPTEN` (4: groei/glim/slaap/
+  vlieg), `brouwStatus`, `kiesRecept`, adaptieve ladder.
+- **De ketel mengt live**: elke druppel herberekent de kleur via `ketelKleur`.
+- **Faal-vriendelijk**: palet = alleen de recept-kleuren (geen fout mogelijk);
+  foute letter schudt zachtjes. Geen game-over.
+- **Opslag**: `progress.recepten` (Toverboek, `markRecept`/`hasRecept`), medaille
+  `tover_start` (Leerling-Tovenaar) bij het eerste drankje.
+- **Bloei**: `bloei()` laat per gelukt drankje een bloemetje opbloeien in het
+  grauwe-paarse winkeldecor — mini-versie van "de wereld kleurt terug".
+
 ## Getallen-Toren (`src/scenes/NumberTowerScene.js`)
 Plaatswaarde-/stapelspel voor Adrian (eind groep 2 / start groep 3). Tik op
 `+1` / `+10` / `+100` om kubussen in de juiste kolom te stapelen tot ze samen
