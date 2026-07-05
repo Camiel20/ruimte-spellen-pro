@@ -193,6 +193,17 @@ op in de winkel (kleur keert terug).
   breuken; een wijs-handje (`_wijzer`) + puls (`updateHint`) wijzen de volgende stap;
   Nul reageert overal (`nulReactie`: blij/wow/spannend/juich); het kleurmengen wordt
   gevierd (`mixFeest`: "GROEN!"/"PAARS!"…); en de poef heeft meer aanloop.
+- **Grafische overhaul (2026-07-05)**: van platte vormen naar een geschilderd,
+  sfeervol decor. `schilderWinkel()` tekent het interieur één keer op een
+  canvas-textuur (`tw_bg`): muur-verloop, warme gloed, houten planken met
+  gloeiende flesjes, houten vloer met perspectief, hangende lantaarns, vignette,
+  en een **gloeiende boog-nis** achter de ketel (i.p.v. een donker raam). Daar
+  bovenop: een **volumetrische lichtbundel** uit de ketel, opstijgende **sintels**
+  + drijvende **runen** (additief), en een **ketel-upgrade** (verloop-body,
+  metalen rand + klinknagels, schuimrand, opstijgende stoom, pulserende
+  gloed-halo die mee-kleurt met de drank). POEF kreeg **schokgolf-ringen** + een
+  kleur-flits. NB: Phaser-shapes hebben geen `preFX`, dus de gloed komt van
+  additieve lagen, niet van een shader (degradeert netjes, geen crash).
 
 ## Getallen-Toren (`src/scenes/NumberTowerScene.js`)
 Plaatswaarde-/stapelspel voor Adrian (eind groep 2 / start groep 3). Tik op

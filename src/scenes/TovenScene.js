@@ -56,44 +56,156 @@ export default class TovenScene extends Phaser.Scene {
 
   buildWinkel() {
     const { width, height } = this.scale;
-    const g = this.add.graphics().setDepth(0);
-    // warme tovenaars-sfeer: paars-bruin met een gloed
-    g.fillStyle(0x3a2f66, 1); g.fillRect(0, 0, width, height);
-    g.fillStyle(0x4a3a7a, 1); g.fillEllipse(width / 2, height * 0.55, width * 1.3, height * 0.9);
-    // houten vloer + toonbank
-    g.fillStyle(0x5a3d28, 1); g.fillRect(0, height - 150, width, 150);
-    g.fillStyle(0x4a3020, 1);
-    for (let x = 0; x < width; x += 60) g.fillRect(x, height - 150, 2, 150);
-    g.fillStyle(0x6a4a30, 1); g.fillRect(0, height - 156, width, 8);
+    // geschilderd winkel-decor (canvas-textuur): muur met gloed, boograam met
+    // maanlicht + dorpje, houten planken met gloeiende flesjes, vloer, lantaarns.
+    if (!this.textures.exists('tw_bg')) this.schilderWinkel(width, height);
+    this.add.image(0, 0, 'tw_bg').setOrigin(0).setDepth(-10);
 
-    // planken met kleurige flesjes (het decor dat straks "bloeit")
-    [140, 205].forEach((py) => {
-      g.fillStyle(0x4a3020, 1); g.fillRect(250, py + 22, 120, 6);
-    });
-    const flesKleuren = [0xe8402c, 0x57b947, 0x38b6cf, 0xf6c624, 0xec6aa9, 0x9b6dd6];
-    let fi = 0;
-    [[262, 140], [292, 140], [322, 140], [352, 140], [278, 205], [338, 205]].forEach(([fx, fy]) => {
-      const kl = flesKleuren[fi++ % flesKleuren.length];
-      g.fillStyle(kl, 0.9); g.fillRoundedRect(fx - 8, fy - 4, 16, 26, 4);
-      g.fillStyle(0xa97142, 1); g.fillRect(fx - 4, fy - 10, 8, 7);
+    // volumetrische lichtbundel die uit de ketel omhoog schijnt
+    const shaft = this.add.graphics().setDepth(1).setBlendMode(Phaser.BlendModes.ADD);
+    shaft.fillStyle(0xffd9a0, 0.10);
+    shaft.beginPath();
+    shaft.moveTo(KETEL_X - 42, KETEL_Y - 30);
+    shaft.lineTo(KETEL_X + 42, KETEL_Y - 30);
+    shaft.lineTo(KETEL_X + 155, 30);
+    shaft.lineTo(KETEL_X - 155, 30);
+    shaft.closePath(); shaft.fillPath();
+    if (shaft.preFX) shaft.preFX.addGlow(0xffe4b0, 4, 0, false, 0.1, 10);
+    this.tweens.add({ targets: shaft, alpha: 0.6, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // opstijgende sintels/magie-vonken uit de ketel
+    this.add.particles(KETEL_X, KETEL_Y - 26, 'star', {
+      x: { min: -60, max: 60 }, speed: { min: 12, max: 40 }, angle: { min: 250, max: 290 },
+      lifespan: { min: 2600, max: 4200 }, frequency: 240, gravityY: -6,
+      scale: { start: 0.5, end: 0 }, alpha: { start: 0.9, end: 0 },
+      tint: [0xffe9a8, 0xffd27a, 0xfff6d0], blendMode: 'ADD',
+    }).setDepth(3);
+
+    // langzaam drijvende toverrunen
+    ['✦', '✧', '⟡', '✺'].forEach((gl, i) => {
+      const r = this.add.text(64 + i * 118, 118 + (i % 2) * 84, gl, { fontSize: '20px', color: '#ffe9a8' })
+        .setOrigin(0.5).setDepth(2).setAlpha(0.26).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: r, y: r.y - 26, angle: 20, alpha: 0.5, duration: 4000 + i * 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     });
 
-    // dwarrelende magie-stofjes
-    for (let i = 0; i < 18; i++) {
-      const s = this.add.circle(Phaser.Math.Between(20, width - 20), Phaser.Math.Between(80, height - 40), Phaser.Math.FloatBetween(1, 2.4), 0xffe9a8, 0.6).setDepth(1);
-      this.tweens.add({ targets: s, y: s.y - Phaser.Math.Between(20, 50), alpha: 0.1, duration: Phaser.Math.Between(2500, 5000), yoyo: true, repeat: -1, ease: 'Sine.inOut', delay: Phaser.Math.Between(0, 2000) });
+    // gloeiende stofjes
+    for (let i = 0; i < 22; i++) {
+      const s = this.add.circle(Phaser.Math.Between(20, width - 20), Phaser.Math.Between(80, height - 40), Phaser.Math.FloatBetween(1, 2.6), 0xffe9a8, 0.55).setDepth(2).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: s, y: s.y - Phaser.Math.Between(20, 50), alpha: 0.08, duration: Phaser.Math.Between(2500, 5000), yoyo: true, repeat: -1, ease: 'Sine.inOut', delay: Phaser.Math.Between(0, 2000) });
     }
 
     // warme gloed-laag: de winkel klaart zichtbaar op naarmate er meer bloeit
-    // ("de kleur keert terug"). Onder de kaarten (depth 30), boven het decor.
-    this.warmte = this.add.rectangle(width / 2, height / 2, width, height, 0xffd9a0).setDepth(2).setAlpha(0).setBlendMode(Phaser.BlendModes.ADD);
+    // ("de kleur keert terug"). Boven het decor, onder de ketel/kaarten.
+    this.warmte = this.add.rectangle(width / 2, height / 2, width, height, 0xffd9a0).setDepth(4).setAlpha(0).setBlendMode(Phaser.BlendModes.ADD);
+  }
+
+  // Schildert het winkel-interieur één keer op een canvas-textuur ('tw_bg').
+  schilderWinkel(w, h) {
+    const tex = this.textures.createCanvas('tw_bg', w, h);
+    const c = tex.getContext();
+    const rr = (x, y, ww, hh, r) => {
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.arcTo(x + ww, y, x + ww, y + hh, r);
+      c.arcTo(x + ww, y + hh, x, y + hh, r);
+      c.arcTo(x, y + hh, x, y, r);
+      c.arcTo(x, y, x + ww, y, r);
+      c.closePath();
+    };
+
+    // muur-verloop
+    let wall = c.createLinearGradient(0, 0, 0, h);
+    wall.addColorStop(0, '#140a26'); wall.addColorStop(0.5, '#291640'); wall.addColorStop(1, '#3a2352');
+    c.fillStyle = wall; c.fillRect(0, 0, w, h);
+
+    // warme gloed rond de ketel
+    let glow = c.createRadialGradient(236, 470, 20, 236, 470, 380);
+    glow.addColorStop(0, 'rgba(255,190,110,0.42)');
+    glow.addColorStop(0.5, 'rgba(200,120,180,0.16)');
+    glow.addColorStop(1, 'rgba(120,80,150,0)');
+    c.fillStyle = glow; c.fillRect(0, 0, w, h);
+
+    // ---- gloeiende nis achter de ketel (architecturale diepte + magie) ----
+    const ax = 240, acy = 300, aw = 152;
+    const alcove = () => {
+      c.beginPath();
+      c.moveTo(ax - aw / 2, 500);
+      c.lineTo(ax - aw / 2, acy);
+      c.arc(ax, acy, aw / 2, Math.PI, 0, true);
+      c.lineTo(ax + aw / 2, 500);
+      c.closePath();
+    };
+    c.save(); alcove(); c.clip();
+    let nis = c.createRadialGradient(ax, 400, 20, ax, 400, 250);
+    nis.addColorStop(0, 'rgba(255,196,120,0.34)');
+    nis.addColorStop(0.55, 'rgba(150,95,175,0.14)');
+    nis.addColorStop(1, 'rgba(60,40,90,0)');
+    c.fillStyle = nis; c.fillRect(ax - aw, acy - aw, aw * 2, 500);
+    // zwevende runen diep in de nis
+    c.fillStyle = 'rgba(255,225,170,0.5)'; c.font = '18px serif'; c.textAlign = 'center';
+    c.fillText('✦', ax - 46, acy + 6); c.fillText('✧', ax + 48, acy - 6); c.fillText('⟡', ax, acy - 42);
+    c.textAlign = 'left';
+    c.restore();
+    // zachte steen-boog rand
+    c.lineWidth = 7; c.strokeStyle = 'rgba(90,66,130,0.55)'; alcove(); c.stroke();
+    c.lineWidth = 2; c.strokeStyle = 'rgba(255,225,180,0.28)'; alcove(); c.stroke();
+
+    // ---- houten planken met gloeiende flesjes ----
+    const plank = (px, py, pw2) => {
+      c.fillStyle = '#3a2416'; c.fillRect(px, py, pw2, 12);
+      c.fillStyle = 'rgba(255,220,160,0.15)'; c.fillRect(px, py, pw2, 3);
+    };
+    const fles = (fx, fy, col) => {
+      let fg = c.createRadialGradient(fx, fy, 2, fx, fy, 26);
+      fg.addColorStop(0, col + 'cc'); fg.addColorStop(1, col + '00');
+      c.fillStyle = fg; c.fillRect(fx - 26, fy - 26, 52, 52);
+      c.fillStyle = col; rr(fx - 9, fy - 18, 18, 28, 6); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(fx - 6, fy - 15, 3, 20);
+      c.fillStyle = '#7a5230'; c.fillRect(fx - 5, fy - 26, 10, 8);
+    };
+    plank(28, 214, 112); fles(52, 204, '#e8402c'); fles(86, 204, '#57b947'); fles(118, 204, '#38b6cf');
+    plank(28, 306, 112); fles(60, 296, '#f6c624'); fles(106, 296, '#ec6aa9');
+    plank(340, 214, 112); fles(362, 204, '#9b6dd6'); fles(396, 204, '#f6c624'); fles(428, 204, '#57b947');
+    plank(340, 306, 112); fles(370, 296, '#38b6cf'); fles(416, 296, '#e8402c');
+
+    // ---- houten vloer ----
+    const fy0 = h - 160;
+    let floor = c.createLinearGradient(0, fy0, 0, h);
+    floor.addColorStop(0, '#3a2416'); floor.addColorStop(1, '#1c1008');
+    c.fillStyle = floor; c.fillRect(0, fy0, w, 160);
+    c.fillStyle = 'rgba(255,210,150,0.10)'; c.fillRect(0, fy0, w, 4);
+    c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 2;
+    for (let i = -3; i <= 3; i++) { c.beginPath(); c.moveTo(w / 2 + i * 40, fy0); c.lineTo(w / 2 + i * 120, h); c.stroke(); }
+    for (let yy = fy0 + 40; yy < h; yy += 40) { c.beginPath(); c.moveTo(0, yy); c.lineTo(w, yy); c.stroke(); }
+
+    // ---- hangende lantaarns ----
+    const lantaarn = (lx) => {
+      c.strokeStyle = '#2a1c12'; c.lineWidth = 3; c.beginPath(); c.moveTo(lx, 0); c.lineTo(lx, 46); c.stroke();
+      let lg = c.createRadialGradient(lx, 58, 3, lx, 58, 34);
+      lg.addColorStop(0, 'rgba(255,200,120,0.85)'); lg.addColorStop(1, 'rgba(255,200,120,0)');
+      c.fillStyle = lg; c.beginPath(); c.arc(lx, 58, 34, 0, 7); c.fill();
+      c.fillStyle = '#ffcf7a'; rr(lx - 9, 46, 18, 24, 5); c.fill();
+      c.strokeStyle = '#2a1c12'; c.lineWidth = 2; c.strokeRect(lx - 9, 46, 18, 24);
+    };
+    lantaarn(70); lantaarn(410);
+
+    // ---- vignette voor diepte ----
+    let vig = c.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, h * 0.72);
+    vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.55)');
+    c.fillStyle = vig; c.fillRect(0, 0, w, h);
+
+    tex.refresh();
   }
 
   buildKetel() {
+    // grote pulserende gloed-halo achter de ketel
+    this.ketelHalo = this.add.ellipse(KETEL_X, KETEL_Y - 10, 270, 210, 0xffb46e, 0.16).setDepth(6).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: this.ketelHalo, scale: 1.12, alpha: 0.24, duration: 2200, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
     const g = this.add.graphics().setDepth(8);
-    g.fillStyle(0x000000, 0.28); g.fillEllipse(KETEL_X, KETEL_Y + 70, 150, 30);
-    // pot
-    g.fillStyle(0x241a3a, 1);
+    g.fillStyle(0x000000, 0.32); g.fillEllipse(KETEL_X, KETEL_Y + 72, 160, 32);
+    // pot met verloop (lichte buik → donkere bodem)
+    g.fillGradientStyle(0x4a3568, 0x4a3568, 0x160e28, 0x160e28, 1);
     g.beginPath();
     g.moveTo(KETEL_X - 74, KETEL_Y - 20);
     g.lineTo(KETEL_X - 60, KETEL_Y + 60);
@@ -101,22 +213,39 @@ export default class TovenScene extends Phaser.Scene {
     g.lineTo(KETEL_X + 74, KETEL_Y - 20);
     g.closePath(); g.fillPath();
     g.lineStyle(5, 0x0f0a1e, 1); g.strokePath();
+    // metalen rand-highlight + klinknagels
+    g.lineStyle(4, 0x9a7fc0, 0.9);
+    g.beginPath(); g.moveTo(KETEL_X - 70, KETEL_Y - 18); g.lineTo(KETEL_X + 70, KETEL_Y - 18); g.strokePath();
+    g.fillStyle(0x6a4f90, 1);
+    [-58, -30, 0, 30, 58].forEach((dx) => g.fillCircle(KETEL_X + dx, KETEL_Y - 8, 2.4));
     // pootjes
     g.fillStyle(0x1a1230, 1);
     g.fillRect(KETEL_X - 50, KETEL_Y + 58, 12, 14);
     g.fillRect(KETEL_X + 38, KETEL_Y + 58, 12, 14);
 
-    // vloeistof (kleur verandert live)
+    // vloeistof (kleur verandert live) + gloed-FX
     this.liquid = this.add.ellipse(KETEL_X, KETEL_Y - 20, 148, 40, KLEUREN.leeg).setDepth(9);
-    this.add.ellipse(KETEL_X, KETEL_Y - 20, 148, 40).setStrokeStyle(3, 0xc084fc).setDepth(10);
+    if (this.liquid.preFX) this.liquidGlow = this.liquid.preFX.addGlow(0xffffff, 6, 0, false, 0.1, 14);
+    // schuim-rand + glans op het oppervlak
+    this.add.ellipse(KETEL_X, KETEL_Y - 20, 148, 40).setStrokeStyle(4, 0xd9b8ff, 0.9).setDepth(10);
+    this.add.ellipse(KETEL_X, KETEL_Y - 24, 118, 20, 0xffffff, 0.14).setDepth(10);
+
+    // stoom-sliertjes die opstijgen
+    this.add.particles(KETEL_X, KETEL_Y - 24, 'star', {
+      x: { min: -48, max: 48 }, speed: { min: 8, max: 24 }, angle: { min: 260, max: 280 },
+      lifespan: { min: 1800, max: 3000 }, frequency: 200,
+      scale: { start: 0.7, end: 1.6 }, alpha: { start: 0.16, end: 0 },
+      tint: 0xffffff, blendMode: 'SCREEN',
+    }).setDepth(11);
+
     // glans-borrels
     this.borrels = [];
-    for (let i = 0; i < 4; i++) {
-      const b = this.add.circle(KETEL_X + Phaser.Math.Between(-40, 40), KETEL_Y - 22, Phaser.Math.Between(4, 8), 0xffffff, 0.35).setDepth(11).setVisible(false);
-      this.tweens.add({ targets: b, y: b.y - 10, scale: 0.2, duration: Phaser.Math.Between(700, 1200), yoyo: true, repeat: -1, delay: Phaser.Math.Between(0, 800) });
+    for (let i = 0; i < 5; i++) {
+      const b = this.add.circle(KETEL_X + Phaser.Math.Between(-46, 46), KETEL_Y - 22, Phaser.Math.Between(4, 9), 0xffffff, 0.4).setDepth(11).setVisible(false);
+      this.tweens.add({ targets: b, y: b.y - 12, scale: 0.2, duration: Phaser.Math.Between(700, 1200), yoyo: true, repeat: -1, delay: Phaser.Math.Between(0, 800) });
       this.borrels.push(b);
     }
-    // gloed onder de rand
+    // gloed onder de rand (gebruikt door brouwKlaar)
     this.ketelGloed = this.add.ellipse(KETEL_X, KETEL_Y - 20, 168, 52, 0xffffff, 0.0).setDepth(8);
   }
 
@@ -345,6 +474,8 @@ export default class TovenScene extends Phaser.Scene {
     const hex = KLEUREN[kleurNaam] || KLEUREN.leeg;
     this.liquid.setFillStyle(hex);
     this.ketelGloed.setFillStyle(hex);
+    if (this.liquidGlow) this.liquidGlow.color = kleurNaam === 'leeg' ? 0xffffff : hex;
+    if (this.ketelHalo) this.ketelHalo.setFillStyle(kleurNaam === 'leeg' ? 0xffb46e : hex);
   }
 
   addDruppel(kleur) {
@@ -511,6 +642,13 @@ export default class TovenScene extends Phaser.Scene {
     this.cameras.main.shake(180, 0.006);
     this.cameras.main.flash(200, 255, 245, 210);
     const kleur = KLEUREN[this.recept.doelkleur];
+    // schokgolf-ringen + een grote kleur-flits
+    for (let i = 0; i < 3; i++) {
+      const ring = this.add.circle(KETEL_X, KETEL_Y - 20, 20, 0xffffff, 0).setStrokeStyle(6, 0xffe9b0, 0.9).setDepth(59).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: ring, scale: 8, alpha: 0, duration: 720, delay: i * 110, ease: 'Cubic.easeOut', onComplete: () => ring.destroy() });
+    }
+    const burst = this.add.circle(KETEL_X, KETEL_Y - 20, 30, kleur, 0.85).setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: burst, scale: 6, alpha: 0, duration: 520, ease: 'Quad.easeOut', onComplete: () => burst.destroy() });
     const p = this.add.particles(KETEL_X, KETEL_Y - 26, 'star', {
       speed: { min: 120, max: 320 }, angle: { min: 250, max: 290 },
       scale: { start: 1.8, end: 0 }, lifespan: 900, quantity: 40,
