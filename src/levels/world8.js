@@ -62,7 +62,7 @@ export const LEVEL_8_1 = {
 
   grommels: [
     { type: 'stomp', x: 900, y: 612, patrol: [800, 1050] },
-    { type: 'stomp', x: 1800, y: 612, patrol: [1700, 2000] },
+    { type: 'glijder', x: 1800, y: 612, patrol: [1550, 2050] }, // STORMT over de boter!
     { type: 'springer', x: 2950, y: 612, patrol: [2880, 3050] },
   ],
 
@@ -196,7 +196,7 @@ export const LEVEL_8_3 = {
 
   grommels: [
     { type: 'stomp', x: 600, y: 612, patrol: [500, 750] },     // spring eroverheen tijdens het glijden!
-    { type: 'stomp', x: 1500, y: 612, patrol: [1400, 1650] },
+    { type: 'glijder', x: 1500, y: 612, patrol: [1200, 1700] }, // stormt over de baan!
     { type: 'springer', x: 2250, y: 612, patrol: [2100, 2400] },
     { type: 'vlieger', x: 1400, y: 280, patrol: [1100, 1800] },
     { type: 'stomp', x: 3550, y: 612, patrol: [3470, 3650] },  // op het eind-eiland!
@@ -278,7 +278,7 @@ export const LEVEL_8_4 = {
   grommels: [
     { type: 'stomp', x: 1000, y: 612, patrol: [900, 1150] },
     { type: 'springer', x: 1450, y: 612, patrol: [1350, 1550] },
-    { type: 'stomp', x: 2600, y: 612, patrol: [2500, 2750] }, // bewaakt de richel-klim
+    { type: 'glijder', x: 2600, y: 612, patrol: [2450, 2780] }, // stormt onder de richel
   ],
 
   star: { x: 1150, y: 230 },

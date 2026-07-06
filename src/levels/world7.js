@@ -57,7 +57,7 @@ export const LEVEL_7_1 = {
 
   grommels: [
     { type: 'stomp', x: 900, y: 612, patrol: [800, 1080] },
-    { type: 'stomp', x: 1700, y: 612, patrol: [1600, 1850] },
+    { type: 'werper', x: 1700, y: 612, patrol: [1600, 1850] }, // gooit tomaten!
     { type: 'springer', x: 2850, y: 612, patrol: [2750, 3000] },
   ],
 
@@ -214,7 +214,7 @@ export const LEVEL_7_3 = {
     { type: 'stomp', x: 470, y: 612, patrol: [370, 620] },
     { type: 'stomp', x: 1600, y: 612, patrol: [1400, 1800] },
     { type: 'springer', x: 2650, y: 612, patrol: [2550, 2800] },
-    { type: 'stomp', x: 3250, y: 612, patrol: [3150, 3380] },
+    { type: 'werper', x: 3250, y: 612, patrol: [3150, 3380] }, // gooit tomaten!
   ],
 
   // Ster hoog boven de geiser op het midden-eiland.
@@ -299,7 +299,7 @@ export const LEVEL_7_4 = {
     { type: 'stomp', x: 700, y: 612, patrol: [600, 850] },
     { type: 'stomp', x: 1500, y: 612, patrol: [1350, 1700] },
     { type: 'vlieger', x: 1350, y: 250, patrol: [1000, 1700] },
-    { type: 'springer', x: 2800, y: 612, patrol: [2700, 2950] },
+    { type: 'werper', x: 2800, y: 612, patrol: [2700, 2950] }, // gooit tomaten!
   ],
 
   // Ster boven de hoogste richel.
@@ -329,7 +329,7 @@ export const LEVEL_7_5 = {
   startStamp: true,
   startDuw: true,
   startMega: true,
-  intro: 'De Kaas-Grommel heeft alle toppings gestolen! Verdeel ze eerlijk terug — ontwijk de kaaswielen! 🧀',
+  intro: 'De Kaas-Grommel strooit met je toppings! VANG ze terug — ontwijk de kaaswielen! 🧀',
 
   platforms: [
     [0, 660, 2000, 140],
@@ -343,21 +343,23 @@ export const LEVEL_7_5 = {
   ],
 
   grommels: [
-    { type: 'stomp', x: 520, y: 612, patrol: [400, 700] },
+    { type: 'werper', x: 520, y: 612, patrol: [400, 700] }, // gooit tomaten mee!
     { type: 'stomp', x: 950, y: 612, patrol: [820, 1150] },
   ],
 
-  // Eerlijk-delen-fasen: "6 salami's, 2 pizza's → 3 op elk!" — elke fase
-  // geeft de gestolen buit, jij bouwt het eerlijke deel. De kaaswielen
-  // rollen bijna zo snel als de vuurballen van Wereld 5.
+  // HET VANG-GEVECHT (stijl 'vang'): de Kaas-Grommel strooit de gestolen
+  // toppings door de arena — vang er PRECIES genoeg terug (tellen onder
+  // druk!) terwijl de kaaswielen op je af rollen. Geen bouw-overlay:
+  // dit gevecht speelt zich helemaal in de arena af.
   boss: {
     x: 1500,
     name: 'Kaas-Grommel',
     look: 'kaas',
+    stijl: 'vang',
     stages: [
-      { doel: 3, blocks: [4, 2] },   // 6 gestolen → 3 op elke pizza
-      { doel: 4, blocks: [5, 3] },   // 8 gestolen → 4 op elk
-      { doel: 5, blocks: [6, 4] },   // 10 gestolen → 5 op elk
+      { doel: 4 },
+      { doel: 6 },
+      { doel: 8 },
     ],
   },
 

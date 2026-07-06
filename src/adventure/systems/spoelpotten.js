@@ -11,8 +11,9 @@ import { confettiBurst } from '../../reward.js';
 
 const POT_AFSTAND = 130;
 
-// Eén wc-pot tekenen (schattig: witte pot, brilletje, stortbakje).
-function tekenPot(s, x, groundTop, som) {
+// Eén wc-pot tekenen (schattig: witte pot, brilletje, stortbakje). Ook
+// gebruikt door het doorspoel-duel van de Reuzen-Drol (AdventureScene).
+export function tekenPot(s, x, groundTop, som) {
   const c = s.add.container(x, groundTop).setDepth(6);
   const g = s.add.graphics();
   g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 2, 78, 12);

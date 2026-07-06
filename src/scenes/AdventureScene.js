@@ -11,6 +11,8 @@ import { buildBackground, buildWater, buildPlatforms } from '../adventure/terrai
 import { drawGrommelArt, recolorGrommelArt } from '../adventure/enemyArt.js';
 import { bossLook } from '../adventure/bossRegistry.js';
 import { SYSTEMS } from '../adventure/systems/index.js';
+import { drawTopping } from '../adventure/systems/bakkerij.js';
+import { tekenPot } from '../adventure/systems/spoelpotten.js';
 // LET OP: het bestand heet 'maatje.js' en niet 'nul.js' — NUL is een
 // gereserveerde apparaatnaam op Windows (git kan zo'n bestand niet openen!).
 import { buildNul, updateNul } from '../adventure/maatje.js';
@@ -300,7 +302,7 @@ export default class AdventureScene extends Phaser.Scene {
     // uit de baas-registry — nieuwe baas = één entry in bossRegistry.js.
     const art = bossLook(B.look).draw(this, B.x, groundTop);
     const pz = {
-      type: 'boss', ...B, solved: false, stageIndex: 0,
+      type: 'boss', ...B, stijl: B.stijl || 'bouw', solved: false, stageIndex: 0,
       doel: B.stages[0].doel, blocks: B.stages[0].blocks,
       zone: new Phaser.Geom.Rectangle(B.x - 210, groundTop - 160, 190, 200),
       prompt: 'Versla de Baas!', bossBody: body, bossArt: art,
@@ -316,7 +318,8 @@ export default class AdventureScene extends Phaser.Scene {
     this.tweens.add({ targets: c, scaleX: 1.12, scaleY: 0.86, duration: 130, yoyo: true, repeat: 1, ease: 'Quad.out' });
     this.sparkleAt(c.x, c.y, 12); SFX.combine(pz.doel);
     const left = pz.stages.length - pz.stageIndex;
-    this.questText.setText(`De Baas wankelt! Nog ${left}× — bouw de ${pz.doel}`);
+    const actie = pz.stijl === 'vang' ? `vang er ${pz.doel}` : pz.stijl === 'spoel' ? `zoek de pot met ${pz.doel}` : `bouw de ${pz.doel}`;
+    this.questText.setText(`De Baas wankelt! Nog ${left}× — ${actie}!`);
     this.vierMijlpaal(pz.bossArt.x);
 
     // Schiet de baas terug? Na fase 1 één projectiel, daarna twee — spring
@@ -357,8 +360,169 @@ export default class AdventureScene extends Phaser.Scene {
     while (this.bossWaves.length) this.splashWave(0);
   }
 
+  // ============================================================ BAAS-STIJLEN
+  // Elke nieuwe wereld z'n eigen gevecht: 'vang' (Kaas-Grommel: vang precies
+  // n toppings terug) en 'spoel' (Reuzen-Drol: spring in de pot met de goede
+  // som → waterstraal!). 'bouw' = het klassieke blokjes-gevecht (W1-6).
+
+  startBossFase(pz) {
+    pz.faseActief = true;
+    Voice.number(pz.doel);
+    if (pz.stijl === 'vang') {
+      this.questText.setText(`Vang ${pz.doel} toppings terug! 🍅`);
+      this.strooiToppings(pz);
+    } else {
+      this.questText.setText(`Spring in de pot met ${pz.doel}! 🚽`);
+      this.toonBossPotten(pz);
+    }
+    // de baas blijft gooien zolang de fase duurt — ontwijken én werken!
+    if (bossLook(pz.look).projectile && !pz.waveEvent) {
+      pz.waveEvent = this.time.addEvent({
+        delay: 2700, loop: true,
+        callback: () => { if (!pz.solved && pz.faseActief && this.mode === 'explore') this.spawnBossWave(pz); },
+      });
+    }
+  }
+
+  // De Kaas-Grommel strooit zijn gestolen toppings door de arena.
+  strooiToppings(pz) {
+    const groundTop = this.level.platforms[0][1];
+    const n = pz.doel + 2; // een paar extra — het gaat om PRECIES doel vangen
+    pz.vangst = 0; pz.fruit = [];
+    this.tweens.add({ targets: pz.bossArt, angle: -8, duration: 160, yoyo: true, repeat: 2 });
+    for (let i = 0; i < n; i++) {
+      const doelX = pz.bossArt.x - 150 - i * (520 / n) - Phaser.Math.Between(0, 26);
+      const hoog = i % 3 === 1;
+      const doelY = hoog ? groundTop - Phaser.Math.Between(170, 235) : groundTop - 55;
+      const c = this.add.container(pz.bossArt.x - 40, groundTop - 130).setDepth(6);
+      c.add(drawTopping(this, i));
+      pz.fruit.push(c);
+      const boog = { t: 0 }; const sx = c.x, sy = c.y;
+      this.tweens.add({
+        targets: boog, t: 1, duration: 620 + i * 80, ease: 'Sine.out',
+        onUpdate: () => {
+          c.x = Phaser.Math.Linear(sx, doelX, boog.t);
+          c.y = Phaser.Math.Linear(sy, doelY, boog.t) - Math.sin(boog.t * Math.PI) * 170;
+        },
+        onComplete: () => this.tweens.add({ targets: c, y: doelY - 8, duration: 850, yoyo: true, repeat: -1, ease: 'Sine.inOut' }),
+      });
+    }
+    if (!pz.teller) {
+      pz.teller = this.add.text(this.scale.width / 2, 84, '', {
+        fontFamily: 'Arial Black, Arial', fontSize: '19px', fontStyle: 'bold',
+        color: '#ffffff', backgroundColor: '#b93227dd', padding: { x: 14, y: 6 },
+      }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(60);
+    }
+    pz.teller.setText(`🍅 0 / ${pz.doel}`).setVisible(true);
+  }
+
+  // De Reuzen-Drol kan alleen DOORGESPOELD worden: drie potten met sommen.
+  toonBossPotten(pz) {
+    const stage = pz.stages[pz.stageIndex];
+    const groundTop = this.level.platforms[0][1];
+    const sommen = [...stage.sommen];
+    for (let k = sommen.length - 1; k > 0; k--) {
+      const j = Math.floor(Math.random() * (k + 1));
+      [sommen[k], sommen[j]] = [sommen[j], sommen[k]];
+    }
+    pz.potten = sommen.map((som, i) => {
+      const pot = tekenPot(this, pz.bossArt.x - 640 + i * 180, groundTop, som);
+      pot.som = som;
+      pot.setScale(0.2);
+      this.tweens.add({ targets: pot, scale: 1, duration: 320, delay: i * 120, ease: 'Back.out' });
+      return pot;
+    });
+  }
+
+  // Per frame: vang-toppings rapen / op de goede pot springen.
+  updateBossFase(time) {
+    const p = this.player;
+    for (const pz of this.puzzles) {
+      if (pz.type !== 'boss' || !pz.faseActief || pz.solved) continue;
+      if (pz.stijl === 'vang') {
+        for (const f of pz.fruit) {
+          if (!f.active || f.taken) continue;
+          if (Math.abs(p.x - f.x) < 40 && Math.abs(p.y - f.y) < 52) {
+            f.taken = true;
+            pz.vangst += 1;
+            this.tweens.killTweensOf(f);
+            this.tweens.add({ targets: f, scale: 0, y: f.y - 22, duration: 220, ease: 'Back.in', onComplete: () => f.destroy() });
+            SFX.coin(); Voice.number(pz.vangst);
+            pz.teller.setText(`🍅 ${pz.vangst} / ${pz.doel}`);
+            this.tweens.add({ targets: pz.teller, scale: 1.18, duration: 110, yoyo: true });
+            if (pz.vangst >= pz.doel) {
+              pz.fruit.forEach((r) => { if (r.active && !r.taken) this.tweens.add({ targets: r, alpha: 0, scale: 0.4, duration: 300, onComplete: () => r.destroy() }); });
+              this.advanceBossStage(pz);
+            }
+          }
+        }
+      } else if (pz.stijl === 'spoel' && time > (pz.potCd || 0)) {
+        const onFloor = p.body.blocked.down || p.body.touching.down;
+        for (const pot of (pz.potten || [])) {
+          if (!pot.active) continue;
+          if (Math.abs(p.x - pot.x) < 30 && onFloor) {
+            pz.potCd = time + 1100;
+            if (pot.som[0] + pot.som[1] === pz.doel) this.spoelTreffer(pz, pot);
+            else {
+              SFX.oops(); Voice.cue('oops');
+              this.tweens.add({ targets: pot, angle: { from: -5, to: 5 }, duration: 70, yoyo: true, repeat: 4, onComplete: () => pot.setAngle(0) });
+              p.body.setVelocity(-220, -300); // zachtjes teruggeworpen
+              this.questText.setText(`Die som is geen ${pz.doel} — een andere pot! 💛`);
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // RAAK! De goede pot spuit een waterstraal die de Reuzen-Drol natspettert.
+  spoelTreffer(pz, pot) {
+    SFX.fanfare();
+    const groundTop = this.level.platforms[0][1];
+    // waterstraal uit de pot omhoog…
+    const straal = this.add.graphics().setDepth(30);
+    straal.fillStyle(0x7fd0f0, 0.9); straal.fillRoundedRect(pot.x - 9, 130, 18, groundTop - 165, 9);
+    straal.fillStyle(0xffffff, 0.6); straal.fillRoundedRect(pot.x - 3, 140, 6, groundTop - 185, 3);
+    this.tweens.add({ targets: straal, alpha: 0, duration: 600, delay: 250, onComplete: () => straal.destroy() });
+    // …en een sliert druppels vliegt in een boog naar de baas
+    for (let i = 0; i < 7; i++) {
+      const d = this.add.circle(pot.x, 160, Phaser.Math.Between(4, 7), 0x7fd0f0, 0.95).setDepth(31);
+      this.tweens.add({
+        targets: d, x: pz.bossArt.x + Phaser.Math.Between(-30, 30), y: pz.bossArt.y + Phaser.Math.Between(-40, 20),
+        duration: 380 + i * 60, ease: 'Quad.in',
+        onComplete: () => { this.sparkleAt(d.x, d.y, 3); d.destroy(); },
+      });
+    }
+    this.time.delayedCall(500, () => {
+      this.cameraPunch(0.03, 5);
+      this.tweens.add({ targets: pz.bossArt, scaleX: 0.88, scaleY: 1.1, duration: 150, yoyo: true, repeat: 1 });
+    });
+    this.advanceBossStage(pz);
+  }
+
+  // Fase klaar (vang of spoel): volgende fase of de overwinning.
+  advanceBossStage(pz) {
+    pz.faseActief = false;
+    (pz.potten || []).forEach((pot) => this.tweens.add({ targets: pot, scale: 0, alpha: 0, duration: 280, onComplete: () => pot.destroy() }));
+    pz.potten = [];
+    if (pz.teller) pz.teller.setVisible(false);
+    if (pz.stageIndex < pz.stages.length - 1) {
+      pz.stageIndex += 1;
+      pz.doel = pz.stages[pz.stageIndex].doel;
+      this.bossStageReact(pz);
+      this.time.delayedCall(1600, () => { if (!pz.solved && this.mode === 'explore') this.startBossFase(pz); });
+    } else {
+      pz.solved = true;
+      if (pz.waveEvent) { pz.waveEvent.remove(); pz.waveEvent = null; }
+      if (pz.teller) { pz.teller.destroy(); pz.teller = null; }
+      this.defeatBoss(pz);
+    }
+  }
+
   defeatBoss(pz) {
     const c = pz.bossArt;
+    if (pz.waveEvent) { pz.waveEvent.remove(); pz.waveEvent = null; }
     pz.bossBody.body.enable = false; this.bossGroup.remove(pz.bossBody, false, false);
     this.clearBossWaves();
     this.tweens.killTweensOf(c); // stop dein-/wiebel-tweens zodat de win-animatie niet vecht
@@ -373,20 +537,69 @@ export default class AdventureScene extends Phaser.Scene {
   // ============================================================ GROMMELS
   buildGrommels(L) {
     this.grommels = [];
+    this.werpsels = []; // gegooide tomaten/klontjes van de werpers
     (L.grommels || []).forEach((def) => this.grommels.push(this.makeGrommel(def)));
+  }
+
+  // De Tomaten-Werper gooit iets in een boog naar je toe — per wereld z'n
+  // eigen projectiel (tomaat / boterklontje / moddershotje / kiezel).
+  spawnWerpsel(gr) {
+    const g = this.add.graphics().setDepth(9);
+    const t = this.level.terrain;
+    if (t === 'pizza') {
+      g.fillStyle(0xe8402c, 1); g.fillCircle(0, 0, 8);
+      g.fillStyle(0x57b947, 1); g.fillEllipse(1, -6, 8, 4);
+      g.fillStyle(0xf07c5a, 0.8); g.fillCircle(-2, -2, 3);
+    } else if (t === 'pannenkoek') {
+      g.fillStyle(0xffe16b, 1); g.fillRoundedRect(-8, -6, 16, 12, 4);
+      g.fillStyle(0xfff3b0, 1); g.fillRoundedRect(-8, -6, 16, 5, 3);
+    } else if (t === 'wc') {
+      g.fillStyle(0x8a5a33, 1); g.fillEllipse(0, 2, 16, 9); g.fillEllipse(1, -4, 11, 7);
+      g.fillStyle(0xa9713f, 0.7); g.fillEllipse(-3, 1, 6, 4);
+    } else {
+      g.fillStyle(0x8a8f96, 1); g.fillCircle(0, 0, 7);
+      g.fillStyle(0xb9bfc6, 0.8); g.fillCircle(-2, -2, 3);
+    }
+    g.setPosition(gr.x, gr.y - 20);
+    this.physics.add.existing(g);
+    g.body.setAllowGravity(true);
+    const richting = Math.sign(this.player.x - gr.x) || 1;
+    g.body.setVelocity(richting * Phaser.Math.Between(130, 190), -420);
+    this.tweens.add({ targets: g, angle: richting * 360, duration: 900, repeat: -1 });
+    this.werpsels.push(g);
+    SFX.pop();
   }
 
   makeGrommel(def) {
     const c = this.add.container(def.x, def.y).setDepth(8);
+    // de POT-LOERDER (W9) zit verstopt in een wc-pot: eerst de pot tekenen
+    // (blijft altijd staan, ook na een stamp)
+    if (def.type === 'loerder') {
+      const pot = this.add.graphics();
+      pot.fillStyle(0x000000, 0.16); pot.fillEllipse(0, 30, 62, 10);
+      pot.fillStyle(0xf5f9fc, 1);
+      pot.fillRoundedRect(-9, 4, 18, 22, 5);
+      pot.fillEllipse(0, 4, 48, 20);
+      pot.fillStyle(0xdfe8ee, 1); pot.fillEllipse(0, 3, 38, 13);
+      pot.lineStyle(2.5, 0x8a97a2, 1); pot.strokeEllipse(0, 4, 48, 20);
+      c.add(pot);
+    }
     const art = this.add.container(0, 0);
-    drawGrommelArt(this, art, def.type); // springer = oranje veren, vlieger = vleugels
+    drawGrommelArt(this, art, def.type); // per type z'n eigen uniform
     c.add(art);
     c.art = art; c.def = def; c.alive = true; c.dir = 1;
 
     this.physics.add.existing(c);
     c.body.setSize(32, 30); c.body.setOffset(-16, -14);
-    // vliegers zweven (geen zwaartekracht); de rest loopt op de grond
-    c.body.setAllowGravity(def.type !== 'vlieger');
+    // vliegers en loerders zweven niet weg; de rest loopt op de grond
+    c.body.setAllowGravity(def.type !== 'vlieger' && def.type !== 'loerder');
+    if (def.type === 'loerder') {
+      // begint VERSTOPT in de pot: onzichtbaar én onaanraakbaar
+      c.verstopt = true;
+      c.body.enable = false;
+      art.setVisible(false);
+      art.y = 26;
+    }
     // idle: vliegers flapperen snel, lopers wiebelen rustig
     this.tweens.add({
       targets: art, scaleY: def.type === 'vlieger' ? 1.12 : 1.06,
@@ -1172,8 +1385,14 @@ export default class AdventureScene extends Phaser.Scene {
     this.nearPuzzle = null;
     for (const pz of this.puzzles) {
       if (pz.solved || (pz.cooldownUntil && time < pz.cooldownUntil)) continue;
+      // vang-/spoel-bazen hebben geen bouw-knop: hun fase start vanzelf
+      if (pz.type === 'boss' && pz.stijl !== 'bouw') {
+        if (!pz.faseActief && Phaser.Geom.Rectangle.Contains(pz.zone, p.x, p.y) && onFloor) this.startBossFase(pz);
+        continue;
+      }
       if (Phaser.Geom.Rectangle.Contains(pz.zone, p.x, p.y) && onFloor) { this.nearPuzzle = pz; break; }
     }
+    this.updateBossFase(time);
     if (this.nearPuzzle) {
       // Eerste keer bij deze puzzel: vrolijk begroetings-cue (hoorbare uitnodiging).
       if (!this.nearPuzzle.cuePlayed) { this.nearPuzzle.cuePlayed = true; Voice.cue('greet'); }
@@ -1254,21 +1473,98 @@ export default class AdventureScene extends Phaser.Scene {
     // onder de grens uit.
     if (body.bottom > this.level.killY) this.respawn();
 
-    // Grommels patrouilleren; springers HUPPEN (timing!) en vliegers zweven
-    // in een golfbaan — stamp ze midden in de lucht.
+    // Grommels patrouilleren; springers HUPPEN, vliegers zweven, werpers
+    // gooien, glijders stormen en loerders duiken op uit hun pot.
     for (const gr of this.grommels) {
       if (!gr.alive) continue;
       const [lo, hi] = gr.def.patrol;
+      const type = gr.def.type;
+
+      if (type === 'loerder') {
+        // POT-LOERDER: verstopt → borrelt (waarschuwing) → duikt op → zakt weg
+        gr.body.setVelocity(0, 0);
+        const dichtbij = p.x > lo - 40 && p.x < hi + 40;
+        if (gr.verstopt && dichtbij && time > (gr.cyclusTot || 0)) {
+          gr.verstopt = false; gr.boven = false; gr.cyclusTot = time + 500;
+          // borrel-waarschuwing uit de pot
+          for (let i = 0; i < 3; i++) {
+            const b = this.add.circle(gr.x + (i - 1) * 8, gr.y - 2, 3 + i, 0x7fd0f0, 0.9).setDepth(9);
+            this.tweens.add({ targets: b, y: b.y - 16, alpha: 0, duration: 420, delay: i * 90, onComplete: () => b.destroy() });
+          }
+          if (Math.abs(p.x - gr.x) < 380) SFX.pop();
+        } else if (!gr.verstopt && !gr.boven && time > gr.cyclusTot) {
+          gr.boven = true; gr.cyclusTot = time + 1500; // BOE! hij is boven
+          gr.body.enable = true;
+          gr.art.setVisible(true);
+          gr.art.scaleX = p.x < gr.x ? -1 : 1; // kijkt naar jou…
+          this.tweens.add({ targets: gr.art, y: -8, duration: 180, ease: 'Back.out' });
+          if (Math.abs(p.x - gr.x) < 380) SFX.split();
+        } else if (gr.boven && time > gr.cyclusTot) {
+          gr.verstopt = true; gr.boven = false; gr.cyclusTot = time + 1300;
+          gr.body.enable = false;
+          this.tweens.add({ targets: gr.art, y: 26, duration: 220, ease: 'Quad.in', onComplete: () => { if (gr.alive) gr.art.setVisible(false); } });
+        }
+        continue;
+      }
+
+      if (type === 'glijder') {
+        // BOTER-GLIJDER: wacht → leunt achterover (waarschuwing) → STORMT
+        if (gr.slijden) {
+          gr.body.setVelocityX(gr.dir * 300);
+          if (Math.random() < 0.35) {
+            const d = this.add.circle(gr.x - gr.dir * 16, gr.y + 16, Phaser.Math.Between(2, 4), 0xffe16b, 0.9).setDepth(7);
+            this.tweens.add({ targets: d, y: d.y - 12, alpha: 0, duration: 300, onComplete: () => d.destroy() });
+          }
+          if ((gr.dir > 0 && gr.x >= hi) || (gr.dir < 0 && gr.x <= lo)) {
+            gr.slijden = false; gr.rustTot = time + 1400;
+            gr.body.setVelocityX(0);
+            this.tweens.add({ targets: gr.art, angle: 0, scaleY: 0.85, duration: 200, yoyo: true }); // uithijgen
+          }
+        } else {
+          gr.body.setVelocityX(0);
+          const zelfdeHoogte = Math.abs(p.y - gr.y) < 90;
+          if (time > (gr.rustTot || 0) && zelfdeHoogte && p.x > lo - 60 && p.x < hi + 60 && !gr.aanloop) {
+            gr.aanloop = true;
+            gr.dir = p.x < gr.x ? -1 : 1;
+            gr.art.scaleX = gr.dir;
+            this.tweens.add({ targets: gr.art, angle: -gr.dir * 14, duration: 320, yoyo: true, onComplete: () => { gr.aanloop = false; gr.slijden = true; SFX.split(); } });
+          }
+        }
+        continue;
+      }
+
+      // lopers/springers/vliegers/werpers: patrouille
       if (gr.x <= lo) gr.dir = 1; else if (gr.x >= hi) gr.dir = -1;
-      gr.body.setVelocityX(gr.dir * (gr.def.type === 'springer' ? 70 : gr.def.type === 'vlieger' ? 80 : 55));
+      gr.body.setVelocityX(gr.dir * (type === 'springer' ? 70 : type === 'vlieger' ? 80 : type === 'werper' ? 30 : 55));
       gr.art.scaleX = gr.dir;
-      if (gr.def.type === 'springer' && gr.body.blocked.down && time > (gr.nextHop || 0)) {
+      if (type === 'springer' && gr.body.blocked.down && time > (gr.nextHop || 0)) {
         gr.nextHop = time + 1300 + (gr.def.x % 500); // eigen ritme per springer
         gr.body.setVelocityY(-440); // flinke hup — je ziet 'm van veraf
         this.tweens.add({ targets: gr.art, scaleY: 1.3, scaleX: gr.dir * 0.8, duration: 150, yoyo: true, ease: 'Quad.out' });
       }
-      if (gr.def.type === 'vlieger') {
+      if (type === 'vlieger') {
         gr.body.setVelocityY(Math.sin(time * 0.004 + gr.def.x) * 70);
+      }
+      if (type === 'werper' && time > (gr.nextWorp || 0) && Math.abs(p.x - gr.x) < 500 && Math.abs(p.y - gr.y) < 200) {
+        gr.nextWorp = time + 2400;
+        gr.art.scaleX = p.x < gr.x ? -1 : 1; // richt op jou
+        this.tweens.add({ targets: gr.art, scaleY: 0.8, duration: 140, yoyo: true }); // wind-up
+        this.spawnWerpsel(gr);
+      }
+    }
+
+    // Werpsels (gegooide tomaten e.d.): boogje met zwaartekracht; raak = krimp
+    for (let i = (this.werpsels || []).length - 1; i >= 0; i--) {
+      const w = this.werpsels[i];
+      if (!w.active || w.body.blocked.down || w.y > this.level.killY) {
+        if (w.active) { this.sparkleAt(w.x, w.y, 4); w.destroy(); }
+        this.werpsels.splice(i, 1);
+        continue;
+      }
+      if (time > this.invulnUntil && Math.abs(p.x - w.x) < 26 && Math.abs(p.y - w.y) < 32) {
+        this.sparkleAt(w.x, w.y, 6);
+        w.destroy(); this.werpsels.splice(i, 1);
+        this.shrinkPlayer(w);
       }
     }
 

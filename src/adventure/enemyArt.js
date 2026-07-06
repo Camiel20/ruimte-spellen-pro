@@ -33,6 +33,22 @@ export function drawGrommelArt(scene, art, type) {
     g.fillStyle(0xe8402c, 1); g.fillCircle(0, -22, 3.5);
     g.lineStyle(2, 0xb98d12, 1); g.beginPath(); g.moveTo(0, -19); g.lineTo(0, -14); g.strokePath();
   }
+  if (type === 'werper') {
+    // witte koksmuts + een tomaat in het handje — de Tomaten-Werper (W7)
+    g.fillStyle(0xf5f9fc, 1); g.fillRoundedRect(-9, -26, 18, 13, 5);
+    g.fillCircle(-7, -25, 6); g.fillCircle(0, -28, 7); g.fillCircle(7, -25, 6);
+    g.lineStyle(2, 0xc9d2da, 1); g.strokeRoundedRect(-9, -26, 18, 13, 5);
+    g.fillStyle(0xe8402c, 1); g.fillCircle(20, 2, 7);        // de tomaat!
+    g.fillStyle(0x57b947, 1); g.fillEllipse(21, -4, 8, 4);
+  }
+  if (type === 'glijder') {
+    // een boter-slee onder de voetjes + skibrilletje — de Boter-Glijder (W8)
+    g.fillStyle(0xffe16b, 1); g.fillRoundedRect(-20, 14, 40, 10, 5);
+    g.fillStyle(0xfff3b0, 1); g.fillRoundedRect(-20, 14, 40, 4, 3);
+    g.lineStyle(2, 0xb98d12, 1); g.strokeRoundedRect(-20, 14, 40, 10, 5);
+    g.fillStyle(0x38b6cf, 0.4); g.fillRoundedRect(-13, -8, 26, 9, 4); // brilletje
+    g.lineStyle(2, 0x2a7a94, 1); g.strokeRoundedRect(-13, -8, 26, 9, 4);
+  }
   const eL = scene.add.circle(-6, -3, 5, 0xffffff).setStrokeStyle(2, 0x333333);
   const eR = scene.add.circle(6, -3, 5, 0xffffff).setStrokeStyle(2, 0x333333);
   const pL = scene.add.circle(-6, -2, 2.2, 0x222222), pR = scene.add.circle(6, -2, 2.2, 0x222222);

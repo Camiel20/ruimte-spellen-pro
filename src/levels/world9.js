@@ -61,7 +61,7 @@ export const LEVEL_9_1 = {
     { type: 'stomp', x: 900, y: 612, patrol: [800, 1050] },
     { type: 'springer', x: 1950, y: 612, patrol: [1850, 2100] },
     { type: 'vlieger', x: 1250, y: 300, patrol: [1000, 1500] }, // een vliegje!
-    { type: 'stomp', x: 2800, y: 612, patrol: [2720, 2950] },
+    { type: 'loerder', x: 2800, y: 632, patrol: [2700, 2950] }, // loert uit z'n pot!
   ],
 
   // Ster hoog in stink-kolom 2 — laat je optillen!
@@ -125,7 +125,7 @@ export const LEVEL_9_2 = {
   grommels: [
     { type: 'stomp', x: 400, y: 612, patrol: [300, 500] },
     { type: 'springer', x: 2650, y: 612, patrol: [2550, 2800] },
-    { type: 'stomp', x: 3280, y: 612, patrol: [3200, 3380] },
+    { type: 'loerder', x: 3280, y: 632, patrol: [3180, 3380] }, // loert uit z'n pot!
   ],
 
   // Ster hoog boven vallei B — dubbelsprong.
@@ -197,7 +197,7 @@ export const LEVEL_9_3 = {
     { type: 'vlieger', x: 1050, y: 320, patrol: [750, 1400] }, // boven de rollen!
     { type: 'stomp', x: 1800, y: 612, patrol: [1700, 1950] },
     { type: 'springer', x: 2700, y: 612, patrol: [2600, 2850] },
-    { type: 'stomp', x: 3350, y: 612, patrol: [3270, 3480] },
+    { type: 'loerder', x: 3350, y: 632, patrol: [3260, 3480] }, // loert uit z'n pot!
   ],
 
   // Ster hoog in de stink-kolom op het midden-eiland.
@@ -267,7 +267,7 @@ export const LEVEL_9_4 = {
     { type: 'stomp', x: 700, y: 612, patrol: [600, 850] },
     { type: 'vlieger', x: 1600, y: 300, patrol: [1350, 1900] },
     { type: 'stomp', x: 1950, y: 612, patrol: [1850, 2080] },
-    { type: 'stomp', x: 3180, y: 612, patrol: [3100, 3260] },
+    { type: 'loerder', x: 3180, y: 632, patrol: [3090, 3270] }, // loert uit z'n pot!
   ],
 
   // Ster op de hoge richel — laat de stank je erheen tillen.
@@ -300,7 +300,7 @@ export const LEVEL_9_5 = {
   startStamp: true,
   startDuw: true,
   startMega: true,
-  intro: 'De REUZEN-DROL blokkeert de grote wc! Ontwijk de drolletjes! 💩👑',
+  intro: 'De REUZEN-DROL kan alleen DOORGESPOELD worden — spring in de pot met de goede som! 💩🚽',
 
   platforms: [
     [0, 660, 2000, 140],
@@ -314,20 +314,23 @@ export const LEVEL_9_5 = {
   ],
 
   grommels: [
-    { type: 'stomp', x: 520, y: 612, patrol: [400, 700] },
+    { type: 'loerder', x: 520, y: 632, patrol: [400, 700] }, // loert mee uit z'n pot!
     { type: 'stomp', x: 950, y: 612, patrol: [820, 1150] },
   ],
 
-  // De laatste baas-proef van het spel: sommen-fasen met splitsen
-  // (8 → 7+1!) terwijl de drolletjes huppelend op je af komen.
+  // HET DOORSPOEL-DUEL (stijl 'spoel'): drie wc-potten met sommen in de
+  // arena — spring in de pot die het doel maakt en een waterstraal spettert
+  // de Reuzen-Drol nat! Foute pot = teruggeworpen. Ondertussen huppelen de
+  // drolletjes op je af. Elke fase: nieuwe sommen, hoger doel.
   boss: {
     x: 1500,
     name: 'Reuzen-Drol',
     look: 'drol',
+    stijl: 'spoel',
     stages: [
-      { doel: 7, blocks: [4, 4] },    // 8 → 7 + 1
-      { doel: 9, blocks: [5, 5] },    // 10 → 9 + 1
-      { doel: 12, blocks: [7, 6] },   // 13 → 12 + 1
+      { doel: 7, sommen: [[3, 4], [2, 4], [5, 4]] },
+      { doel: 9, sommen: [[5, 4], [3, 4], [6, 4]] },
+      { doel: 12, sommen: [[6, 6], [5, 6], [10, 4]] },
     ],
   },
 

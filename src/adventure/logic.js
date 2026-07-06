@@ -160,10 +160,21 @@ export function validateLevel(L) {
 
   if (L.boss) {
     const B = L.boss;
+    const stijl = B.stijl || 'bouw';
     if (B.x < 0 || B.x > L.worldW) err('baas staat buiten de wereld');
     if (!Array.isArray(B.stages) || B.stages.length === 0) err('baas heeft geen fasen');
     (B.stages || []).forEach((S, i) => {
-      if (sum(S.blocks || []) < S.doel) err(`baas-fase ${i + 1}: blokjes zijn samen minder dan ${S.doel} — onoplosbaar`);
+      if (stijl === 'bouw') {
+        if (sum(S.blocks || []) < S.doel) err(`baas-fase ${i + 1}: blokjes zijn samen minder dan ${S.doel} — onoplosbaar`);
+      } else if (stijl === 'vang') {
+        if (!S.doel || S.doel < 1) err(`baas-fase ${i + 1} (vang): doel ontbreekt`);
+      } else if (stijl === 'spoel') {
+        if (!Array.isArray(S.sommen) || S.sommen.length < 2) err(`baas-fase ${i + 1} (spoel): minstens 2 sommen nodig`);
+        else {
+          const goed = S.sommen.filter((o) => o[0] + o[1] === S.doel).length;
+          if (goed !== 1) err(`baas-fase ${i + 1} (spoel): ${goed} sommen maken ${S.doel} — er moet er precies één kloppen`);
+        }
+      } else err(`baas: onbekende stijl '${stijl}'`);
     });
     if (L.goal && L.goal.x < B.x) err('vlag staat vóór de baas — baas is te omzeilen');
   }

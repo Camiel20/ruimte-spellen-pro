@@ -9,8 +9,9 @@ import { SFX } from '../../sound.js';
 import { Voice } from '../../voice.js';
 import { confettiBurst } from '../../reward.js';
 
-// Eén topping tekenen (om en om salami en champignon).
-function drawTopping(s, i) {
+// Eén topping tekenen (om en om salami en champignon). Ook gebruikt door
+// het vang-gevecht van de Kaas-Grommel (AdventureScene).
+export function drawTopping(s, i) {
   const g = s.add.graphics();
   if (i % 2 === 0) {
     g.fillStyle(0xb93227, 1); g.fillCircle(0, 0, 13);
