@@ -180,6 +180,57 @@ export function buildBackground(scene, L) {
     return;
   }
 
+  if (L.terrain === 'wc') {
+    // WC-WONDERLAND (Wereld 9): frisse lucht, in de verte vrolijke drollen-
+    // heuvels mét gezichtjes en torens van wc-rollen. Gek en knuffelbaar.
+    const zon = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
+    const zg = scene.add.circle(0, 0, 54, 0xfff3b0, 0.4);
+    zon.add([zg, scene.add.circle(0, 0, 32, 0xffe16b)]);
+    scene.tweens.add({ targets: zg, scale: 1.18, alpha: 0.55, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    const verte = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    const vb = scene.scale.height - 140;
+    // drollen-heuvels met blije gezichtjes
+    [[90, 1.3], [300, 1.0], [440, 0.8]].forEach(([hx, sc]) => {
+      verte.fillStyle(0x9c6b45, 0.9);
+      verte.fillEllipse(hx, vb - 18 * sc, 130 * sc, 60 * sc);
+      verte.fillEllipse(hx, vb - 48 * sc, 96 * sc, 46 * sc);
+      verte.fillEllipse(hx + 4 * sc, vb - 76 * sc, 60 * sc, 32 * sc);
+      verte.lineStyle(4, 0x6a4526, 1);
+      verte.beginPath(); verte.arc(hx + 8 * sc, vb - 92 * sc, 10 * sc, Math.PI, 2.2 * Math.PI); verte.strokePath();
+      // gezichtje
+      verte.fillStyle(0xffffff, 1); verte.fillCircle(hx - 12 * sc, vb - 50 * sc, 6 * sc); verte.fillCircle(hx + 12 * sc, vb - 50 * sc, 6 * sc);
+      verte.fillStyle(0x2c1c0e, 1); verte.fillCircle(hx - 12 * sc, vb - 49 * sc, 2.6 * sc); verte.fillCircle(hx + 12 * sc, vb - 49 * sc, 2.6 * sc);
+      verte.lineStyle(2.5 * sc, 0x2c1c0e, 1);
+      verte.beginPath(); verte.arc(hx, vb - 40 * sc, 7 * sc, 0.2, Math.PI - 0.2); verte.strokePath();
+    });
+    // wc-rol-torens
+    [[190, 3], [385, 4]].forEach(([tx, lagen]) => {
+      for (let k = 0; k < lagen; k++) {
+        verte.fillStyle(k % 2 ? 0xf5f9fc : 0xe8eef3, 0.95);
+        verte.fillRoundedRect(tx - 26, vb - 34 - k * 30, 52, 30, 8);
+        verte.fillStyle(0xd9c9a8, 0.9); verte.fillEllipse(tx, vb - 19 - k * 30, 16, 8);
+      }
+    });
+
+    scene.clouds = [];
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(70, 250);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5);
+      const g = scene.add.graphics();
+      g.fillStyle(0xffffff, 0.92);
+      [[-26, 4, 17], [-6, -8, 23], [16, 0, 20], [34, 7, 14]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 10);
+      scene.clouds.push(c);
+    }
+    const heuvels = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    heuvels.fillStyle(0xb08558, 0.7);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) heuvels.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
   // Zon (licht parallax)
   const sun = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
   const glow = scene.add.circle(0, 0, 54, 0xfff3b0, 0.35);
@@ -395,6 +446,32 @@ export function drawGround(scene, x, y, w, h) {
         g.fillStyle(0xffffff, 1);
         g.fillCircle(fx - 5, y - 4, 5); g.fillCircle(fx + 5, y - 4, 5); g.fillCircle(fx, y - 9, 6);
         g.fillStyle(0xe8402c, 1); g.fillCircle(fx, y - 15, 3);
+      }
+    }
+  } else if (scene.level.terrain === 'wc') {
+    // WC-WONDERLAND (Wereld 9): zachte bruine grond met een frisse gras-rand
+    // (het dorp houdt het netjes!), en om en om een mini-drolletje met
+    // oogjes en een wc-rolletje als decoratie.
+    g.fillStyle(0x9c6b45, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0x8a5a33, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0x8fce6a, 1); g.fillRect(x, y, w, 16);   // fris-groene rand
+    g.fillStyle(0xaede8a, 1); g.fillRect(x, y, w, 6);
+    g.fillStyle(0x6fae4a, 1);
+    for (let bx = x + 6; bx < x + w; bx += 16) g.fillTriangle(bx, y, bx + 5, y, bx + 2.5, y - 6);
+    // om en om: mini-drolletje met oogjes en een wc-rolletje
+    let wc = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      wc = !wc;
+      if (wc) {
+        g.fillStyle(0x8a5a33, 1);
+        g.fillEllipse(fx, y - 4, 18, 9); g.fillEllipse(fx + 1, y - 10, 12, 7);
+        g.lineStyle(2, 0x5d3a1e, 1); g.beginPath(); g.arc(fx + 2, y - 15, 4, Math.PI, 2.3 * Math.PI); g.strokePath();
+        g.fillStyle(0xffffff, 1); g.fillCircle(fx - 3, y - 6, 2.2); g.fillCircle(fx + 4, y - 6, 2.2);
+        g.fillStyle(0x2c1c0e, 1); g.fillCircle(fx - 3, y - 6, 1); g.fillCircle(fx + 4, y - 6, 1);
+      } else {
+        g.fillStyle(0xf5f9fc, 1); g.fillRoundedRect(fx - 9, y - 14, 18, 14, 4);
+        g.fillStyle(0xd9c9a8, 1); g.fillEllipse(fx, y - 7, 7, 4);
       }
     }
   } else if (scene.level.terrain === 'bos') {

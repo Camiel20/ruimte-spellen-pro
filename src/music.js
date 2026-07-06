@@ -27,6 +27,7 @@ export function muziekVoorTerrein(terrain) {
     fort: { pitch: 0.749, tempo: 0.88 },   // −5, traag: hier woont Grauw
     pizza: { pitch: 1.059, tempo: 1.08 },  // +1, vlotter: smikkel-feest
     pannenkoek: { pitch: 1.26, tempo: 0.97 }, // +4, dromerig zoet
+    wc: { pitch: 0.944, tempo: 1.12 },     // −1, hupsend: giechel-tempo
   }[terrain] || { pitch: 1, tempo: 1 };
 }
 

@@ -598,6 +598,87 @@ export function drawKaasWiel(scene, x, y) {
   return c;
 }
 
+// DE REUZEN-DROL (Wereld 9, Wc-Wonderland): een enorme drol met een kroontje
+// die de grote wc blokkeert. Knuffelbaar boos — Adrians humor.
+export function drawDrolBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 64).setDepth(7);
+  const bruin = 0x8a5a33, licht = 0xa9713f, donker = 0x5d3a1e;
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 66, 130, 20);
+  // drie swirl-lagen + een krul bovenop
+  g.fillStyle(bruin, 1);
+  g.fillEllipse(0, 42, 124, 52); g.fillEllipse(0, 8, 96, 46); g.fillEllipse(4, -24, 64, 36);
+  g.fillStyle(licht, 0.6);
+  g.fillEllipse(-24, 34, 40, 18); g.fillEllipse(-18, 2, 30, 14); g.fillEllipse(-6, -28, 20, 10);
+  g.lineStyle(4, donker, 1);
+  g.beginPath(); g.arc(10, -38, 12, Math.PI, 2.2 * Math.PI); g.strokePath(); // de krul
+  c.add(g);
+  // kroontje!
+  const kroon = scene.add.graphics();
+  kroon.fillStyle(0xffd24d, 1);
+  kroon.fillTriangle(-16, -46, -8, -64, 0, -46);
+  kroon.fillTriangle(-2, -46, 6, -66, 14, -46);
+  kroon.fillTriangle(12, -46, 20, -62, 28, -46);
+  kroon.fillRect(-16, -48, 44, 6);
+  kroon.setAngle(-8); kroon.x = 6;
+  c.add(kroon);
+  // boos gezicht
+  const eL = scene.add.circle(-14, 2, 11, 0xffffff).setStrokeStyle(3, donker);
+  const eR = scene.add.circle(16, 2, 11, 0xffffff).setStrokeStyle(3, donker);
+  const pL = scene.add.circle(-14, 5, 4.5, 0x2c1c0e), pR = scene.add.circle(16, 5, 4.5, 0x2c1c0e);
+  const br = scene.add.graphics(); br.lineStyle(4.5, donker, 1);
+  br.beginPath(); br.moveTo(-27, -14); br.lineTo(-4, -7); br.strokePath();
+  br.beginPath(); br.moveTo(29, -14); br.lineTo(7, -7); br.strokePath();
+  const m = scene.add.graphics(); m.lineStyle(4, donker, 1);
+  m.beginPath(); m.arc(1, 30, 12, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.bodyG = g; c.brow = br; c.mouth = m; c.eyes = [eL, eR];
+
+  // tekstwolkje
+  const bub = scene.add.container(78, -52);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  // trots deinen
+  scene.tweens.add({ targets: c, scaleX: 1.03, scaleY: 0.97, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// De verslagen Reuzen-Drol wordt lief: lachje, blosjes en een strikje.
+export function happyDrolBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear(); c.mouth.lineStyle(4, 0x5d3a1e, 1);
+  c.mouth.beginPath(); c.mouth.arc(1, 26, 13, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+  // blosjes + strikje op de krul
+  c.bodyG.fillStyle(0xf9a8d4, 0.7); c.bodyG.fillEllipse(-30, 12, 13, 8); c.bodyG.fillEllipse(32, 12, 13, 8);
+  c.bodyG.fillStyle(0xe8402c, 1);
+  c.bodyG.fillTriangle(14, -52, 26, -58, 26, -46);
+  c.bodyG.fillTriangle(38, -52, 26, -58, 26, -46);
+  c.bodyG.fillCircle(26, -52, 3.5);
+}
+
+// Drolletje (de aanval van de Reuzen-Drol) — stuitert rollend voort.
+export function drawDrolletje(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const shadow = scene.add.graphics();
+  shadow.fillStyle(0x000000, 0.14); shadow.fillEllipse(0, 0, 28, 7);
+  c.add(shadow);
+  const inner = scene.add.container(0, -14);
+  const g = scene.add.graphics();
+  g.fillStyle(0x8a5a33, 1); g.fillEllipse(0, 4, 26, 13); g.fillEllipse(1, -4, 18, 10);
+  g.fillStyle(0xa9713f, 0.7); g.fillEllipse(-5, 2, 9, 5);
+  g.lineStyle(2.5, 0x5d3a1e, 1); g.beginPath(); g.arc(3, -9, 5, Math.PI, 2.3 * Math.PI); g.strokePath();
+  // ondeugende oogjes
+  g.fillStyle(0xffffff, 1); g.fillCircle(-4, -2, 3); g.fillCircle(5, -2, 3);
+  g.fillStyle(0x2c1c0e, 1); g.fillCircle(-4, -2, 1.4); g.fillCircle(5, -2, 1.4);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, y: -20, duration: 190, yoyo: true, repeat: -1, ease: 'Quad.out' }); // hij huppelt!
+  return c;
+}
+
 // Klein rollend golfje (de aanval van de Golf-Baas) — alleen het uiterlijk;
 // physics/beweging regelt de scene.
 export function drawWaveMinion(scene, x, y) {

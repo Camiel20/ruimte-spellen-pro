@@ -12,6 +12,7 @@ import {
   drawMeteorBoss, happyMeteorBoss, drawFireball,
   drawGrauwBoss, happyGrauwBoss, drawGrauwWolkje,
   drawKaasBoss, happyKaasBoss, drawKaasWiel,
+  drawDrolBoss, happyDrolBoss, drawDrolletje,
 } from './enemyArt.js';
 import { sig } from './palette.js';
 
@@ -65,6 +66,14 @@ export const BOSS_LOOKS = {
     projectile: drawKaasWiel,
     speed: -225,
     waarschuwing: 'Pas op — een kaaswiel! Spring! 🧀',
+  },
+  // De Reuzen-Drol (W9, Wc-Wonderland): huppelende drolletjes.
+  drol: {
+    draw: (s, x, groundTop) => drawDrolBoss(s, x, groundTop),
+    happy: (s, c) => happyDrolBoss(s, c),
+    projectile: drawDrolletje,
+    speed: -240,
+    waarschuwing: 'Pas op — een drolletje! Spring! 💩',
   },
   // BARON GRAUW (W6, de finale): grauw-wolkjes — het allersnelst.
   grauw: {

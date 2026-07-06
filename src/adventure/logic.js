@@ -266,6 +266,26 @@ export function validateLevel(L) {
     if (L.goal && L.goal.x < P.x + 130) err('patroon: de vlag staat vóór de slagboom');
   }
 
+  // Doorspoel-potten: precies één juiste som, potten én uitgang op de grond.
+  (L.spoelpotten || []).forEach((SP, i) => {
+    if (!Array.isArray(SP.opties) || SP.opties.length < 2) { err(`spoelpotten-groep ${i + 1}: minstens 2 potten nodig`); return; }
+    const goed = SP.opties.filter((o) => o[0] + o[1] === SP.doel).length;
+    if (goed !== 1) err(`spoelpotten-groep ${i + 1}: ${goed} sommen maken ${SP.doel} — er moet er precies één kloppen`);
+    const laatste = SP.x + (SP.opties.length - 1) * 130;
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= SP.x - 40 && px + pw >= laatste + 40);
+    if (!support) err(`spoelpotten-groep ${i + 1}: geen doorlopende grond onder de potten`);
+    const uit = L.platforms.some(([px, py, pw]) => py === groundTop && px <= SP.uitX && px + pw >= SP.uitX);
+    if (!uit) err(`spoelpotten-groep ${i + 1}: de uitgang-pot (x=${SP.uitX}) heeft geen grond`);
+  });
+
+  // Wc-rol-platforms en stink-zones binnen de wereld.
+  (L.wcRollen || []).forEach(([x, , w], i) => {
+    if (x - w / 2 < 0 || x + w / 2 > L.worldW) err(`wc-rol ${i + 1} steekt buiten de wereld`);
+  });
+  (L.stinkZones || []).forEach((Z, i) => {
+    if (Z.x < 0 || Z.x + Z.w > L.worldW) err(`stink-zone ${i + 1} ligt buiten de wereld`);
+  });
+
   // Nul-feest (geheime wereld): alles binnen de wereld.
   if (L.nulFeest) {
     (L.nulFeest.nullen || []).forEach(([x, y], i) => {

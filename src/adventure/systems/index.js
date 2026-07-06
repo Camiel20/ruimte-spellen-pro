@@ -25,5 +25,8 @@ import glijbanen from './glijbanen.js';
 import stapel from './stapel.js';
 import reuzenflip from './reuzenflip.js';
 import patroon from './patroon.js';
+import spoelpotten from './spoelpotten.js';
+import wcRollen from './wcrollen.js';
+import stinkZones from './stinkzones.js';
 
-export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon];
+export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon, spoelpotten, wcRollen, stinkZones];
