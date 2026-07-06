@@ -10,7 +10,7 @@ export const LEVEL_9_1 = {
   id: '9-1',
   naam: 'De Drollen-Heuvels',
 
-  worldW: 2800,
+  worldW: 3400,
   worldH: 800,
   killY: 720,
   terrain: 'wc',
@@ -23,12 +23,13 @@ export const LEVEL_9_1 = {
   startMega: true,
   intro: 'Welkom in Wc-Wonderland! De stank tilt je OMHOOG! 💩💨',
 
-  // Les 1: stink-wolkjes (zweef-kolommen) + de eerste wc-rol.
+  // Les 1: stink-wolkjes (zweef-kolommen), de eerste wc-rol, en een
+  // "wees 2"-deurtje (splitsen!) op weg naar de vlag.
   platforms: [
-    [0, 660, 2800, 140],
+    [0, 660, 3400, 140],
     [640, 430, 180, 26],     // richel boven stink-kolom 1
     [1520, 400, 180, 26],    // richel boven stink-kolom 2
-    [2540, 380, 220, 26],    // de EIND-RICHEL met de vlag
+    [3140, 380, 220, 26],    // de EIND-RICHEL met de vlag
   ],
 
   // De kolommen staan nét links van hun richel: je zweeft ernaast omhoog
@@ -36,23 +37,31 @@ export const LEVEL_9_1 = {
   stinkZones: [
     { x: 530, w: 100 },
     { x: 1400, w: 110 },
-    { x: 2420, w: 110 },
+    { x: 3020, w: 110 },
   ],
 
   wcRollen: [
     [1050, 540, 150],        // oefen-rolletje naar een bolletje
+    [2650, 550, 140],        // extra rolletje met een bolletje erop
+  ],
+
+  // Alleen als je PRECIES 2 bent past het wc-deurtje (tik = splitsen!).
+  doors: [
+    { x: 2300, doel: 2, topY: 140 },
   ],
 
   pickups: [
     { x: 250, y: 600, amount: 1 },
     { x: 1050, y: 490, amount: 1 },  // op de wc-rol!
-    { x: 1900, y: 600, amount: 1 },
+    { x: 1900, y: 600, amount: 1, regen: true },
+    { x: 2650, y: 500, amount: 1 },  // op het extra rolletje
   ],
 
   grommels: [
     { type: 'stomp', x: 900, y: 612, patrol: [800, 1050] },
     { type: 'springer', x: 1950, y: 612, patrol: [1850, 2100] },
     { type: 'vlieger', x: 1250, y: 300, patrol: [1000, 1500] }, // een vliegje!
+    { type: 'stomp', x: 2800, y: 612, patrol: [2720, 2950] },
   ],
 
   // Ster hoog in stink-kolom 2 — laat je optillen!
@@ -61,7 +70,7 @@ export const LEVEL_9_1 = {
   // GEHEIM: een Gouden Nul boven richel 1.
   goudenNul: { x: 700, y: 320 },
 
-  goal: { x: 2650, y: 308, value: 9 }, // op de eind-richel via de stank!
+  goal: { x: 3250, y: 308, value: 9 }, // op de eind-richel via de stank!
 
   reward: {
     title: 'Level 9-1 gehaald! 🏆',
@@ -74,7 +83,7 @@ export const LEVEL_9_2 = {
   id: '9-2',
   naam: 'Het Spoel-Station',
 
-  worldW: 2900,
+  worldW: 3500,
   worldH: 800,
   killY: 720,
   terrain: 'wc',
@@ -88,11 +97,12 @@ export const LEVEL_9_2 = {
   intro: 'Spring in de pot met de JUISTE som — SPOEEEL! 🚽',
 
   // Les 2: de doorspoel-potten. Twee brede spoelwater-kloven; alleen de
-  // pot met de kloppende som spoelt je naar de overkant.
+  // pot met de kloppende som spoelt je naar de overkant. En op de eind-
+  // vlakte: een MEER-vraagmuur als laatste proef.
   platforms: [
     [0, 660, 1000, 140],
     [1400, 660, 700, 140],
-    [2400, 660, 500, 140],
+    [2400, 660, 1100, 140],
   ],
 
   water: [[1000, 690, 400, 110], [2100, 690, 300, 110]],
@@ -102,14 +112,20 @@ export const LEVEL_9_2 = {
     { x: 1620, doel: 10, opties: [[5, 5], [4, 5], [6, 5]], uitX: 2480 },
   ],
 
+  vraagMuren: [
+    { x: 3100, kies: 'meer', opties: [10, 7] },
+  ],
+
   pickups: [
     { x: 250, y: 600, amount: 1 },
     { x: 1480, y: 600, amount: 1 },
+    { x: 2850, y: 600, amount: 1, regen: true },
   ],
 
   grommels: [
     { type: 'stomp', x: 400, y: 612, patrol: [300, 500] },
     { type: 'springer', x: 2650, y: 612, patrol: [2550, 2800] },
+    { type: 'stomp', x: 3280, y: 612, patrol: [3200, 3380] },
   ],
 
   // Ster hoog boven vallei B — dubbelsprong.
@@ -118,7 +134,7 @@ export const LEVEL_9_2 = {
   // GEHEIM: een Gouden Nul boven de eerste potten-rij.
   goudenNul: { x: 670, y: 420 },
 
-  goal: { x: 2820, y: 588, value: 10 },
+  goal: { x: 3420, y: 588, value: 10 },
 
   reward: {
     title: 'Level 9-2 gehaald! 🏆',
@@ -131,7 +147,7 @@ export const LEVEL_9_3 = {
   id: '9-3',
   naam: 'De Wc-Rollen-Ren',
 
-  worldW: 3000,
+  worldW: 3600,
   worldH: 800,
   killY: 720,
   terrain: 'wc',
@@ -145,11 +161,12 @@ export const LEVEL_9_3 = {
   intro: 'Het papier rolt af — RENNEN over de rollen! 🧻⚡',
 
   // Les 3: wc-rol-kettingen over het spoelwater. Blijf bewegen: het papier
-  // scheurt onder je voeten. Het vliegje bewaakt de oversteek.
+  // scheurt onder je voeten. Het vliegje bewaakt de oversteek, en op de
+  // eind-vlakte vraagt een geef-plaat om 2 blokjes.
   platforms: [
     [0, 660, 700, 140],
     [1450, 660, 550, 140],
-    [2450, 660, 550, 140],
+    [2450, 660, 1150, 140],
   ],
 
   water: [[700, 690, 750, 110], [2000, 690, 450, 110]],
@@ -165,16 +182,22 @@ export const LEVEL_9_3 = {
 
   stinkZones: [{ x: 1700, w: 110 }],
 
+  // Geef-plaat: geef 2 blokjes om de slagboom te openen (aftrekken!).
+  plates: [
+    { x: 3100, doel: 2 },
+  ],
+
   pickups: [
     { x: 250, y: 600, amount: 1 },
     { x: 1550, y: 600, amount: 1 },
-    { x: 2550, y: 600, amount: 1 },
+    { x: 2550, y: 600, amount: 1, regen: true },
   ],
 
   grommels: [
     { type: 'vlieger', x: 1050, y: 320, patrol: [750, 1400] }, // boven de rollen!
     { type: 'stomp', x: 1800, y: 612, patrol: [1700, 1950] },
     { type: 'springer', x: 2700, y: 612, patrol: [2600, 2850] },
+    { type: 'stomp', x: 3350, y: 612, patrol: [3270, 3480] },
   ],
 
   // Ster hoog in de stink-kolom op het midden-eiland.
@@ -183,7 +206,7 @@ export const LEVEL_9_3 = {
   // GEHEIM: een Gouden Nul boven de rollen-ketting.
   goudenNul: { x: 1190, y: 470 },
 
-  goal: { x: 2920, y: 588, value: 8 },
+  goal: { x: 3520, y: 588, value: 8 },
 
   reward: {
     title: 'Level 9-3 gehaald! 🏆',
@@ -196,7 +219,7 @@ export const LEVEL_9_4 = {
   id: '9-4',
   naam: 'Het Grote Doorspoelen',
 
-  worldW: 3100,
+  worldW: 3600,
   worldH: 800,
   killY: 720,
   terrain: 'wc',
@@ -209,12 +232,12 @@ export const LEVEL_9_4 = {
   startMega: true,
   intro: 'De meesterproef: spoel dóór met sommen tot 20! 🚽💨',
 
-  // Alles samen: pot-sommen (nu ook met tientallen!), een wc-rol, en een
-  // stink-klim naar de ster.
+  // Alles samen: pot-sommen (nu ook met tientallen!), een wc-rol, een
+  // stink-klim naar de ster, en een MINDER-vraagmuur als slot.
   platforms: [
     [0, 660, 900, 140],
     [1300, 660, 800, 140],
-    [2600, 660, 500, 140],
+    [2600, 660, 1000, 140],
     [2860, 400, 160, 26],    // ster-richel boven de stink-kolom
   ],
 
@@ -229,16 +252,22 @@ export const LEVEL_9_4 = {
 
   stinkZones: [{ x: 2740, w: 100 }], // links van de ster-richel (geen hoofdstoot)
 
+  // MINDER-vraagmuur als allerlaatste proef vóór de vlag.
+  vraagMuren: [
+    { x: 3350, kies: 'minder', opties: [6, 14] },
+  ],
+
   pickups: [
     { x: 250, y: 600, amount: 1 },
     { x: 1480, y: 510, amount: 1 },  // op de wc-rol
-    { x: 2750, y: 600, amount: 1 },
+    { x: 2750, y: 600, amount: 1, regen: true },
   ],
 
   grommels: [
     { type: 'stomp', x: 700, y: 612, patrol: [600, 850] },
     { type: 'vlieger', x: 1600, y: 300, patrol: [1350, 1900] },
     { type: 'stomp', x: 1950, y: 612, patrol: [1850, 2080] },
+    { type: 'stomp', x: 3180, y: 612, patrol: [3100, 3260] },
   ],
 
   // Ster op de hoge richel — laat de stank je erheen tillen.
@@ -247,7 +276,7 @@ export const LEVEL_9_4 = {
   // GEHEIM: een Gouden Nul boven de tweede potten-rij.
   goudenNul: { x: 1830, y: 420 },
 
-  goal: { x: 3020, y: 588, value: 20 }, // de vlag toont TWINTIG!
+  goal: { x: 3520, y: 588, value: 20 }, // de vlag toont TWINTIG!
 
   reward: {
     title: 'Level 9-4 gehaald! 🏆',

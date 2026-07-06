@@ -42,9 +42,11 @@ export default {
     s.antwoordGroup = s.physics.add.staticGroup();
     (L.vraagMuren || []).forEach((V) => {
       const groundTop = L.platforms[0][1];
+      // GESCHUD: het goede blok staat niet altijd op dezelfde plek
+      const opties = Math.random() < 0.5 ? [...V.opties] : [V.opties[1], V.opties[0]];
       const goedIdx = V.kies === 'meer'
-        ? (V.opties[0] > V.opties[1] ? 0 : 1)
-        : (V.opties[0] < V.opties[1] ? 0 : 1);
+        ? (opties[0] > opties[1] ? 0 : 1)
+        : (opties[0] < opties[1] ? 0 : 1);
       // schermhoge blokkade + zichtbare rotsmuur
       const body = s.add.rectangle(V.x, (40 + groundTop) / 2, 46, groundTop - 40, 0x000000, 0);
       s.physics.add.existing(body, true);
@@ -72,8 +74,8 @@ export default {
       else ic.strokeCircle(43.5, 3, 9);
       bord.add([bg, vt, ic]);
       art.add([g, bord]);
-      // twee antwoord-blokken vóór de muur
-      const blokken = V.opties.map((val, i) => {
+      // twee antwoord-blokken vóór de muur (in geschudde volgorde)
+      const blokken = opties.map((val, i) => {
         const bx = V.x - 190 + i * 105, by = 410;
         const blok = s.add.rectangle(bx, by, 56, 52, 0x000000, 0);
         s.physics.add.existing(blok, true);

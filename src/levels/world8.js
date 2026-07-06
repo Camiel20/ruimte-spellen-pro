@@ -12,7 +12,7 @@ export const LEVEL_8_1 = {
   id: '8-1',
   naam: 'Flipper-Vallei',
 
-  worldW: 2900,
+  worldW: 3500,
   worldH: 800,
   killY: 720,
   terrain: 'pannenkoek',
@@ -26,13 +26,14 @@ export const LEVEL_8_1 = {
   intro: 'FLIP! Land op de pannen en maak een salto! 🥞',
 
   // Les 1: de flipperpan. Eén pan zweeft boven het stroop-meer — de enige
-  // weg naar de overkant. De vlag staat hoog: alleen via de laatste pan.
+  // weg naar de overkant. Daarna een MEER-vraagmuur, en de vlag staat hoog:
+  // alleen via de laatste pan.
   platforms: [
     [0, 660, 1150, 140],     // vallei A
     [1450, 660, 800, 140],   // vallei B (met boter-glijbaan naar het gat!)
-    [2450, 660, 450, 140],   // eind-vallei
+    [2450, 660, 1050, 140],  // eind-vallei (vraagmuur + vlag-lancering)
     [700, 430, 180, 26],     // oefen-richel boven flipperpan 1
-    [2540, 390, 240, 26],    // de EIND-RICHEL met de vlag
+    [3140, 390, 240, 26],    // de EIND-RICHEL met de vlag
   ],
 
   water: [[1150, 690, 300, 110], [2250, 690, 200, 110]], // stroop-meren
@@ -40,22 +41,29 @@ export const LEVEL_8_1 = {
   flippers: [
     [600, 600],     // oefenpan (naar de richel + gouden nul)
     [1300, 560],    // ZWEVENDE pan boven het stroop-meer — de oversteek!
-    [2480, 600],    // lanceert je naar de vlag-richel
+    [3080, 600],    // lanceert je naar de vlag-richel
   ],
 
   glijbanen: [
     [1500, 600, 1], // boter-baan op vallei B: met vaart over het tweede gat!
   ],
 
+  // Kopstoot tegen het goede blok: waar is MEER pannenkoek?
+  vraagMuren: [
+    { x: 2820, kies: 'meer', opties: [7, 3] },
+  ],
+
   pickups: [
     { x: 250, y: 600, amount: 1 },
     { x: 760, y: 370, amount: 1 },   // op de oefen-richel
     { x: 1900, y: 600, amount: 1 },
+    { x: 2560, y: 600, amount: 1, regen: true }, // vóór de vraagmuur
   ],
 
   grommels: [
     { type: 'stomp', x: 900, y: 612, patrol: [800, 1050] },
     { type: 'stomp', x: 1800, y: 612, patrol: [1700, 2000] },
+    { type: 'springer', x: 2950, y: 612, patrol: [2880, 3050] },
   ],
 
   // Ster hoog boven de zwevende pan: flip-lancering + grijpen!
@@ -64,7 +72,7 @@ export const LEVEL_8_1 = {
   // GEHEIM: een Gouden Nul boven de oefen-richel.
   goudenNul: { x: 700, y: 300 },
 
-  goal: { x: 2650, y: 318, value: 8 }, // op de hoge eind-richel
+  goal: { x: 3260, y: 318, value: 8 }, // op de hoge eind-richel
 
   reward: {
     title: 'Level 8-1 gehaald! 🏆',
@@ -77,7 +85,7 @@ export const LEVEL_8_2 = {
   id: '8-2',
   naam: 'De Pannenkoeken-Toren',
 
-  worldW: 2600,
+  worldW: 3200,
   worldH: 800,
   killY: 720,
   terrain: 'pannenkoek',
@@ -90,19 +98,25 @@ export const LEVEL_8_2 = {
   startMega: true,
   intro: 'Bak er PRECIES 10 — stop op tijd, anders kiepert de toren om! 🥞🔔',
 
-  // Les 2: de pannenkoeken-toren. Tel hardop mee tot 10 en luid de bel —
-  // de toren wordt een trap naar de hoge vlag-richel.
+  // Les 2: de pannenkoeken-toren. Eerst een dubbel-portaal (3+3=6!), dan
+  // hardop meetellen tot 10 en de bel luiden — de toren wordt een trap
+  // naar de hoge vlag-richel.
   platforms: [
-    [0, 660, 2600, 140],
-    [2280, 360, 240, 26],    // de vlag-richel: alleen via de toren-trap
+    [0, 660, 3200, 140],
+    [2880, 360, 240, 26],    // de vlag-richel: alleen via de toren-trap
+  ],
+
+  // Dubbel-raadsel onderweg: welk portaal maakt 6?
+  portalen: [
+    { x: 1450, doel: 6, opties: [[3, 3], [2, 3], [4, 3]] },
   ],
 
   stapel: {
-    x: 1750,
+    x: 2150,
     doel: 10,
     trap: [
-      [1960, 560, 120],
-      [2110, 460, 120],
+      [2560, 560, 120],
+      [2710, 460, 120],
     ],
   },
 
@@ -111,17 +125,18 @@ export const LEVEL_8_2 = {
 
   pickups: [
     { x: 250, y: 600, amount: 1 },
-    { x: 1450, y: 600, amount: 1 },
+    { x: 1250, y: 600, amount: 1 },
   ],
 
   grommels: [
-    { type: 'stomp', x: 1250, y: 612, patrol: [1150, 1400] },
-    { type: 'springer', x: 2350, y: 612, patrol: [2260, 2500] },
+    { type: 'stomp', x: 1150, y: 612, patrol: [1050, 1300] },
+    { type: 'springer', x: 2400, y: 612, patrol: [2300, 2500] },
+    { type: 'stomp', x: 2980, y: 612, patrol: [2900, 3100] }, // onder de vlag-richel
   ],
 
   star: { x: 500, y: 240 }, // hoog boven de flipperpan
 
-  goal: { x: 2360, y: 288, value: 10 }, // de vlag toont het bak-doel!
+  goal: { x: 2960, y: 288, value: 10 }, // de vlag toont het bak-doel!
 
   reward: {
     title: 'Level 8-2 gehaald! 🏆',
@@ -134,7 +149,7 @@ export const LEVEL_8_3 = {
   id: '8-3',
   naam: 'Boter-Banen',
 
-  worldW: 3200,
+  worldW: 3800,
   worldH: 800,
   killY: 720,
   terrain: 'pannenkoek',
@@ -155,12 +170,14 @@ export const LEVEL_8_3 = {
     [1100, 660, 700, 140],
     [2000, 660, 500, 140],
     [2700, 660, 500, 140],
+    [3400, 660, 400, 140],   // extra eind-eiland: het vierde glij-gat!
   ],
 
   water: [
     [900, 690, 200, 110],
     [1800, 690, 200, 110],
     [2500, 690, 200, 110],
+    [3200, 690, 200, 110],
   ],
 
   glijbanen: [
@@ -168,6 +185,7 @@ export const LEVEL_8_3 = {
     [1200, 550, 1],
     [2050, 400, 1],
     [2750, 300, 1],
+    [3450, 250, 1],   // laatste spurt naar de vlag
   ],
 
   pickups: [
@@ -181,15 +199,16 @@ export const LEVEL_8_3 = {
     { type: 'stomp', x: 1500, y: 612, patrol: [1400, 1650] },
     { type: 'springer', x: 2250, y: 612, patrol: [2100, 2400] },
     { type: 'vlieger', x: 1400, y: 280, patrol: [1100, 1800] },
+    { type: 'stomp', x: 3550, y: 612, patrol: [3470, 3650] },  // op het eind-eiland!
   ],
 
   // Ster middenin de glij-sprong boven het tweede gat — voor durvers.
   star: { x: 1900, y: 500 },
 
-  // GEHEIM: een Gouden Nul boven het eerste gat (grijp 'm in de vlucht).
-  goudenNul: { x: 1000, y: 500 },
+  // GEHEIM: een Gouden Nul boven het laatste gat (grijp 'm in de vlucht).
+  goudenNul: { x: 3300, y: 500 },
 
-  goal: { x: 3120, y: 588, value: 9 },
+  goal: { x: 3720, y: 588, value: 9 },
 
   reward: {
     title: 'Level 8-3 gehaald! 🏆',
@@ -202,7 +221,7 @@ export const LEVEL_8_4 = {
   id: '8-4',
   naam: 'Het Patroon-Terras',
 
-  worldW: 2800,
+  worldW: 3300,
   worldH: 800,
   killY: 720,
   terrain: 'pannenkoek',
@@ -215,11 +234,12 @@ export const LEVEL_8_4 = {
   startMega: true,
   intro: 'Aardbei, banaan, aardbei… wat komt er NU? 🍓🍌',
 
-  // Les 4: patronen! De chef laat je drie patronen afmaken (steeds lastiger:
-  // AB → AAB → ABC), daarna nog één keer precies bakken — 12 deze keer.
+  // Les 4: patronen! Drie patronen afmaken (AB → AAB → ABC), precies 12
+  // bakken, en helemaal bovenop de hoogste richel wacht een Gouden Nul.
+  // Als toetje: een MEER-vraagmuur vlak voor de vlag.
   platforms: [
-    [0, 660, 2800, 140],
-    [2400, 300, 220, 26],    // de hoogste vlag-richel van het spel
+    [0, 660, 3300, 140],
+    [2400, 300, 220, 26],    // de hoogste richel van het spel (Gouden Nul!)
   ],
 
   patroon: {
@@ -244,20 +264,29 @@ export const LEVEL_8_4 = {
   flippers: [[1150, 600]],
   glijbanen: [[850, 240, 1]],
 
+  // MEER-vraagmuur als laatste proef vóór de vlag.
+  vraagMuren: [
+    { x: 2950, kies: 'meer', opties: [12, 7] },
+  ],
+
   pickups: [
     { x: 250, y: 600, amount: 1 },
     { x: 1450, y: 600, amount: 1 },
+    { x: 2700, y: 600, amount: 1, regen: true },
   ],
 
   grommels: [
     { type: 'stomp', x: 1000, y: 612, patrol: [900, 1150] },
     { type: 'springer', x: 1450, y: 612, patrol: [1350, 1550] },
-    { type: 'stomp', x: 2600, y: 612, patrol: [2500, 2750] }, // bewaakt de vlag-klim
+    { type: 'stomp', x: 2600, y: 612, patrol: [2500, 2750] }, // bewaakt de richel-klim
   ],
 
   star: { x: 1150, y: 230 },
 
-  goal: { x: 2470, y: 228, value: 12 }, // de vlag toont 12 — hoog doortellen!
+  // GEHEIM: de Gouden Nul troont op de hoogste richel (via de toren-trap!).
+  goudenNul: { x: 2510, y: 240 },
+
+  goal: { x: 3200, y: 588, value: 12 }, // de vlag toont 12 — hoog doortellen!
 
   reward: {
     title: 'Level 8-4 gehaald! 🏆',

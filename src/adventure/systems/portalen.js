@@ -76,8 +76,15 @@ export default {
       bg.fillRoundedRect(-84, -22, 168, 44, 12); bg.strokeRoundedRect(-84, -22, 168, 44, 12);
       bord.add([bg, s.add.text(0, 0, `Welke som is ${P.doel}?`, { fontFamily: 'Arial Black, Arial', fontSize: '16px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5)]);
       s.tweens.add({ targets: bord, y: 144, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-      // de portalen zelf: ovale ringen met een som-bordje erboven
-      const ringen = P.opties.map((o, i) => {
+      // de portalen zelf: ovale ringen met een som-bordje erboven.
+      // GESCHUD: zo staat het goede antwoord niet altijd op dezelfde plek
+      // (en is het elke speelbeurt anders).
+      const geschud = [...P.opties];
+      for (let k = geschud.length - 1; k > 0; k--) {
+        const j = Math.floor(Math.random() * (k + 1));
+        [geschud[k], geschud[j]] = [geschud[j], geschud[k]];
+      }
+      const ringen = geschud.map((o, i) => {
         const px = P.x + i * PORTAL_AFSTAND;
         const ring = s.add.container(px, groundTop - 64).setDepth(4);
         const rg = s.add.graphics();

@@ -96,11 +96,17 @@ function toonRonde(s) {
   s.tweens.add({ targets: leeg, scale: 1.2, duration: 500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   PT.leeg = leeg;
 
-  // de keuze-knoppen
+  // de keuze-knoppen — GESCHUD, zodat het goede antwoord niet altijd
+  // op dezelfde plek staat
+  const opties = [...R.opties];
+  for (let k = opties.length - 1; k > 0; k--) {
+    const j = Math.floor(Math.random() * (k + 1));
+    [opties[k], opties[j]] = [opties[j], opties[k]];
+  }
   const ky = 470;
   const kStap = 120;
-  const kStart = W / 2 - ((R.opties.length - 1) * kStap) / 2;
-  R.opties.forEach((soort, i) => {
+  const kStart = W / 2 - ((opties.length - 1) * kStap) / 2;
+  opties.forEach((soort, i) => {
     const knop = s.add.container(kStart + i * kStap, ky);
     const bg = s.add.graphics();
     bg.fillStyle(0xfff6e8, 1); bg.fillRoundedRect(-44, -44, 88, 88, 20);

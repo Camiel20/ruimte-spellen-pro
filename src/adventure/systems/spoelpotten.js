@@ -87,9 +87,15 @@ export default {
     s.spoelGroepen = [];
     (L.spoelpotten || []).forEach((SP) => {
       const groundTop = L.platforms[0][1];
-      const G = { ...SP, groundTop, klaar: false, potten: [], cd: 0 };
-      G.goedIdx = SP.opties.findIndex((o) => o[0] + o[1] === SP.doel);
-      SP.opties.forEach((som, i) => {
+      // GESCHUD: de goede pot staat elke speelbeurt ergens anders
+      const opties = [...SP.opties];
+      for (let k = opties.length - 1; k > 0; k--) {
+        const j = Math.floor(Math.random() * (k + 1));
+        [opties[k], opties[j]] = [opties[j], opties[k]];
+      }
+      const G = { ...SP, opties, groundTop, klaar: false, potten: [], cd: 0 };
+      G.goedIdx = opties.findIndex((o) => o[0] + o[1] === SP.doel);
+      opties.forEach((som, i) => {
         const pot = tekenPot(s, SP.x + i * POT_AFSTAND, groundTop, som);
         pot.som = som;
         G.potten.push(pot);
