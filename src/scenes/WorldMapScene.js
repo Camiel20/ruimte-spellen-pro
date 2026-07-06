@@ -237,8 +237,15 @@ export default class WorldMapScene extends Phaser.Scene {
     if (unlocked) {
       c.setSize(s + 22, s + 22);
       c.setInteractive({ useHandCursor: true });
+      // Een tegel telt alleen bij een ECHTE druk+loslaat OP de tegel zelf.
+      // Zonder deze check startte een "geleende" pointerup — de losgelaten
+      // vinger van de tik die de kaart net opende (vanuit de Stoppen-dialoog
+      // of het menu) — meteen weer een level. (Cross-scene pointer-leak.)
+      c.on('pointerdown', () => { c._pressed = true; });
+      c.on('pointerout', () => { c._pressed = false; });
       c.on('pointerup', () => {
-        if (this._dragging) return; // scroll-sleep ≠ klik
+        const pressed = c._pressed; c._pressed = false;
+        if (!pressed || this._dragging) return; // geen echte druk, of scroll-sleep
         SFX.click();
         this.tweens.add({ targets: c, scale: 0.9, duration: 80, yoyo: true, onComplete: () => {
           this.scene.start('Adventure', { levelIndex: this.levelIndexOf(id) });
