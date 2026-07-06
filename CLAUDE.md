@@ -193,6 +193,17 @@ op in de winkel (kleur keert terug).
   breuken; een wijs-handje (`_wijzer`) + puls (`updateHint`) wijzen de volgende stap;
   Nul reageert overal (`nulReactie`: blij/wow/spannend/juich); het kleurmengen wordt
   gevierd (`mixFeest`: "GROEN!"/"PAARS!"…); en de poef heeft meer aanloop.
+- **SPEELGOED-PASS (2026-07-06)**: alle knoppen vervangen door echte handelingen
+  (les: [[interactie-boven-aankleding]]). **Flesjes SLEEP je** boven de ketel
+  (kantelen = druppelen op een timer in `update()`; zelf op tijd stoppen — één
+  te veel = bruin schuim + **schuimspaan** om 'm eruit te vissen, `checkKlaar`
+  blokkeert tot het klopt, pips kleuren rood). **Sterretjes fladderen** rond
+  (`fladder`) en vang je met een tik. **Roeren = échte rondjes tekenen** in de
+  ketel (`roerBeweging` sommeert de draaihoek; lepel volgt je vinger, draaikolk
+  groeit). **Letters prik je uit opstijgende bellen** (`spawnBel`/`prikBel`;
+  foute bel = onschuldige plop). Het wijs-handje volgt bewegende doelen via
+  `update()` (`_wijzerDoel`). Tegel staat nog achter de Ouder-modus (test)
+  tot de speeltest met Adrian slaagt.
 - **Grafische overhaul (2026-07-05)**: van platte vormen naar een geschilderd,
   sfeervol decor. `schilderWinkel()` tekent het interieur één keer op een
   canvas-textuur (`tw_bg`): muur-verloop, warme gloed, houten planken met
