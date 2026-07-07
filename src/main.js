@@ -14,6 +14,7 @@ import NumberTowerScene from './scenes/NumberTowerScene.js';
 import ZeroRocketScene from './scenes/ZeroRocketScene.js';
 import AdventureScene from './scenes/AdventureScene.js';
 import IntroScene from './scenes/IntroScene.js';
+import ReisScene from './scenes/ReisScene.js';
 import FeestScene from './scenes/FeestScene.js';
 import WorldMapScene from './scenes/WorldMapScene.js';
 import VillageScene from './scenes/VillageScene.js';
@@ -49,7 +50,7 @@ const config = {
     BalloonScene, MathScene,
     TraceScene, TraceMenuScene, ClickerScene, PianoScene,
     AwardsScene, SettingsScene, BezorgScene, NumberTowerScene, ZeroRocketScene,
-    AdventureScene, IntroScene, FeestScene, WorldMapScene, VillageScene, StatsScene,
+    AdventureScene, IntroScene, ReisScene, FeestScene, WorldMapScene, VillageScene, StatsScene,
     StickerScene, TovenScene,
   ],
 };

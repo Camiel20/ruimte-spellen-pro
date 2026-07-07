@@ -72,6 +72,18 @@ export default class WorldMapScene extends Phaser.Scene {
     return this.entries.find((e) => e.type === 'level' && e.lvl.id === id) || null;
   }
 
+  // Start een level — met éénmalig de Reis-cutscene ervoor bij de eerste
+  // keer Wereld 7+ (het verhaal-lijmstuk: Grauws machine lekt nog waas).
+  startLevel(id) {
+    const wereldNr = parseInt(id.split('-')[0], 10);
+    const idx = this.levelIndexOf(id);
+    if (wereldNr >= 7 && !getSetting('reisGezien')) {
+      this.scene.start('Reis', { levelIndex: idx });
+    } else {
+      this.scene.start('Adventure', { levelIndex: idx });
+    }
+  }
+
   levelIndexOf(id) {
     let i = 0, found = -1;
     this.entries.forEach((e) => {
@@ -248,7 +260,7 @@ export default class WorldMapScene extends Phaser.Scene {
         if (!pressed || this._dragging) return; // geen echte druk, of scroll-sleep
         SFX.click();
         this.tweens.add({ targets: c, scale: 0.9, duration: 80, yoyo: true, onComplete: () => {
-          this.scene.start('Adventure', { levelIndex: this.levelIndexOf(id) });
+          this.startLevel(id);
         } });
       });
     }
@@ -285,7 +297,8 @@ export default class WorldMapScene extends Phaser.Scene {
     hit.on('pointerdown', () => {
       SFX.click();
       const target = this.currentEntry();
-      this.scene.start('Adventure', target ? { levelIndex: this.levelIndexOf(target.lvl.id) } : {});
+      if (target) this.startLevel(target.lvl.id);
+      else this.scene.start('Adventure', {});
     });
     this.tweens.add({ targets: btxt, scale: 1.05, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
