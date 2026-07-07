@@ -17,6 +17,7 @@
 // of `Voice.number(n)` aan en hoeft niets te weten van hoe het geluid ontstaat.
 
 import { getAudioContext, isSoundOn } from './sound.js';
+import { getSetting, setSetting } from './progress.js';
 
 // naam -> { url, raw: ArrayBuffer, buffer: AudioBuffer } — échte stemclips.
 // Ze spelen via Web Audio (niet via <audio>): zo liften ze mee op de bestaande
@@ -92,11 +93,16 @@ export const Voice = {
 
   // Speel een cue. Echte clip heeft voorrang; anders Web Audio-fallback
   // (ook zolang een clip nog laadt/decodeert — er is dus altijd geluid).
+  // UITZONDERING (speeltest): cues die tientallen keren per level klinken
+  // (elke stomp, elk bolletje, elke mini-puzzel) blijven ALTIJD een kort
+  // jingle-geluidje — een stem die overal "Joepie!" roept wordt irritant.
+  // De gesproken feest-woorden ('woord-…') spelen alleen op grote momenten,
+  // via het gethrottlede hint-kanaal.
   cue(name, data) {
     if (!isSoundOn()) return;
     const ctx = getAudioContext();
     const clipKey = (name === 'number' && data != null) ? `number-${data}` : name;
-    const c = clips[clipKey];
+    const c = JINGLE_CUES.has(name) ? null : clips[clipKey];
     if (c && ctx) {
       if (c.buffer) { speelClip(c); return; }
       if (c.raw && !c.decoding) {
@@ -115,6 +121,14 @@ export const Voice = {
 
   number(n) { this.cue('number', n); },
 
+  // Als hint(), maar hooguit ÉÉN keer per sessie (bv. "Welkom!" alleen bij
+  // het allereerste level, niet bij elke missie).
+  hintEens(name, delayMs = 0) {
+    if (eensGezegd.has(name)) return;
+    eensGezegd.add(name);
+    this.hint(name, delayMs);
+  },
+
   // Gesproken HINT (instructie-clips zoals 'hint-deur'). Anders dan cue():
   // - speelt alleen als de clip bestaat (instructies hebben geen jingle-vorm)
   // - GLOBAAL gethrottled (~4s) zodat twee systemen nooit door elkaar praten
@@ -122,7 +136,17 @@ export const Voice = {
   hint(name, delayMs = 0) {
     if (!isSoundOn() || !clips[name]) return;
     const nu = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-    if (nu < hintSlotTot) return;
+    if (nu < hintSlotTot) return; // spreekkanaal bezet → deze hint vervalt
+    // Instructie-hints SLIJTEN: na 3× ooit gehoord (over alle sessies heen)
+    // snapt het kind het — dan zwijgt de stem. De visuele hulp (tekst,
+    // wijs-puls) blijft gewoon werken. Teller pas ná de kanaal-check, zodat
+    // een gedropte hint niet meetelt.
+    if (name.startsWith('hint-')) {
+      const tellers = getSetting('hintTellers') || {};
+      if ((tellers[name] || 0) >= 3) return;
+      tellers[name] = (tellers[name] || 0) + 1;
+      setSetting('hintTellers', tellers);
+    }
     hintSlotTot = nu + delayMs + 4000;
     if (delayMs > 0) setTimeout(() => this.cue(name), delayMs);
     else this.cue(name);
@@ -130,3 +154,7 @@ export const Voice = {
 };
 
 let hintSlotTot = 0; // tot wanneer het hint-"spreekkanaal" bezet is
+const eensGezegd = new Set(); // hintEens: één keer per sessie
+
+// Frequente cues die nooit een pratende clip mogen worden (zie cue()).
+const JINGLE_CUES = new Set(['cheer', 'great', 'welcome', 'greet', 'oops', 'laugh']);

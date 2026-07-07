@@ -26,12 +26,15 @@ const TOON = { pitch: '+18Hz', rate: 1.08 };
 // clip-key (zoals Voice 'm kent) -> [bestandsnaam, in te spreken tekst]
 // Uitroeptekens sturen de neural stem naar een vrolijke, energieke intonatie.
 const CLIPS = {
-  // kern-cues (de jingle-cues zoals laugh/whee/star blijven bewust Web Audio)
-  welcome: ['welkom', 'Welkom!'],
-  cheer: ['joepie', 'Joepie!'],
-  great: ['supergoed', 'Super goed!'],
-  oops: ['oeps', 'Oeps! Probeer nog eens!'],
-  greet: ['hoi', 'Hoi!'],
+  // Gesproken feest/groet-woorden. LET OP: bewust 'woord-…'-keys en NIET de
+  // cue-namen (cheer/welcome/…): die cues klinken tientallen keren per level
+  // en blijven daarom jingles (zie JINGLE_CUES in voice.js). De woorden
+  // spelen alleen op grote momenten via Voice.hint/hintEens.
+  'woord-welkom': ['welkom', 'Welkom!'],
+  'woord-joepie': ['joepie', 'Joepie!'],
+  'woord-super': ['supergoed', 'Super goed!'],
+  'woord-oeps': ['oeps', 'Oeps! Probeer nog eens!'],
+  'woord-hoi': ['hoi', 'Hoi!'],
 
   // getallen 0-20
   // (bestandsnaam NIET 'nul': NUL is een gereserveerde Windows-apparaatnaam —

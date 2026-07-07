@@ -131,7 +131,8 @@ export default class AdventureScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keySpace = this.input.keyboard.addKey('SPACE');
 
-    Voice.cue('welcome');
+    Voice.cue('welcome'); // korte jingle bij elke missie…
+    Voice.hintEens('woord-welkom', 500); // …het gesproken "Welkom!" maar 1× per sessie
   }
 
   // ============================================================ ACHTERGROND

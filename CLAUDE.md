@@ -293,7 +293,15 @@ meebeweegt; je loopt rond en helpt getallen-vriendjes.
   gethrottled (~4s, hints praten nooit door elkaar), speelt alleen als de
   clip bestaat, delay om na een getal-clip te spreken. Cue-regel: eerste
   nadering per level + na een fout. Anti-gok: na 2 fouten op één keuzepunt
-  pulseert het juiste antwoord (`pulsHulp`). Alles gegenereerd
+  pulseert het juiste antwoord (`pulsHulp`).
+  **NIET-IRRITANT-REGELS (speeltest 2026-07-07):** (1) frequente cues
+  (cheer/great/welcome/greet/oops/laugh — elke stomp, elk bolletje, elke
+  vlag) zijn ALTIJD jingles, nooit spraak (`JINGLE_CUES` in voice.js); de
+  gesproken woorden heten `woord-…` en spelen alleen op grote momenten.
+  (2) `Voice.hintEens()` = 1× per sessie ("Welkom!" alleen bij de eerste
+  missie). (3) `hint-…`-instructies SLIJTEN: max 3× ooit per clip
+  (persistent, settings `hintTellers`) — daarna zwijgt de stem, de
+  visuele hulp blijft. Alles gegenereerd
   met `node tools/maak-stemmen.mjs` (gratis Microsoft neural stem
   nl-NL-FennaNeural via `msedge-tts`, devDependency; vrolijk gestemd met
   pitch +18Hz / rate 1.08). `public/voice/manifest.json` wordt in `main.js`

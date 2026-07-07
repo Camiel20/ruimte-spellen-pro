@@ -1,9 +1,4 @@
 {
-  "welcome": "welkom.mp3",
-  "cheer": "joepie.mp3",
-  "great": "supergoed.mp3",
-  "oops": "oeps.mp3",
-  "greet": "hoi.mp3",
   "number-0": "getal-nul.mp3",
   "number-1": "een.mp3",
   "number-2": "twee.mp3",
@@ -67,5 +62,10 @@
   "number-70": "zeventig.mp3",
   "number-80": "tachtig.mp3",
   "number-90": "negentig.mp3",
-  "number-100": "honderd.mp3"
+  "number-100": "honderd.mp3",
+  "woord-welkom": "welkom.mp3",
+  "woord-joepie": "joepie.mp3",
+  "woord-super": "supergoed.mp3",
+  "woord-oeps": "oeps.mp3",
+  "woord-hoi": "hoi.mp3"
 }
