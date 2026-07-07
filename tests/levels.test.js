@@ -135,6 +135,30 @@ describe('puzzellogica', () => {
     expect(validateLevel(zonderLand).some((e) => e.includes('geen grond'))).toBe(true);
   });
 
+  it('validateLevel: vangt een finale-baas zonder bouw-climax of grauwe muur', () => {
+    const basis = {
+      id: 'x-finale', worldW: 3000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      startMega: true,
+      platforms: [[0, 660, 3000, 140]],
+      grauwMuren: [600],
+      boss: {
+        x: 2000, look: 'grauw', stijl: 'finale',
+        stages: [
+          { soort: 'vang', doel: 5 },
+          { soort: 'muur', doel: 10 },
+          { soort: 'bouw', doel: 30, blocks: [21, 13] },
+        ],
+      },
+      goal: { x: 2800, y: 588, value: 30 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const zonderClimax = { ...basis, boss: { ...basis.boss, stages: [{ soort: 'bouw', doel: 10, blocks: [7, 6] }, { soort: 'vang', doel: 5 }] } };
+    expect(validateLevel(zonderClimax).some((e) => e.includes('laatste akte'))).toBe(true);
+    const zonderMuur = { ...basis, grauwMuren: [] };
+    expect(validateLevel(zonderMuur).some((e) => e.includes('schild-collider'))).toBe(true);
+  });
+
   it('validateLevel: vangt een stomp-baas zonder maan-zone', () => {
     const basis = {
       id: 'x-stomp', worldW: 2000, worldH: 800, killY: 720,

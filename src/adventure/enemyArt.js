@@ -984,3 +984,16 @@ export function drawKristalKeuze(scene, x, y, waarde) {
   c.waarde = waarde; c.spawnY = y; c.taken = false;
   return c;
 }
+
+// Kleur-orb (Grauw-finale, akte 1): de gestolen kleur die hij morst —
+// vang ze terug! Elke orb heeft een andere regenboog-kleur.
+export function drawKleurOrb(scene, i) {
+  const KLEUREN = [0xe8402c, 0xf6c624, 0x2fae4e, 0x3f8fe8, 0x9b6dd6];
+  const kleur = KLEUREN[i % KLEUREN.length];
+  const g = scene.add.graphics();
+  g.fillStyle(kleur, 0.28); g.fillCircle(0, 0, 17);
+  g.fillStyle(kleur, 1); g.fillCircle(0, 0, 11);
+  g.fillStyle(0xffffff, 0.7); g.fillEllipse(-4, -4, 6, 4);
+  g.lineStyle(2, 0xffffff, 0.5); g.strokeCircle(0, 0, 14);
+  return g;
+}

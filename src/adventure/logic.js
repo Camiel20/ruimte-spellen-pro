@@ -177,6 +177,13 @@ export function validateLevel(L) {
       } else if (stijl === 'beuk') {
         if (!S.doel || S.doel < 1) err(`baas-fase ${i + 1} (beuk): doel (zijn grootte-getal) ontbreekt`);
         if (i > 0 && S.doel >= B.stages[i - 1].doel) err(`baas-fase ${i + 1} (beuk): de baas moet KRIMPEN — doelen horen af te lopen`);
+      } else if (stijl === 'finale') {
+        if (!['vang', 'muur', 'bouw'].includes(S.soort)) err(`baas-akte ${i + 1} (finale): soort moet vang/muur/bouw zijn`);
+        if (S.soort === 'vang' && (!S.doel || S.doel < 1 || S.doel > 8)) err(`baas-akte ${i + 1} (finale/vang): doel moet 1-8 orbs zijn`);
+        if (S.soort === 'bouw' && (!Array.isArray(S.blocks) || S.blocks.reduce((a, b) => a + b, 0) < S.doel)) {
+          err(`baas-akte ${i + 1} (finale/bouw): blokken (${(S.blocks || []).join('+')}) zijn samen te weinig voor ${S.doel}`);
+        }
+        if (i === B.stages.length - 1 && S.soort !== 'bouw') err('finale-baas: de laatste akte moet de bouw-climax zijn');
       } else if (stijl === 'stomp') {
         if (!S.doel || S.doel % 10 !== 0) err(`baas-fase ${i + 1} (stomp): doel moet een tiental zijn`);
         if (i > 0 && S.doel <= B.stages[i - 1].doel) err(`baas-fase ${i + 1} (stomp): de tientallen horen op te lopen`);
@@ -218,6 +225,12 @@ export function validateLevel(L) {
     // Op de kop springen lukt alleen met maan-zwaartekracht boven de arena.
     if (stijl === 'stomp' && !(L.maanZones || []).some((Z) => B.x >= Z.x && B.x <= Z.x + Z.w)) {
       err('stomp-baas zonder maan-zone over de arena — je komt nooit op zijn kop');
+    }
+    // De finale-schilden liften op het grauwmuren-systeem: het level moet de
+    // tien-kracht geven ÉN minstens één grauwe muur hebben (voor de collider).
+    if (stijl === 'finale') {
+      if (!L.startMega) err('finale-baas zonder startMega — de schilden zijn niet te rammen');
+      if (!(L.grauwMuren || []).length) err('finale-baas zonder grauwe muur in het level — de schild-collider bestaat dan niet');
     }
     if (L.goal && L.goal.x < B.x) err('vlag staat vóór de baas — baas is te omzeilen');
   }

@@ -348,7 +348,9 @@ export default class AdventureScene extends Phaser.Scene {
       : pz.stijl === 'surf' ? 'tel de golven'
       : pz.stijl === 'schud' ? `stamp en raap er ${pz.doel}`
       : pz.stijl === 'splits' ? 'splits het getal'
-      : pz.stijl === 'stomp' ? 'spring op zijn kop' : `bouw de ${pz.doel}`;
+      : pz.stijl === 'stomp' ? 'spring op zijn kop'
+      : pz.stijl === 'finale' ? ({ vang: 'vang de kleur-orbs', muur: 'ram zijn schilden', bouw: `bouw de ${pz.doel}` })[pz.stages[pz.stageIndex].soort]
+      : `bouw de ${pz.doel}`;
     if (pz.stijl === 'tien') c.bubbleText.setText(`${pz.doel}+?`);
     if (pz.stijl === 'surf') c.bubbleText.setText('?'); // niet verklappen!
     if (pz.stijl === 'splits') {
@@ -408,7 +410,9 @@ export default class AdventureScene extends Phaser.Scene {
     if (!stil) Voice.number(pz.doel);
     // gesproken aanmoediging per stijl, netjes ná het getal
     const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud', splits: 'baas-splits', stomp: 'baas-stomp' };
-    Voice.hint(BAAS_CLIP[pz.stijl], stil ? 200 : 1100);
+    const finaleClip = pz.stijl === 'finale'
+      ? ({ vang: 'baas-vang', muur: 'hint-grauwmuur', bouw: 'baas-bouw' })[pz.stages[pz.stageIndex].soort] : null;
+    Voice.hint(finaleClip || BAAS_CLIP[pz.stijl], stil ? 200 : 1100);
     if (pz.stijl === 'vang') {
       const look = bossLook(pz.look);
       this.questText.setText((look.vangTekst || 'Vang {n} toppings terug! 🍅').replace('{n}', pz.doel));
@@ -435,6 +439,25 @@ export default class AdventureScene extends Phaser.Scene {
       this.toonBossBellen(pz);
     } else if (pz.stijl === 'stomp') {
       this.questText.setText('Zweef omhoog en spring ÓP zijn kop! 🌙');
+    } else if (pz.stijl === 'finale') {
+      // BARON GRAUW: drie aktes die de hele reis samenvatten. Elke akte
+      // delegeert naar een bestaande sub-flow via het soort-veld.
+      const akte = pz.stages[pz.stageIndex];
+      pz.soort = akte.soort;
+      this.nulReact('ster'); // Nul moedigt je aan — het heldenmoment!
+      if (akte.soort === 'vang') {
+        this.questText.setText('Hij morst de gestolen KLEUR — vang de orbs! 🌈');
+        this.strooiToppings(pz);
+      } else if (akte.soort === 'muur') {
+        this.questText.setText('Hij verschanst zich — RAM zijn schilden! 🔟💥');
+        this.spawnFinaleMuren(pz);
+      } else {
+        // de slot-akte: het grootste bouwwerk van het spel, via de
+        // vertrouwde bouw-flow (stijl-overname is definitief: dit is
+        // altijd de laatste akte, daarna volgt defeatBoss)
+        pz.stijl = 'bouw';
+        this.questText.setText('De laatste klap: bouw zijn grootste getal! 🔨');
+      }
     } else {
       this.questText.setText(`Spring in de pot met ${pz.doel}! 🚽`);
       this.toonBossPotten(pz);
@@ -560,7 +583,16 @@ export default class AdventureScene extends Phaser.Scene {
         }
         continue;
       }
-      if (pz.stijl === 'vang' || (pz.stijl === 'schud' && pz.eikelsLos)) {
+      if (pz.stijl === 'finale' && pz.soort === 'muur') {
+        // akte 2: beide schilden geramd (het grauwmuren-systeem breekt ze)?
+        if ((pz.finaleMuren || []).length && pz.finaleMuren.every((m) => m.broken)) {
+          pz.finaleMuren = [];
+          this.advanceBossStage(pz);
+        }
+        continue;
+      }
+      if (pz.stijl === 'vang' || (pz.stijl === 'schud' && pz.eikelsLos)
+        || (pz.stijl === 'finale' && pz.soort === 'vang')) {
         for (const f of pz.fruit) {
           if (!f.active || f.taken) continue;
           if (Math.abs(p.x - f.x) < 40 && Math.abs(p.y - f.y) < 52) {
@@ -711,6 +743,38 @@ export default class AdventureScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  // Akte 2 van de Grauw-finale: twee grauwe mini-schilden verschijnen in de
+  // arena. Ze liften mee op het bestaande grauwmuren-systeem (zelfde group,
+  // zelfde mega-ram-collider) — het level MOET dus al een grauwe muur hebben
+  // zodat die collider bestaat (validator dwingt startMega + muur af).
+  spawnFinaleMuren(pz) {
+    const groundTop = this.level.platforms[0][1];
+    pz.finaleMuren = [-360, -560].map((dx) => {
+      const x = pz.bossArt.x + dx;
+      const h = 260, topY = groundTop - h;
+      const body = this.add.rectangle(x, topY + h / 2, 54, h, 0x000000, 0);
+      this.physics.add.existing(body, true);
+      this.grauwGroup.add(body);
+      const art = this.add.container(x, topY + h / 2).setDepth(4);
+      const g = this.add.graphics();
+      for (let yy = -h / 2; yy < h / 2; yy += 42) {
+        const rij = Math.floor((yy + h / 2) / 42) % 2;
+        g.fillStyle(rij ? 0x8a8f96 : 0x7d838c, 1);
+        g.fillRoundedRect(-26, yy, 52, 40, 5);
+        g.lineStyle(2.5, 0x565b61, 1); g.strokeRoundedRect(-26, yy, 52, 40, 5);
+      }
+      art.add(g);
+      art.add(this.add.circle(0, -h / 2 + 30, 15, 0xffffff).setStrokeStyle(3, 0x16202b));
+      art.add(this.add.text(0, -h / 2 + 30, '10', { fontFamily: 'Arial Black, Arial', fontSize: '14px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5));
+      art.setScale(0.1);
+      this.tweens.add({ targets: art, scale: 1, duration: 320, ease: 'Back.out' });
+      const muur = { x, body, art, groundTop, broken: false, hintAt: 0 };
+      body._muur = muur;
+      this.grauwMuren.push(muur);
+      return muur;
+    });
   }
 
   // STAMP! De boom schudt op zijn grondvesten — de eikels regenen omlaag

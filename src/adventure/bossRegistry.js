@@ -16,7 +16,7 @@ import {
   drawReusBoss, drawKei,
   drawBilBoss, happyBilBoss, drawStinkWolkje, drawZeepbel,
   drawOctopusBoss, happyOctopusBoss, drawInktKlodder,
-  drawSchelpKeuze, drawEikeltje, drawKristalKeuze,
+  drawSchelpKeuze, drawEikeltje, drawKristalKeuze, drawKleurOrb,
 } from './enemyArt.js';
 import { sig } from './palette.js';
 
@@ -122,6 +122,9 @@ export const BOSS_LOOKS = {
     projectile: drawGrauwWolkje,
     speed: -250,
     waarschuwing: 'Pas op — een grauw-wolkje! Spring! ⛈️',
+    vangArt: drawKleurOrb, // finale akte 1: vang de gestolen kleur terug
+    vangIcoon: '🌈',
+    vangTekst: 'Vang {n} kleur-orbs terug! 🌈',
   },
 };
 
