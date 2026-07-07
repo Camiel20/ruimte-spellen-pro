@@ -16,7 +16,7 @@ import {
   drawReusBoss, drawKei,
   drawBilBoss, happyBilBoss, drawStinkWolkje, drawZeepbel,
   drawOctopusBoss, happyOctopusBoss, drawInktKlodder,
-  drawSchelpKeuze,
+  drawSchelpKeuze, drawEikeltje,
 } from './enemyArt.js';
 import { sig } from './palette.js';
 
@@ -47,6 +47,8 @@ export const BOSS_LOOKS = {
     projectile: drawAcorn,
     speed: -175,
     waarschuwing: 'Pas op — een eikel! Spring! 🌰',
+    vangArt: drawEikeltje, // stijl 'schud': raap gevallen eikels
+    vangIcoon: '🌰',
   },
   // Kristal-Grommel (W4): snellere scherven.
   kristal: {

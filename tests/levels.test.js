@@ -135,6 +135,20 @@ describe('puzzellogica', () => {
     expect(validateLevel(zonderLand).some((e) => e.includes('geen grond'))).toBe(true);
   });
 
+  it('validateLevel: vangt een schud-baas zonder stamp-kracht', () => {
+    const basis = {
+      id: 'x-schud', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      startStamp: true,
+      platforms: [[0, 660, 2000, 140]],
+      boss: { x: 1200, look: 'boom', stijl: 'schud', stages: [{ doel: 4 }, { doel: 6 }] },
+      goal: { x: 1800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const zonderStamp = { ...basis, startStamp: false };
+    expect(validateLevel(zonderStamp).some((e) => e.includes('stamp'))).toBe(true);
+  });
+
   it('validateLevel: vangt een surf-baas zonder kloppende tel-schelp', () => {
     const basis = {
       id: 'x-surf', worldW: 2000, worldH: 800, killY: 720,

@@ -92,6 +92,7 @@ const CLIPS = {
   'baas-beuk': ['baas-beuk', 'Word een reus en ram hem!'],
   'baas-tien': ['baas-tien', 'Maak er samen tien van!'],
   'baas-surf': ['baas-surf', 'Tel de golven!'],
+  'baas-schud': ['baas-schud', 'Stamp, en raap de eikels!'],
   // mijlpalen
   'naar-de-vlag': ['naar-de-vlag', 'Naar de vlag!'],
   'gouden-nul': ['gouden-nul', 'Een gouden nul!'],

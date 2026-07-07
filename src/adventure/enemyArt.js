@@ -950,3 +950,13 @@ export function drawSchelpKeuze(scene, x, y, waarde) {
   c.waarde = waarde; c.spawnY = y; c.taken = false;
   return c;
 }
+
+// Eikeltje als raap-item (Boom-Baas, stijl 'schud') — vangArt-contract.
+export function drawEikeltje(scene) {
+  const g = scene.add.graphics();
+  g.fillStyle(0xb07a45, 1); g.fillEllipse(0, 3, 18, 20);
+  g.fillStyle(0x6e4a26, 1); g.slice(0, -3, 10, Math.PI, 0, false); g.fillPath();
+  g.fillRoundedRect(-1.5, -14, 3, 5, 1.5);
+  g.fillStyle(0xd9a86a, 0.6); g.fillEllipse(-4, 3, 5, 9);
+  return g;
+}

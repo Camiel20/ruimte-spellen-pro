@@ -340,7 +340,8 @@ export default class AdventureScene extends Phaser.Scene {
       : pz.stijl === 'spoel' ? `zoek de pot met ${pz.doel}`
       : pz.stijl === 'beuk' ? 'word een reus en RAM hem'
       : pz.stijl === 'tien' ? `${pz.doel} + ? = 10`
-      : pz.stijl === 'surf' ? 'tel de golven' : `bouw de ${pz.doel}`;
+      : pz.stijl === 'surf' ? 'tel de golven'
+      : pz.stijl === 'schud' ? `stamp en raap er ${pz.doel}` : `bouw de ${pz.doel}`;
     if (pz.stijl === 'tien') c.bubbleText.setText(`${pz.doel}+?`);
     if (pz.stijl === 'surf') c.bubbleText.setText('?'); // niet verklappen!
     this.questText.setText(`De Baas wankelt! Nog ${left}× — ${actie}!`);
@@ -394,7 +395,7 @@ export default class AdventureScene extends Phaser.Scene {
     // bij 'surf' zou het getal het TEL-antwoord verklappen — dus stil
     if (pz.stijl !== 'surf') Voice.number(pz.doel);
     // gesproken aanmoediging per stijl, netjes ná het getal
-    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf' };
+    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud' };
     Voice.hint(BAAS_CLIP[pz.stijl], pz.stijl === 'surf' ? 200 : 1100);
     if (pz.stijl === 'vang') {
       const look = bossLook(pz.look);
@@ -411,6 +412,10 @@ export default class AdventureScene extends Phaser.Scene {
       this.questText.setText('TEL de golven — daar komen ze! 🌊');
       pz.bossArt.bubbleText.setText('?');
       this.surfBurst(pz);
+    } else if (pz.stijl === 'schud') {
+      // eerst de boom wakker stampen — dán vallen de eikels
+      pz.eikelsLos = false;
+      this.questText.setText('STAMP naast de boom — schud de eikels los! 🌰');
     } else {
       this.questText.setText(`Spring in de pot met ${pz.doel}! 🚽`);
       this.toonBossPotten(pz);
@@ -523,7 +528,20 @@ export default class AdventureScene extends Phaser.Scene {
     const p = this.player;
     for (const pz of this.puzzles) {
       if (pz.type !== 'boss' || !pz.faseActief || pz.solved) continue;
-      if (pz.stijl === 'vang') {
+      // 'schud' vóór het rapen: eerst naast de boom STAMPEN (hard landen)
+      if (pz.stijl === 'schud' && !pz.eikelsLos) {
+        const opGrond = p.body.blocked.down || p.body.touching.down;
+        if (!opGrond) pz.valVy = Math.max(pz.valVy || 0, p.body.velocity.y);
+        else {
+          if ((pz.valVy || 0) > 520 && Math.abs(p.x - pz.bossArt.x) < 280 && time > (pz.schudCd || 0)) {
+            pz.schudCd = time + 900;
+            this.schudBoom(pz);
+          }
+          pz.valVy = 0;
+        }
+        continue;
+      }
+      if (pz.stijl === 'vang' || (pz.stijl === 'schud' && pz.eikelsLos)) {
         for (const f of pz.fruit) {
           if (!f.active || f.taken) continue;
           if (Math.abs(p.x - f.x) < 40 && Math.abs(p.y - f.y) < 52) {
@@ -535,8 +553,12 @@ export default class AdventureScene extends Phaser.Scene {
             pz.teller.setText(`${pz.vangIcoon || '🍅'} ${pz.vangst} / ${pz.doel}`);
             this.tweens.add({ targets: pz.teller, scale: 1.18, duration: 110, yoyo: true });
             if (pz.vangst >= pz.doel) {
-              pz.fruit.forEach((r) => { if (r.active && !r.taken) this.tweens.add({ targets: r, alpha: 0, scale: 0.4, duration: 300, onComplete: () => r.destroy() }); });
+              // restjes meteen als 'taken' markeren én de lus verlaten: twee
+              // vangsten in dezelfde frame mochten anders dóórtellen in de
+              // volgende fase (dubbele fase-sprong)
+              pz.fruit.forEach((r) => { if (r.active && !r.taken) { r.taken = true; this.tweens.add({ targets: r, alpha: 0, scale: 0.4, duration: 300, onComplete: () => r.destroy() }); } });
               this.advanceBossStage(pz);
+              break;
             }
           }
         }
@@ -650,6 +672,17 @@ export default class AdventureScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  // STAMP! De boom schudt op zijn grondvesten — de eikels regenen omlaag
+  // en het rapen (vang-machinerie) begint: raap er PRECIES pz.doel.
+  schudBoom(pz) {
+    pz.eikelsLos = true;
+    SFX.stomp(); this.cameraPunch(0.04, 7);
+    this.tweens.add({ targets: pz.bossArt, angle: { from: -6, to: 6 }, duration: 80, yoyo: true, repeat: 5, onComplete: () => pz.bossArt.setAngle(0) });
+    this.sparkleAt(pz.bossArt.x, pz.bossArt.y - 60, 10);
+    this.questText.setText(`Daar vallen ze — raap er PRECIES ${pz.doel}! 🌰`);
+    this.strooiToppings(pz); // de "toppings" zijn hier eikels (vangArt per look)
   }
 
   // BEUK! Als reus ram je de Reuzen-Grommel — hij krimpt een maat, jij bent

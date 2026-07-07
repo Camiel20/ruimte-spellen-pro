@@ -177,6 +177,8 @@ export function validateLevel(L) {
       } else if (stijl === 'beuk') {
         if (!S.doel || S.doel < 1) err(`baas-fase ${i + 1} (beuk): doel (zijn grootte-getal) ontbreekt`);
         if (i > 0 && S.doel >= B.stages[i - 1].doel) err(`baas-fase ${i + 1} (beuk): de baas moet KRIMPEN — doelen horen af te lopen`);
+      } else if (stijl === 'schud') {
+        if (!S.doel || S.doel < 1 || S.doel > 10) err(`baas-fase ${i + 1} (schud): doel moet 1-10 eikels zijn`);
       } else if (stijl === 'surf') {
         if (!S.doel || S.doel < 2 || S.doel > 6) err(`baas-fase ${i + 1} (surf): doel moet 2-6 golven zijn (telbaar setje)`);
         if (!Array.isArray(S.opties) || S.opties.length < 2) err(`baas-fase ${i + 1} (surf): minstens 2 schelpen nodig`);
@@ -196,6 +198,10 @@ export function validateLevel(L) {
     // Beuken kan alleen als reus: zonder reuzenhap is de baas onverslaanbaar.
     if (stijl === 'beuk' && !(L.reuzenhappen || []).length) {
       err('beuk-baas zonder reuzenhap in het level — onverslaanbaar (je wordt nooit een reus)');
+    }
+    // Schudden kan alleen met de stamp-kracht.
+    if (stijl === 'schud' && !L.startStamp && !(L.rescues || []).some((r) => r.gives === 'stamp')) {
+      err('schud-baas zonder stamp-kracht in het level — de eikels vallen nooit');
     }
     if (L.goal && L.goal.x < B.x) err('vlag staat vóór de baas — baas is te omzeilen');
   }
