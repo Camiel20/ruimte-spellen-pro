@@ -997,3 +997,101 @@ export function drawKleurOrb(scene, i) {
   g.lineStyle(2, 0xffffff, 0.5); g.strokeCircle(0, 0, 14);
   return g;
 }
+
+// ===== DE PANNEN-BAAS (Wereld 8, Pannenkoeken-Paradijs) =====
+// Een reusachtige koekenpan op pootjes die pannenkoeken over de arena
+// flipt. Stijl 'surf'-hergebruik: TEL de pannenkoeken en raak het bord
+// met het goede aantal. Happy: er ligt een dolblije pannenkoek in de pan.
+export function drawPanBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 64).setDepth(7);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 68, 120, 20);
+  // pootjes
+  g.fillStyle(0x2b2f34, 1); g.fillRoundedRect(-38, 42, 14, 24, 5); g.fillRoundedRect(24, 42, 14, 24, 5);
+  // de pan: donker gietijzer, schuin naar de speler gekanteld
+  g.fillStyle(0x3a3f45, 1); g.fillEllipse(0, 8, 128, 96);
+  g.fillStyle(0x2b2f34, 1); g.fillEllipse(0, 12, 112, 78);
+  g.fillStyle(0x565b61, 1); g.fillEllipse(0, 2, 118, 84); // rand-glans
+  g.fillStyle(0x23272b, 1); g.fillEllipse(0, 6, 104, 70); // pan-vlak
+  // de steel, omhoog als een staart
+  g.fillStyle(0x3a3f45, 1); g.fillRoundedRect(52, -58, 18, 64, 8);
+  g.lineStyle(3, 0x16191d, 1); g.strokeEllipse(0, 8, 128, 96);
+  // boter-klontje dat sist in de pan
+  g.fillStyle(0xffe16b, 0.9); g.fillRoundedRect(-34, -16, 18, 12, 4);
+  c.add(g);
+  c.bodyG = g;
+  // boos gezicht óp het pan-vlak
+  const eL = scene.add.circle(-18, -4, 9, 0xffffff).setStrokeStyle(2.5, 0x111111);
+  const eR = scene.add.circle(16, -4, 9, 0xffffff).setStrokeStyle(2.5, 0x111111);
+  const pL = scene.add.circle(-18, -2, 3.6, 0x111111), pR = scene.add.circle(16, -2, 3.6, 0x111111);
+  const br = scene.add.graphics(); br.lineStyle(3.5, 0xf3d9a4, 1);
+  br.beginPath(); br.moveTo(-30, -18); br.lineTo(-8, -12); br.strokePath();
+  br.beginPath(); br.moveTo(28, -18); br.lineTo(6, -12); br.strokePath();
+  const m = scene.add.graphics(); m.lineStyle(3, 0xf3d9a4, 1);
+  m.beginPath(); m.arc(-1, 20, 10, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.brow = br; c.mouth = m;
+
+  const bub = scene.add.container(0, -104);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Verslagen = er ligt een dolgelukkige pannenkoek in de pan.
+export function happyPanBoss(scene, c) {
+  c.bodyG.clear();
+  const g = c.bodyG;
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 68, 120, 20);
+  g.fillStyle(0x2b2f34, 1); g.fillRoundedRect(-38, 42, 14, 24, 5); g.fillRoundedRect(24, 42, 14, 24, 5);
+  g.fillStyle(0x3a3f45, 1); g.fillEllipse(0, 8, 128, 96);
+  g.fillStyle(0x565b61, 1); g.fillEllipse(0, 2, 118, 84);
+  // een goudbruine pannenkoek vult de pan!
+  g.fillStyle(0xe8b96e, 1); g.fillEllipse(0, 4, 100, 66);
+  g.fillStyle(0xd9a44f, 0.8); g.fillEllipse(-14, 0, 20, 12); g.fillEllipse(18, 10, 16, 10);
+  g.fillStyle(0xffe16b, 0.95); g.fillRoundedRect(-10, -12, 20, 13, 4); // klontje boter
+  g.fillStyle(0x3a3f45, 1); g.fillRoundedRect(52, -58, 18, 64, 8);
+  g.lineStyle(3, 0x16191d, 1); g.strokeEllipse(0, 8, 128, 96);
+  c.brow.clear();
+  c.mouth.clear(); c.mouth.lineStyle(3.5, 0x8a5a33, 1);
+  c.mouth.beginPath(); c.mouth.arc(-1, 12, 13, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+}
+
+// Vliegende pannenkoek (projectiel van de Pannen-Baas): flipt al rollend.
+export function drawPannenkoekje(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const shadow = scene.add.graphics();
+  shadow.fillStyle(0x000000, 0.14); shadow.fillEllipse(0, 0, 30, 7);
+  c.add(shadow);
+  const inner = scene.add.container(0, -15);
+  const g = scene.add.graphics();
+  g.fillStyle(0xe8b96e, 1); g.fillEllipse(0, 0, 28, 22);
+  g.fillStyle(0xd9a44f, 0.85); g.fillEllipse(-5, -3, 9, 6); g.fillEllipse(7, 4, 7, 5);
+  g.fillStyle(0xffe16b, 0.9); g.fillRoundedRect(-4, -5, 8, 6, 2);
+  g.lineStyle(2, 0xb98a3e, 1); g.strokeEllipse(0, 0, 28, 22);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, scaleY: { from: 1, to: 0.25 }, duration: 260, yoyo: true, repeat: -1, ease: 'Sine.inOut' }); // FLIP!
+  return c;
+}
+
+// Antwoord-bordje (keuze-art, contract zoals de schelp): wit bord met getal.
+export function drawBordKeuze(scene, x, y, waarde) {
+  const c = scene.add.container(x, y).setDepth(6);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.12); g.fillEllipse(0, 24, 46, 8);
+  g.fillStyle(0xffffff, 1); g.fillEllipse(0, 4, 52, 34);
+  g.fillStyle(0xeef2f6, 1); g.fillEllipse(0, 2, 36, 22);
+  g.lineStyle(2.5, 0x7fa8d0, 1); g.strokeEllipse(0, 4, 52, 34);
+  c.add(g);
+  c.add(scene.add.text(0, 0, `${waarde}`, {
+    fontFamily: 'Arial Black, Arial', fontSize: '19px', fontStyle: 'bold', color: '#16202b',
+  }).setOrigin(0.5));
+  scene.tweens.add({ targets: c, y: y - 9, duration: 950 + (waarde % 3) * 160, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  c.waarde = waarde; c.spawnY = y; c.taken = false;
+  return c;
+}

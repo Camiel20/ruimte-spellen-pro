@@ -17,6 +17,7 @@ import {
   drawBilBoss, happyBilBoss, drawStinkWolkje, drawZeepbel,
   drawOctopusBoss, happyOctopusBoss, drawInktKlodder,
   drawSchelpKeuze, drawEikeltje, drawKristalKeuze, drawKleurOrb,
+  drawPanBoss, happyPanBoss, drawPannenkoekje, drawBordKeuze,
 } from './enemyArt.js';
 import { sig } from './palette.js';
 
@@ -92,6 +93,16 @@ export const BOSS_LOOKS = {
     projectile: drawDrolletje,
     speed: -240,
     waarschuwing: 'Pas op — een drolletje! Spring! 💩',
+  },
+  // De Pannen-Baas (W8, Pannenkoeken-Paradijs): flipt telbare pannenkoeken
+  // over de arena — stijl 'surf'-hergebruik: tel ze en raak het goede bord.
+  pan: {
+    draw: (s, x, groundTop) => drawPanBoss(s, x, groundTop),
+    happy: (s, c) => happyPanBoss(s, c),
+    projectile: drawPannenkoekje,
+    speed: -200,
+    waarschuwing: 'Pas op — een vliegende pannenkoek! Spring! 🥞',
+    keuzeArt: drawBordKeuze,
   },
   // De Stinke-Bil (W11, Billenland): wil NIET in bad — gooit stinkwolkjes.
   // Vang-stijl met een eigen vangst: zeepbellen i.p.v. pizza-toppings.
