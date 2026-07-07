@@ -840,6 +840,10 @@ export default class AdventureScene extends Phaser.Scene {
     if (pz.stageIndex < pz.stages.length - 1) {
       pz.stageIndex += 1;
       pz.doel = pz.stages[pz.stageIndex].doel;
+      // óók de bouw-blokken doorzetten (symmetrisch met BuildOverlay.checkSolved):
+      // de finale-baas bereikt zijn bouw-akte via dít pad, en zonder verse
+      // pz.blocks opent het overlay dan zonder blokjes (speeltest-bug 6-2)
+      pz.blocks = pz.stages[pz.stageIndex].blocks;
       this.bossStageReact(pz);
       this.time.delayedCall(1600, () => { if (!pz.solved && this.mode === 'explore') this.startBossFase(pz); });
     } else {
