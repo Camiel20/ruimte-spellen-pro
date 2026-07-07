@@ -286,8 +286,14 @@ meebeweegt; je loopt rond en helpt getallen-vriendjes.
   / `Voice.number(n)`: korte, vrolijke **Web Audio**-klankjes (welcome, number,
   cheer, great, laugh, oops, star, greet, jump, yawn, whee). Werkt overal
   hetzelfde, ook op iOS.
-- **ECHTE STEM AANWEZIG (2026-07-07):** 34 Nederlandse clips in `public/voice/`
-  (getallen 0-20, tientallen t/m 100, joepie/oeps/hoi/welkom/super), gegenereerd
+- **ECHTE STEM AANWEZIG (2026-07-07):** 69 Nederlandse clips in `public/voice/`
+  (getallen 0-20, tientallen t/m 100, joepie/oeps/hoi/welkom/super, plus ~35
+  HINT-clips: per systeem een instructie, krachten, baas-aanmoedigingen).
+  `Voice.hint(name, delayMs)` = het gesproken instructie-kanaal: globaal
+  gethrottled (~4s, hints praten nooit door elkaar), speelt alleen als de
+  clip bestaat, delay om na een getal-clip te spreken. Cue-regel: eerste
+  nadering per level + na een fout. Anti-gok: na 2 fouten op één keuzepunt
+  pulseert het juiste antwoord (`pulsHulp`). Alles gegenereerd
   met `node tools/maak-stemmen.mjs` (gratis Microsoft neural stem
   nl-NL-FennaNeural via `msedge-tts`, devDependency; vrolijk gestemd met
   pitch +18Hz / rate 1.08). `public/voice/manifest.json` wordt in `main.js`
