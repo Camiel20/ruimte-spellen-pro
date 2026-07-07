@@ -3,7 +3,7 @@ import { SFX, initAudio } from '../sound.js';
 import { Voice } from '../voice.js';
 import { startMusic, muziekVoorTerrein } from '../music.js';
 import { confettiBurst, showReward } from '../reward.js';
-import { addStars, getStars, markLevelDone, setAdventureCurrent, getAdventureCurrent, heeftGoudenNul, markGoudenNul, telGoudenNullen, getSetting } from '../progress.js';
+import { addStars, getStars, markLevelDone, setAdventureCurrent, getAdventureCurrent, heeftGoudenNul, markGoudenNul, telGoudenNullen, getSetting, getLevelRecord } from '../progress.js';
 import { sig, lighten, darker } from '../adventure/palette.js';
 import BuildOverlay from '../adventure/BuildOverlay.js';
 import { drawCubeStack, addNumberDisc, addFeet, makeSleepingFriend, drawAwakeFriendInto } from '../adventure/art.js';
@@ -12,6 +12,7 @@ import { drawGrommelArt, recolorGrommelArt } from '../adventure/enemyArt.js';
 import { bossLook } from '../adventure/bossRegistry.js';
 import { SYSTEMS } from '../adventure/systems/index.js';
 import { GIANT_MIN } from '../adventure/systems/grootte.js';
+import { tekenHoedje } from '../adventure/hoedjes.js';
 import { drawTopping } from '../adventure/systems/bakkerij.js';
 import { tekenPot } from '../adventure/systems/spoelpotten.js';
 import { tekenGetalBel } from '../adventure/systems/duikboot.js';
@@ -1120,7 +1121,10 @@ export default class AdventureScene extends Phaser.Scene {
     // Eén is rood; groeien houdt de rode identiteit.
     const { top, totalH } = drawCubeStack(this, art, v, { w, cell, color: sig(1) });
     addFeet(this, art, darker(sig(1), 40), w, totalH);
-    addNumberDisc(this, art, v, top - 9 * f, 13 * f, `${Math.round(17 * f)}px`);
+    // het verdiende hoedje (🎩-kiezer op de kaart) — de getallen-schijf
+    // schuift dan iets omhoog zodat hij boven het hoedje zweeft
+    const heeftHoedje = tekenHoedje(this, art, getSetting('hoedje'), top, f);
+    addNumberDisc(this, art, v, top - (heeftHoedje ? 28 : 9) * f, 13 * f, `${Math.round(17 * f)}px`);
 
     const body = this.player.body;
     const oldBottom = body ? (this.player.y - body.height / 2 + body.height) : null;
@@ -1730,6 +1734,13 @@ export default class AdventureScene extends Phaser.Scene {
       this.tweens.add({ targets: this.nul.lijf, angle: 360, duration: 550, repeat: 2 });
     }
 
+    // EERLIJKE 5 STERREN: baas-/slotlevels beloven 'stars: 5' in hun reward
+    // maar kregen max 3 uitgekeerd (dode data). Nu: eenmalig +2 bonus bij de
+    // eerste keer uitspelen — meer sterren = meer sticker-pakjes.
+    const eersteKeer = !((getLevelRecord(L.id) || {}).done);
+    const bonus = eersteKeer && R.stars === 5 ? 2 : 0;
+    if (bonus) addStars(bonus);
+
     // Voortgang vastleggen: gehaald, ster en beste sterren-score.
     markLevelDone(L.id, { ...(heeftSter ? { star: true } : {}), sterren: verdiend });
     if (hasNext) setAdventureCurrent(LEVELS[this.levelIndex + 1].id);
@@ -1752,7 +1763,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.time.delayedCall(telKlaar + 520, () => {
       showReward(this, {
         title: R.title || 'Level gehaald! 🏆',
-        subtitle: R.subtitle || 'Goed gedaan!',
+        subtitle: (R.subtitle || 'Goed gedaan!') + (bonus ? '\n⭐⭐ +2 bonus-sterren!' : ''),
         stars: verdiend,
         sterrenVan3: verdiend, // toont de 3 slots: wat heb je (nog niet) verdiend
         medal: R.medal, medalLabel: R.medalLabel,

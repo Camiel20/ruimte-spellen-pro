@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { SFX } from '../sound.js';
-import { getLevelRecord, getLevelSterren, getAdventureCurrent, getStars, telGoudenNullen, getSetting } from '../progress.js';
+import { getLevelRecord, getLevelSterren, getAdventureCurrent, getStars, telGoudenNullen, getSetting, setSetting } from '../progress.js';
+import { HOEDJES, isHoedjeVrij, tekenHoedje } from '../adventure/hoedjes.js';
+import { Voice } from '../voice.js';
 import { sig } from '../adventure/palette.js';
 import { WORLDS } from '../levels/index.js';
 
@@ -166,7 +168,9 @@ export default class WorldMapScene extends Phaser.Scene {
     const curId = this.currentId();
     this.entries.forEach((e) => {
       if (e.type === 'header') {
-        this.add.text(this.scale.width / 2, e.y, e.world.naam, {
+        // hele wereld perfect (alle levels 3/3)? Dan pronkt er een kroontje!
+        const perfect = e.world.levels.every((l) => getLevelSterren(l.id) === 3);
+        this.add.text(this.scale.width / 2, e.y, perfect ? `👑 ${e.world.naam}` : e.world.naam, {
           fontFamily: 'Arial Black, Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffffff',
         }).setOrigin(0.5).setStroke('#1f2d3a', 6).setDepth(5);
         // Wereld-poort: nog niet genoeg sterren (of Gouden Nullen)? Toon het.
@@ -222,6 +226,15 @@ export default class WorldMapScene extends Phaser.Scene {
       lock.lineStyle(3.5, 0x5b6168, 1); lock.beginPath(); lock.arc(0, 8, 7, Math.PI, 2 * Math.PI); lock.strokePath();
       c.add(lock);
     } else if (done) {
+      // PERFECT (3/3 sterren)? Gouden rand + glinster — de kroontjes-jacht!
+      if (getLevelSterren(id) === 3) {
+        const goud = this.add.graphics();
+        goud.lineStyle(4, 0xf6c624, 1); goud.strokeRoundedRect(-s / 2 - 5, -s / 2 - 5, s + 10, s + 10, 14);
+        goud.fillStyle(0xffe16b, 1);
+        goud.fillCircle(-s / 2 - 2, -s / 2 - 2, 3);
+        c.add(goud);
+        this.tweens.add({ targets: goud, alpha: 0.55, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      }
       // ✔-stempel + drie sterren-slots eronder (vol = verdiend, grijs = nog
       // te halen → reden om het level opnieuw te spelen!)
       const st = this.add.graphics();
@@ -312,6 +325,83 @@ export default class WorldMapScene extends Phaser.Scene {
       .setScrollFactor(0).setDepth(52).setInteractive({ useHandCursor: true });
     vhit.on('pointerdown', () => { SFX.click(); this.scene.start('Village'); });
     this.tweens.add({ targets: vt, angle: 6, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // Hoedjes-knop (rechtsonder): kies het hoedje dat je hebt verdiend!
+    const hg = this.add.graphics().setScrollFactor(0).setDepth(50);
+    hg.fillStyle(0x000000, 0.25); hg.fillRoundedRect(W - 79, by - bh / 2 + 4, 58, 58, 16);
+    hg.fillStyle(0x9b6dd6, 1); hg.fillRoundedRect(W - 82, by - bh / 2, 58, 58, 16);
+    hg.lineStyle(4, 0x6a44a0, 1); hg.strokeRoundedRect(W - 82, by - bh / 2, 58, 58, 16);
+    const ht = this.add.text(W - 53, by, '🎩', { fontSize: '26px' }).setOrigin(0.5).setScrollFactor(0).setDepth(51);
+    const hhit = this.add.rectangle(W - 53, by, 66, 66, 0xffffff, 0.001)
+      .setScrollFactor(0).setDepth(52).setInteractive({ useHandCursor: true });
+    hhit.on('pointerdown', () => { SFX.click(); this.toonHoedjesPaneel(); });
+    this.tweens.add({ targets: ht, angle: -6, duration: 950, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  }
+
+  // Het hoedjes-paneel: een grid met alle hoedjes — verdiend = tikbaar
+  // (opzetten!), nog niet verdiend = silhouet met "?". Eerste tegel = geen
+  // hoedje. Kiezen sluit het paneel met een vrolijk jingle-tje.
+  toonHoedjesPaneel() {
+    if (this._hoedjesPaneel) return;
+    const W = this.scale.width, H = this.scale.height;
+    const paneel = this.add.container(0, 0).setScrollFactor(0).setDepth(120);
+    this._hoedjesPaneel = paneel;
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x16202b, 0.72).setInteractive();
+    paneel.add(dim);
+    const kaart = this.add.graphics();
+    kaart.fillStyle(0xfdf6ec, 1); kaart.fillRoundedRect(24, 90, W - 48, H - 240, 22);
+    kaart.lineStyle(5, 0x9b6dd6, 1); kaart.strokeRoundedRect(24, 90, W - 48, H - 240, 22);
+    paneel.add(kaart);
+    paneel.add(this.add.text(W / 2, 122, '🎩 Kies je hoedje', {
+      fontFamily: 'Arial Black, Arial', fontSize: '22px', fontStyle: 'bold', color: '#16202b',
+    }).setOrigin(0.5));
+
+    const sluit = () => { paneel.destroy(); this._hoedjesPaneel = null; };
+    const items = [{ id: null, naam: 'Geen hoedje' }, ...HOEDJES];
+    const KOL = 4, CEL = (W - 48 - 32) / KOL;
+    items.forEach((h, i) => {
+      const kol = i % KOL, rij = Math.floor(i / KOL);
+      const cx = 24 + 16 + kol * CEL + CEL / 2;
+      const cy = 176 + rij * (CEL + 10);
+      const vrij = h.id === null || isHoedjeVrij(h);
+      const gekozen = (getSetting('hoedje') || null) === h.id;
+      const tegel = this.add.container(cx, cy);
+      const tg = this.add.graphics();
+      tg.fillStyle(vrij ? 0xffffff : 0xd8dee5, 1); tg.fillRoundedRect(-CEL / 2 + 5, -CEL / 2 + 5, CEL - 10, CEL - 10, 12);
+      tg.lineStyle(3.5, gekozen ? 0x2fae4e : vrij ? 0x9b6dd6 : 0x9aa0a6, 1);
+      tg.strokeRoundedRect(-CEL / 2 + 5, -CEL / 2 + 5, CEL - 10, CEL - 10, 12);
+      tegel.add(tg);
+      if (h.id === null) {
+        tegel.add(this.add.text(0, 0, '✖', { fontFamily: 'Arial Black, Arial', fontSize: '24px', color: '#9aa0a6' }).setOrigin(0.5));
+      } else if (vrij) {
+        tekenHoedje(this, tegel, h.id, 12, 1.15);
+      } else {
+        tegel.add(this.add.text(0, 0, '?', { fontFamily: 'Arial Black, Arial', fontSize: '26px', fontStyle: 'bold', color: '#9aa0a6' }).setOrigin(0.5));
+      }
+      if (gekozen) tegel.add(this.add.text(CEL / 2 - 16, -CEL / 2 + 15, '✔', { fontFamily: 'Arial Black, Arial', fontSize: '16px', color: '#2fae4e' }).setOrigin(0.5));
+      paneel.add(tegel);
+      if (vrij) {
+        const hit2 = this.add.rectangle(cx, cy, CEL - 8, CEL - 8, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+        hit2.on('pointerdown', () => {
+          setSetting('hoedje', h.id);
+          SFX.sparkle(); Voice.cue('cheer'); // jingle — geen spraak (stem-spaarzaam)
+          sluit();
+        });
+        paneel.add(hit2);
+      }
+    });
+
+    // sluit-knop onderaan
+    const sg = this.add.graphics();
+    sg.fillStyle(0xe8402c, 1); sg.fillRoundedRect(W / 2 - 60, H - 190, 120, 46, 14);
+    sg.lineStyle(4, 0xb93227, 1); sg.strokeRoundedRect(W / 2 - 60, H - 190, 120, 46, 14);
+    paneel.add(sg);
+    paneel.add(this.add.text(W / 2, H - 167, 'Klaar', {
+      fontFamily: 'Arial Black, Arial', fontSize: '18px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5));
+    const sluitHit = this.add.rectangle(W / 2, H - 167, 130, 54, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    sluitHit.on('pointerdown', () => { SFX.click(); sluit(); });
+    paneel.add(sluitHit);
   }
 
   enableScroll(contentH, H) {
