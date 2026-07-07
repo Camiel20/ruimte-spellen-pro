@@ -13,9 +13,13 @@ import { getSetting } from '../progress.js';
 import { sig, darker } from '../adventure/palette.js';
 import { drawCubeStack, addNumberDisc, addFeet } from '../adventure/art.js';
 import { ROSTER } from '../adventure/roster.js';
+import { bossLook } from '../adventure/bossRegistry.js';
 
 export default class FeestScene extends Phaser.Scene {
   constructor() { super('Feest'); }
+
+  // slot: true = HET GROTE SLOTFEEST (na 12-5) — alle bekeerde bazen dansen mee!
+  init(data) { this.slot = !!(data && data.slot); }
 
   create() {
     initAudio();
@@ -30,10 +34,12 @@ export default class FeestScene extends Phaser.Scene {
     zon.fillStyle(0xfff3b0, 0.4); zon.fillCircle(W - 70, 90, 52);
     zon.fillStyle(0xffe16b, 1); zon.fillCircle(W - 70, 90, 32);
 
-    this.add.text(W / 2, 90, 'EINDE!', {
-      fontFamily: 'Arial Black, Arial', fontSize: '52px', fontStyle: 'bold', color: '#ffffff',
+    // Na 6-2 is het verhaal-deel gered (maar het spel nog lang niet uit —
+    // "EINDE!" was hier misleidend); na 12-5 is ALLES gered: het slotfeest.
+    this.add.text(W / 2, 90, this.slot ? '👑 ALLES GERED! 👑' : 'HOERA!', {
+      fontFamily: 'Arial Black, Arial', fontSize: this.slot ? '34px' : '52px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5).setStroke('#e8402c', 12);
-    this.add.text(W / 2, 148, 'Getallen-Land is gered! 🎉', {
+    this.add.text(W / 2, 148, this.slot ? 'Alle twaalf de landen dansen mee! 🎉' : 'Getallen-Land is gered! 🎉', {
       fontFamily: 'Arial Black, Arial', fontSize: '20px', fontStyle: 'bold', color: '#16202b',
     }).setOrigin(0.5).setStroke('#ffffff', 6);
 
@@ -71,6 +77,37 @@ export default class FeestScene extends Phaser.Scene {
     this.tweens.add({ targets: nul, angle: 360, duration: 1400, repeat: -1 });
     this.tweens.add({ targets: nul, x: W / 2 + 120, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
+    // HET SLOTFEEST: alle bekeerde bazen dansen mee in hun blije vorm —
+    // hun happy-art bestaat al in het baas-register. (De vaste Grauw
+    // hieronder wordt dan overgeslagen: hij staat mídden in de galerij.)
+    if (this.slot) {
+      const gasten = ['golf', 'boom', 'kristal', 'meteoor', 'kaas', 'grauw', 'drol', 'reus', 'bil', 'octopus', 'pan'];
+      gasten.forEach((lookNaam, i) => {
+        try {
+          const look = bossLook(lookNaam);
+          const rij = i < 6 ? 0 : 1;
+          const kol = rij === 0 ? i : i - 6;
+          const bx = (rij === 0 ? 50 : 90) + kol * 76;
+          const by = rij === 0 ? 600 : 710;
+          const c = look.draw(this, bx, by);
+          look.happy(this, c, { stages: [{ doel: 5 }] }); // mock-pz voor looks die 'm lezen
+          if (c.bubble) c.bubble.setVisible(false);
+          if (c.sprayWall) c.sprayWall.setVisible(false); // de golf-blokkade hoort bij het gevecht
+          c.setScale(0.4);
+          this.tweens.add({ targets: c, angle: i % 2 ? 5 : -5, duration: 480 + i * 40, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+        } catch (e) { /* een gast die niet past slaat de dans over */ }
+      });
+      this.add.text(W / 2, 775, `Gemaakt voor ${getSetting('childName') || 'jou'} 💙`, {
+        fontFamily: 'Arial Black, Arial', fontSize: '16px', fontStyle: 'bold', color: '#e8402c',
+      }).setOrigin(0.5).setStroke('#ffffff', 6);
+      confettiBurst(this, 300);
+      this.time.addEvent({ delay: 1500, loop: true, callback: () => confettiBurst(this, 300) });
+      SFX.win(); Voice.cue('cheer'); Voice.hint('woord-joepie', 800); // dít is een groot moment!
+      this.time.addEvent({ delay: 3400, loop: true, callback: () => Voice.cue('laugh') });
+      this.maakKaartKnop();
+      return;
+    }
+
     // Baron Grauw viert mee — paarse strepen, gouden knopen, grote lach
     const grauw = this.add.container(W / 2, 640);
     const gg = this.add.graphics();
@@ -103,7 +140,11 @@ export default class FeestScene extends Phaser.Scene {
     SFX.win(); Voice.cue('cheer');
     this.time.addEvent({ delay: 3400, loop: true, callback: () => Voice.cue('laugh') });
 
-    // terug naar de kaart (grote knop onderin... bovenin, het feest is vol)
+    this.maakKaartKnop();
+  }
+
+  // terug naar de kaart (grote knop bovenin, het feest is vol)
+  maakKaartKnop() {
     const knop = this.add.container(52, 40).setDepth(50);
     const kg = this.add.graphics();
     kg.fillStyle(0x38b6cf, 1); kg.fillCircle(0, 0, 30);

@@ -282,6 +282,7 @@ export const LEVEL_12_5 = {
   startDuw: true,
   startMega: true,
   intro: 'De Inkt-Octopus verspert de weg — versla hem met 10-maatjes! 🐙',
+  finale: 'slot', // het állerlaatste level: hierna het Grote Slotfeest!
 
   // De finale: een duikboot-aanloop (5 ❤ 5!) en dan de Inkt-Octopus: hij
   // toont steeds een getal — raak de bel die het tot 10 aanvult en een
@@ -329,7 +330,7 @@ export const LEVEL_12_5 = {
 
   reward: {
     title: 'DE BUBBEL-ZEE UITGESPEELD! 🏆🌊',
-    subtitle: 'Alle 10-maatjes gevonden — de octopus zwaait je blij uit!',
+    subtitle: 'Álle landen zijn gered — tijd voor het Grote Slotfeest!',
     stars: 5, medal: 'world12_done', medalLabel: 'Held van de Bubbel-Zee',
   },
 };

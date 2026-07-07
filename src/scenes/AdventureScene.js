@@ -1769,7 +1769,7 @@ export default class AdventureScene extends Phaser.Scene {
         medal: R.medal, medalLabel: R.medalLabel,
         buttonText: L.finale ? 'FEEST! 🎉' : hasNext ? 'Volgend level ▶' : 'Nog een keer! 🔄',
         onClose: () => {
-          if (L.finale) this.scene.start('Feest');
+          if (L.finale) this.scene.start('Feest', { slot: L.finale === 'slot' });
           else if (hasNext) this.scene.restart({ levelIndex: this.levelIndex + 1 });
           else this.scene.restart({ levelIndex: this.levelIndex });
         },
