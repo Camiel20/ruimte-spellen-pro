@@ -922,3 +922,31 @@ export function drawInktKlodder(scene, x, y) {
   scene.tweens.add({ targets: inner, angle: 360, duration: 900, repeat: -1 });
   return c;
 }
+
+// ===== ANTWOORD-SCHELP (Golf-Baas, stijl 'surf') =====
+// Zelfde contract als tekenGetalBel (container + .waarde/.spawnY/.taken +
+// bob-tween): een roze waaier-schelp met het getal erin — raak de schelp
+// met het aantal golven dat je telde.
+export function drawSchelpKeuze(scene, x, y, waarde) {
+  const c = scene.add.container(x, y).setDepth(6);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.12); g.fillEllipse(0, 26, 44, 8);
+  // waaier van de schelp
+  g.fillStyle(0xf2a7b8, 1);
+  g.slice(0, 12, 26, Math.PI, 0, false); g.fillPath();
+  g.fillStyle(0xf8cdd8, 0.9);
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI + (i + 0.5) * (Math.PI / 4);
+    g.fillTriangle(0, 12, Math.cos(a) * 25, 12 + Math.sin(a) * 25, Math.cos(a + 0.32) * 25, 12 + Math.sin(a + 0.32) * 25);
+  }
+  g.lineStyle(3, 0xd06a88, 1);
+  g.beginPath(); g.arc(0, 12, 26, Math.PI, 0); g.strokePath();
+  g.fillStyle(0xd06a88, 1); g.fillEllipse(0, 13, 14, 6); // het voetje
+  c.add(g);
+  c.add(scene.add.text(0, -2, `${waarde}`, {
+    fontFamily: 'Arial Black, Arial', fontSize: '19px', fontStyle: 'bold', color: '#8a3d55',
+  }).setOrigin(0.5));
+  scene.tweens.add({ targets: c, y: y - 9, duration: 950 + (waarde % 3) * 160, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  c.waarde = waarde; c.spawnY = y; c.taken = false;
+  return c;
+}

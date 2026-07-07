@@ -16,6 +16,7 @@ import {
   drawReusBoss, drawKei,
   drawBilBoss, happyBilBoss, drawStinkWolkje, drawZeepbel,
   drawOctopusBoss, happyOctopusBoss, drawInktKlodder,
+  drawSchelpKeuze,
 } from './enemyArt.js';
 import { sig } from './palette.js';
 
@@ -37,6 +38,7 @@ export const BOSS_LOOKS = {
     projectile: drawWaveMinion,
     speed: -175,
     waarschuwing: 'Pas op — een golf! Spring! 🌊',
+    keuzeArt: drawSchelpKeuze, // stijl 'surf': antwoord-schelpen i.p.v. bellen
   },
   // Boom-Grommel (W3): eikels.
   boom: {

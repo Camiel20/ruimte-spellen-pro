@@ -177,6 +177,13 @@ export function validateLevel(L) {
       } else if (stijl === 'beuk') {
         if (!S.doel || S.doel < 1) err(`baas-fase ${i + 1} (beuk): doel (zijn grootte-getal) ontbreekt`);
         if (i > 0 && S.doel >= B.stages[i - 1].doel) err(`baas-fase ${i + 1} (beuk): de baas moet KRIMPEN — doelen horen af te lopen`);
+      } else if (stijl === 'surf') {
+        if (!S.doel || S.doel < 2 || S.doel > 6) err(`baas-fase ${i + 1} (surf): doel moet 2-6 golven zijn (telbaar setje)`);
+        if (!Array.isArray(S.opties) || S.opties.length < 2) err(`baas-fase ${i + 1} (surf): minstens 2 schelpen nodig`);
+        else {
+          const goed = S.opties.filter((w) => w === S.doel).length;
+          if (goed !== 1) err(`baas-fase ${i + 1} (surf): ${goed} schelpen tonen ${S.doel} — er moet er precies één kloppen`);
+        }
       } else if (stijl === 'tien') {
         if (!S.doel || S.doel < 1 || S.doel > 9) err(`baas-fase ${i + 1} (tien): doel moet 1-9 zijn (het getoonde getal)`);
         if (!Array.isArray(S.opties) || S.opties.length < 2) err(`baas-fase ${i + 1} (tien): minstens 2 bellen nodig`);

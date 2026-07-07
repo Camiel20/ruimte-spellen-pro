@@ -135,6 +135,21 @@ describe('puzzellogica', () => {
     expect(validateLevel(zonderLand).some((e) => e.includes('geen grond'))).toBe(true);
   });
 
+  it('validateLevel: vangt een surf-baas zonder kloppende tel-schelp', () => {
+    const basis = {
+      id: 'x-surf', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      boss: { x: 1200, look: 'golf', stijl: 'surf', stages: [{ doel: 3, opties: [3, 2, 5] }] },
+      goal: { x: 1800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const kapot = { ...basis, boss: { ...basis.boss, stages: [{ doel: 3, opties: [2, 4, 5] }] } };
+    expect(validateLevel(kapot).some((e) => e.includes('precies één'))).toBe(true);
+    const teVeel = { ...basis, boss: { ...basis.boss, stages: [{ doel: 8, opties: [8, 2] }] } };
+    expect(validateLevel(teVeel).some((e) => e.includes('2-6'))).toBe(true);
+  });
+
   it('validateLevel: vangt een tien-baas zonder kloppend 10-maatje', () => {
     const basis = {
       id: 'x-tien', worldW: 2000, worldH: 800, killY: 720,

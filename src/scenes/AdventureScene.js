@@ -313,7 +313,7 @@ export default class AdventureScene extends Phaser.Scene {
       zone: new Phaser.Geom.Rectangle(B.x - 210, groundTop - 160, 190, 200),
       prompt: 'Versla de Baas!', bossBody: body, bossArt: art,
     };
-    art.bubbleText.setText(pz.stijl === 'tien' ? `${pz.doel}+?` : `${pz.doel}`);
+    art.bubbleText.setText(pz.stijl === 'tien' ? `${pz.doel}+?` : pz.stijl === 'surf' ? '?' : `${pz.doel}`);
     pz.onSolve = () => this.defeatBoss(pz);
     this.puzzles.push(pz);
   }
@@ -339,8 +339,10 @@ export default class AdventureScene extends Phaser.Scene {
     const actie = pz.stijl === 'vang' ? `vang er ${pz.doel}`
       : pz.stijl === 'spoel' ? `zoek de pot met ${pz.doel}`
       : pz.stijl === 'beuk' ? 'word een reus en RAM hem'
-      : pz.stijl === 'tien' ? `${pz.doel} + ? = 10` : `bouw de ${pz.doel}`;
+      : pz.stijl === 'tien' ? `${pz.doel} + ? = 10`
+      : pz.stijl === 'surf' ? 'tel de golven' : `bouw de ${pz.doel}`;
     if (pz.stijl === 'tien') c.bubbleText.setText(`${pz.doel}+?`);
+    if (pz.stijl === 'surf') c.bubbleText.setText('?'); // niet verklappen!
     this.questText.setText(`De Baas wankelt! Nog ${left}× — ${actie}!`);
     this.vierMijlpaal(pz.bossArt.x);
 
@@ -389,10 +391,11 @@ export default class AdventureScene extends Phaser.Scene {
 
   startBossFase(pz) {
     pz.faseActief = true;
-    Voice.number(pz.doel);
+    // bij 'surf' zou het getal het TEL-antwoord verklappen — dus stil
+    if (pz.stijl !== 'surf') Voice.number(pz.doel);
     // gesproken aanmoediging per stijl, netjes ná het getal
-    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien' };
-    Voice.hint(BAAS_CLIP[pz.stijl], 1100);
+    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf' };
+    Voice.hint(BAAS_CLIP[pz.stijl], pz.stijl === 'surf' ? 200 : 1100);
     if (pz.stijl === 'vang') {
       const look = bossLook(pz.look);
       this.questText.setText((look.vangTekst || 'Vang {n} toppings terug! 🍅').replace('{n}', pz.doel));
@@ -403,12 +406,18 @@ export default class AdventureScene extends Phaser.Scene {
       this.questText.setText(`${pz.doel} + ? = 10 — raak de goede bel! 💙`);
       pz.bossArt.bubbleText.setText(`${pz.doel}+?`);
       this.toonBossBellen(pz);
+    } else if (pz.stijl === 'surf') {
+      // TEL de golven: de baas stuurt een telbaar setje — geen antwoord tonen!
+      this.questText.setText('TEL de golven — daar komen ze! 🌊');
+      pz.bossArt.bubbleText.setText('?');
+      this.surfBurst(pz);
     } else {
       this.questText.setText(`Spring in de pot met ${pz.doel}! 🚽`);
       this.toonBossPotten(pz);
     }
     // de baas blijft gooien zolang de fase duurt — ontwijken én werken!
-    if (bossLook(pz.look).projectile && !pz.waveEvent) {
+    // (NIET bij 'surf': daar zijn de golven zélf de telbare puzzel.)
+    if (pz.stijl !== 'surf' && bossLook(pz.look).projectile && !pz.waveEvent) {
       pz.waveEvent = this.time.addEvent({
         delay: 2700, loop: true,
         callback: () => { if (!pz.solved && pz.faseActief && this.mode === 'explore') this.spawnBossWave(pz); },
@@ -469,11 +478,13 @@ export default class AdventureScene extends Phaser.Scene {
     });
   }
 
-  // De Inkt-Octopus toont zijn getal — drie zwevende bellen, raak de bel die
-  // het tot 10 aanvult (het "verliefde" 10-maatje) en een tentakel laat los.
+  // Keuze-uit-N voor bazen: zwevende getal-doelen vóór de arena. De look
+  // bepaalt het uiterlijk (lucht-bellen bij de Octopus, schelpen bij de
+  // Golf-Baas via keuzeArt); het goed-criterium zit in de stijl-branch.
   toonBossBellen(pz) {
     const stage = pz.stages[pz.stageIndex];
     const groundTop = this.level.platforms[0][1];
+    const maakKeuze = bossLook(pz.look).keuzeArt || tekenGetalBel;
     const opties = [...stage.opties];
     for (let k = opties.length - 1; k > 0; k--) {
       const j = Math.floor(Math.random() * (k + 1));
@@ -481,10 +492,29 @@ export default class AdventureScene extends Phaser.Scene {
     }
     pz.belSprites = opties.map((w, i) => {
       const hoog = i % 2 === 1;
-      const bel = tekenGetalBel(this, pz.bossArt.x - 560 + i * 170, hoog ? groundTop - 200 : groundTop - 70, w);
+      const bel = maakKeuze(this, pz.bossArt.x - 560 + i * 170, hoog ? groundTop - 200 : groundTop - 70, w);
       bel.setScale(0.2);
       this.tweens.add({ targets: bel, scale: 1, duration: 320, delay: i * 120, ease: 'Back.out' });
       return bel;
+    });
+  }
+
+  // De Golf-Baas stuurt een TELBAAR setje golven (spring eroverheen en tel
+  // mee!); daarna springen de antwoord-schelpen omhoog.
+  surfBurst(pz) {
+    const n = pz.doel;
+    this.tweens.add({ targets: pz.bossArt, angle: -6, duration: 140, yoyo: true, repeat: 2 });
+    for (let i = 0; i < n; i++) {
+      this.time.delayedCall(500 + i * 620, () => {
+        if (pz.solved || !pz.faseActief) return;
+        this.spawnBossWave(pz);
+        SFX.pop();
+      });
+    }
+    this.time.delayedCall(500 + n * 620 + 1200, () => {
+      if (pz.solved || !pz.faseActief) return;
+      this.questText.setText('Hoeveel golven waren dat? Raak de schelp! 🐚');
+      if (!pz.belSprites || !pz.belSprites.some((b) => b.active)) this.toonBossBellen(pz);
     });
   }
 
@@ -553,6 +583,42 @@ export default class AdventureScene extends Phaser.Scene {
               Voice.hint('baas-tien', 900);
             }
             this.time.delayedCall(2200, () => {
+              if (!bel.active || pz.solved) return;
+              bel.taken = false; bel.setScale(1).setAlpha(1); SFX.sparkle();
+            });
+          }
+          break;
+        }
+      } else if (pz.stijl === 'surf' && time > (pz.belCd || 0)) {
+        for (const bel of (pz.belSprites || [])) {
+          if (!bel.active || bel.taken) continue;
+          const dxB = Math.max(p.body.left - bel.x, 0, bel.x - p.body.right);
+          const dyB = Math.max(p.body.top - bel.y, 0, bel.y - p.body.bottom);
+          if (dxB * dxB + dyB * dyB > 50 * 50) continue;
+          pz.belCd = time + 900;
+          if (bel.waarde === pz.doel) {
+            // GOED GETELD! De Golf-Baas wankelt.
+            bel.taken = true;
+            SFX.correct(); Voice.number(bel.waarde);
+            this.burstStars(bel.x, bel.y, 8);
+            this.tweens.killTweensOf(bel);
+            this.tweens.add({ targets: bel, scale: 0, y: bel.y - 26, duration: 260, ease: 'Back.in', onComplete: () => bel.destroy() });
+            this.tweens.add({ targets: pz.bossArt, angle: { from: -7, to: 7 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => pz.bossArt.setAngle(0) });
+            this.advanceBossStage(pz);
+          } else {
+            // fout geteld → de golven rollen opnieuw: tel nog eens mee!
+            bel.taken = true;
+            SFX.oops(); Voice.cue('oops');
+            this.rekenFouten += 1;
+            this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 240, ease: 'Back.in' });
+            this.questText.setText('Hmm — kijk, ze komen nog een keer. Tel mee! 🌊');
+            pz.fouten = (pz.fouten || 0) + 1;
+            if (pz.fouten >= 2) {
+              const goed = (pz.belSprites || []).find((b) => b.active && b.waarde === pz.doel);
+              if (goed) this.pulsHulp(goed);
+            }
+            this.time.delayedCall(900, () => { if (!pz.solved && pz.faseActief) this.surfBurst(pz); });
+            this.time.delayedCall(2400, () => {
               if (!bel.active || pz.solved) return;
               bel.taken = false; bel.setScale(1).setAlpha(1); SFX.sparkle();
             });
