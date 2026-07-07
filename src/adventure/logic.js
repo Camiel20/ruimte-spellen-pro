@@ -177,6 +177,9 @@ export function validateLevel(L) {
       } else if (stijl === 'beuk') {
         if (!S.doel || S.doel < 1) err(`baas-fase ${i + 1} (beuk): doel (zijn grootte-getal) ontbreekt`);
         if (i > 0 && S.doel >= B.stages[i - 1].doel) err(`baas-fase ${i + 1} (beuk): de baas moet KRIMPEN — doelen horen af te lopen`);
+      } else if (stijl === 'stomp') {
+        if (!S.doel || S.doel % 10 !== 0) err(`baas-fase ${i + 1} (stomp): doel moet een tiental zijn`);
+        if (i > 0 && S.doel <= B.stages[i - 1].doel) err(`baas-fase ${i + 1} (stomp): de tientallen horen op te lopen`);
       } else if (stijl === 'splits') {
         if (!S.van || S.van < 2 || S.van > 20) err(`baas-fase ${i + 1} (splits): 'van' moet 2-20 zijn`);
         if (S.weg == null || S.weg < 1 || S.weg >= S.van) err(`baas-fase ${i + 1} (splits): 'weg' moet 1..van-1 zijn`);
@@ -211,6 +214,10 @@ export function validateLevel(L) {
     // Schudden kan alleen met de stamp-kracht.
     if (stijl === 'schud' && !L.startStamp && !(L.rescues || []).some((r) => r.gives === 'stamp')) {
       err('schud-baas zonder stamp-kracht in het level — de eikels vallen nooit');
+    }
+    // Op de kop springen lukt alleen met maan-zwaartekracht boven de arena.
+    if (stijl === 'stomp' && !(L.maanZones || []).some((Z) => B.x >= Z.x && B.x <= Z.x + Z.w)) {
+      err('stomp-baas zonder maan-zone over de arena — je komt nooit op zijn kop');
     }
     if (L.goal && L.goal.x < B.x) err('vlag staat vóór de baas — baas is te omzeilen');
   }

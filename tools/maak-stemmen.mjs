@@ -94,6 +94,7 @@ const CLIPS = {
   'baas-surf': ['baas-surf', 'Tel de golven!'],
   'baas-schud': ['baas-schud', 'Stamp, en raap de eikels!'],
   'baas-splits': ['baas-splits', 'Splits het getal!'],
+  'baas-stomp': ['baas-stomp', 'Spring op zijn kop!'],
   // mijlpalen
   'naar-de-vlag': ['naar-de-vlag', 'Naar de vlag!'],
   'gouden-nul': ['gouden-nul', 'Een gouden nul!'],

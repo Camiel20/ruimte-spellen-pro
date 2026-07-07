@@ -347,7 +347,8 @@ export default class AdventureScene extends Phaser.Scene {
       : pz.stijl === 'tien' ? `${pz.doel} + ? = 10`
       : pz.stijl === 'surf' ? 'tel de golven'
       : pz.stijl === 'schud' ? `stamp en raap er ${pz.doel}`
-      : pz.stijl === 'splits' ? 'splits het getal' : `bouw de ${pz.doel}`;
+      : pz.stijl === 'splits' ? 'splits het getal'
+      : pz.stijl === 'stomp' ? 'spring op zijn kop' : `bouw de ${pz.doel}`;
     if (pz.stijl === 'tien') c.bubbleText.setText(`${pz.doel}+?`);
     if (pz.stijl === 'surf') c.bubbleText.setText('?'); // niet verklappen!
     if (pz.stijl === 'splits') {
@@ -406,7 +407,7 @@ export default class AdventureScene extends Phaser.Scene {
     const stil = pz.stijl === 'surf' || pz.stijl === 'splits';
     if (!stil) Voice.number(pz.doel);
     // gesproken aanmoediging per stijl, netjes ná het getal
-    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud', splits: 'baas-splits' };
+    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud', splits: 'baas-splits', stomp: 'baas-stomp' };
     Voice.hint(BAAS_CLIP[pz.stijl], stil ? 200 : 1100);
     if (pz.stijl === 'vang') {
       const look = bossLook(pz.look);
@@ -432,6 +433,8 @@ export default class AdventureScene extends Phaser.Scene {
       this.questText.setText(`${st.van} = ${st.weg} + ? — raak het goede kristal! 💎`);
       pz.bossArt.bubbleText.setText(`${st.van}=${st.weg}+?`).setFontSize(14);
       this.toonBossBellen(pz);
+    } else if (pz.stijl === 'stomp') {
+      this.questText.setText('Zweef omhoog en spring ÓP zijn kop! 🌙');
     } else {
       this.questText.setText(`Spring in de pot met ${pz.doel}! 🚽`);
       this.toonBossPotten(pz);
@@ -668,6 +671,20 @@ export default class AdventureScene extends Phaser.Scene {
             });
           }
           break;
+        }
+      } else if (pz.stijl === 'stomp' && time > (pz.stompCd || 0)) {
+        // Mario-regel: land vallend óp zijn kop (met de maan-zweef kom je
+        // hoog genoeg) → hij duikt weg en het tiental telt op.
+        const b = pz.bossArt;
+        if (p.body.velocity.y > 60 && Math.abs(p.x - b.x) < 80
+          && p.body.bottom > b.y - 130 && p.body.bottom < b.y + 20) {
+          pz.stompCd = time + 900;
+          p.body.setVelocityY(-560); // stuiter!
+          SFX.stomp(); Voice.number(pz.doel);
+          this.cameraPunch(0.05, 8);
+          this.burstStars(b.x, b.y - 40, 10);
+          this.tweens.add({ targets: b, y: b.y + 26, duration: 130, yoyo: true, ease: 'Quad.out' });
+          this.advanceBossStage(pz);
         }
       } else if (pz.stijl === 'spoel' && time > (pz.potCd || 0)) {
         const onFloor = p.body.blocked.down || p.body.touching.down;

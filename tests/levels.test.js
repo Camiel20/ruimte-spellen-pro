@@ -135,6 +135,22 @@ describe('puzzellogica', () => {
     expect(validateLevel(zonderLand).some((e) => e.includes('geen grond'))).toBe(true);
   });
 
+  it('validateLevel: vangt een stomp-baas zonder maan-zone', () => {
+    const basis = {
+      id: 'x-stomp', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      maanZones: [{ x: 900, w: 600 }],
+      boss: { x: 1200, look: 'meteoor', stijl: 'stomp', stages: [{ doel: 10 }, { doel: 20 }] },
+      goal: { x: 1800, y: 588, value: 20 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const zonderZone = { ...basis, maanZones: [{ x: 100, w: 300 }] };
+    expect(validateLevel(zonderZone).some((e) => e.includes('maan-zone'))).toBe(true);
+    const geenTiental = { ...basis, boss: { ...basis.boss, stages: [{ doel: 12 }] } };
+    expect(validateLevel(geenTiental).some((e) => e.includes('tiental'))).toBe(true);
+  });
+
   it('validateLevel: vangt een splits-baas met een kloppend raadsel-gat', () => {
     const basis = {
       id: 'x-splits', worldW: 2000, worldH: 800, killY: 720,
