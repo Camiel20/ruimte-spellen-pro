@@ -286,11 +286,20 @@ meebeweegt; je loopt rond en helpt getallen-vriendjes.
   / `Voice.number(n)`: korte, vrolijke **Web Audio**-klankjes (welcome, number,
   cheer, great, laugh, oops, star, greet, jump, yawn, whee). Werkt overal
   hetzelfde, ook op iOS.
-- **Klaar voor echte stem:** wil je later ingesproken NL-fragmenten? Zet mp3/ogg
-  in `public/voice/` en registreer ze met `Voice.registerClip('cheer',
-  'voice/cheer.mp3')` (of `'number-5'` → `voice/vijf.mp3`). Bestaat er een clip
-  voor een cue, dan speelt die; anders de Web Audio-fallback. De game roept
-  alleen `Voice.cue(...)` aan en weet niets van de bron.
+- **ECHTE STEM AANWEZIG (2026-07-07):** 34 Nederlandse clips in `public/voice/`
+  (getallen 0-20, tientallen t/m 100, joepie/oeps/hoi/welkom/super), gegenereerd
+  met `node tools/maak-stemmen.mjs` (gratis Microsoft neural stem
+  nl-NL-FennaNeural via `msedge-tts`, devDependency; vrolijk gestemd met
+  pitch +18Hz / rate 1.08). `public/voice/manifest.json` wordt in `main.js`
+  geladen → `Voice.registerClip` per clip. Clips spelen via **Web
+  Audio-buffers** (fetch → decodeAudioData), NIET via `<audio>` — zo liften ze
+  mee op de bestaande iOS-ontgrendeling. Geen clip of nog niet geladen → de
+  oude Web Audio-jingle klinkt (geluid valt nooit stil). Jingle-cues
+  (laugh/whee/star/jump/pop/yawn) blijven bewust synthetisch. Andere stem/toon:
+  pas STEM/TOON aan in tools/maak-stemmen.mjs en draai opnieuw. ⚠️ Bij een
+  commerciële release clips opnieuw genereren met een gelicenseerde dienst
+  (Azure TTS/ElevenLabs); eigen opnames (pappa/mamma) kunnen er gewoon
+  overheen: zelfde bestandsnaam in public/voice/ = klaar.
 - **SFX** blijven in `sound.js` (`pick`, `place`, `sparkle`, `combine`, `yay`,
   `oops`, `giggle`, `split`, `step`). **Menu-muziek stopt** bij binnenkomst
   (`stopMusic()` in `create`).

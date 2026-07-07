@@ -174,8 +174,22 @@ export function validateLevel(L) {
           const goed = S.sommen.filter((o) => o[0] + o[1] === S.doel).length;
           if (goed !== 1) err(`baas-fase ${i + 1} (spoel): ${goed} sommen maken ${S.doel} — er moet er precies één kloppen`);
         }
+      } else if (stijl === 'beuk') {
+        if (!S.doel || S.doel < 1) err(`baas-fase ${i + 1} (beuk): doel (zijn grootte-getal) ontbreekt`);
+        if (i > 0 && S.doel >= B.stages[i - 1].doel) err(`baas-fase ${i + 1} (beuk): de baas moet KRIMPEN — doelen horen af te lopen`);
+      } else if (stijl === 'tien') {
+        if (!S.doel || S.doel < 1 || S.doel > 9) err(`baas-fase ${i + 1} (tien): doel moet 1-9 zijn (het getoonde getal)`);
+        if (!Array.isArray(S.opties) || S.opties.length < 2) err(`baas-fase ${i + 1} (tien): minstens 2 bellen nodig`);
+        else {
+          const goed = S.opties.filter((w) => w === 10 - S.doel).length;
+          if (goed !== 1) err(`baas-fase ${i + 1} (tien): ${goed} bellen maken ${S.doel} tot 10 — er moet er precies één kloppen`);
+        }
       } else err(`baas: onbekende stijl '${stijl}'`);
     });
+    // Beuken kan alleen als reus: zonder reuzenhap is de baas onverslaanbaar.
+    if (stijl === 'beuk' && !(L.reuzenhappen || []).length) {
+      err('beuk-baas zonder reuzenhap in het level — onverslaanbaar (je wordt nooit een reus)');
+    }
     if (L.goal && L.goal.x < B.x) err('vlag staat vóór de baas — baas is te omzeilen');
   }
 
@@ -336,6 +350,70 @@ export function validateLevel(L) {
     const land = L.platforms.some(([px, py, pw]) => py === groundTop && px <= R.landX && px + pw >= R.landX + 80);
     if (!land) err(`raket: de landingsplek (x=${R.landX}) heeft geen grond`);
   }
+
+  // Reuzenland (W10) — GROOT & KLEIN.
+  // Maat-fruit binnen de wereld.
+  ['reuzenhappen', 'krimpbessen', 'maatbloemen'].forEach((veld) => {
+    (L[veld] || []).forEach(([x, y], i) => {
+      if (x < 0 || x > L.worldW || y < 0 || y > L.worldH) err(`${veld} ${i + 1} ligt buiten de wereld`);
+    });
+  });
+  // Reuzenblokken: binnen de wereld, en er MOET een reuzenhap zijn (anders
+  // versper je jezelf de weg — je kunt zonder reus niet smashen).
+  if ((L.reuzenBlokken || []).length) {
+    if (!(L.reuzenhappen || []).length) err('reuzenblokken zonder een reuzenhap in het level — onpasseerbaar (je wordt nooit groot)');
+    L.reuzenBlokken.forEach(([x, y, w, h], i) => {
+      if (!w || !h || w < 0 || h < 0) err(`reuzenblok ${i + 1} mist een geldige breedte/hoogte`);
+      if (x < 0 || x + w > L.worldW) err(`reuzenblok ${i + 1} steekt buiten de wereld`);
+    });
+  }
+  // Lage tunnels: het plafond moet ergens boven de grond hangen (anders is er
+  // geen doorgang), en er MOET een krimpbes zijn om er klein doorheen te kruipen.
+  if ((L.lageTunnels || []).length) {
+    if (!(L.krimpbessen || []).length) err('lage tunnels zonder een krimpbes in het level — onpasseerbaar (je wordt nooit klein)');
+    L.lageTunnels.forEach(([x, ceilingY, w], i) => {
+      if (x < 0 || x + w > L.worldW) err(`lage tunnel ${i + 1} steekt buiten de wereld`);
+      if (ceilingY <= 0 || ceilingY >= groundTop) err(`lage tunnel ${i + 1}: plafond (y=${ceilingY}) moet boven de grond (${groundTop}) hangen`);
+      if (groundTop - ceilingY < 24) err(`lage tunnel ${i + 1}: de opening (${groundTop - ceilingY}px) is te laag — zelfs muizeklein pas je er niet door`);
+      const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= x && px + pw >= x + w);
+      if (!support) err(`lage tunnel ${i + 1}: geen doorlopende grond onder de tunnel om doorheen te kruipen`);
+    });
+  }
+
+  // Billenland (W11) — stuiter-billen binnen de wereld.
+  (L.bilTrampolines || []).forEach(([x, y], i) => {
+    if (x < 0 || x > L.worldW || y < 0 || y > L.worldH) err(`stuiter-bil ${i + 1} staat buiten de wereld`);
+  });
+  // Paren-borden (even/oneven): geldig getal + doorlopende grond vóór de muur
+  // (aanloop + de twee keuze-blokken), zoals bij de vraagmuren.
+  (L.parenBorden || []).forEach((P, i) => {
+    if (P.getal == null || P.getal < 2) err(`paren-bord ${i + 1}: getal moet minstens 2 zijn (anders valt er niets te paren)`);
+    if (P.getal > 12) err(`paren-bord ${i + 1}: getal ${P.getal} is te groot — de stipjes passen niet op het bord (max 12)`);
+    if (P.x < 0 || P.x > L.worldW) err(`paren-bord ${i + 1} staat buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= P.x - 220 && px + pw >= P.x);
+    if (!support) err(`paren-bord ${i + 1}: geen doorlopende grond vóór de muur (aanloop + blokken)`);
+  });
+
+  // Bubbel-Zee (W12) — zwem-zones binnen de wereld.
+  (L.zwemZones || []).forEach((Z, i) => {
+    if (Z.x < 0 || Z.x + Z.w > L.worldW) err(`zwem-zone ${i + 1} ligt buiten de wereld`);
+  });
+  // Duikboten (verliefde getallen): toon 1-9, precies één bel is het
+  // 10-maatje, en zowel de boot als de landingsplek staan op de grond.
+  (L.duikboten || []).forEach((D, i) => {
+    if (!D.toon || D.toon < 1 || D.toon > 9) err(`duikboot ${i + 1}: toon moet 1-9 zijn (de tank telt naar 10)`);
+    if (!Array.isArray(D.bellen) || D.bellen.length < 2) { err(`duikboot ${i + 1}: minstens 2 lucht-bellen nodig`); return; }
+    const goed = D.bellen.filter(([, , w]) => w === 10 - D.toon).length;
+    if (goed !== 1) err(`duikboot ${i + 1}: ${goed} bellen maken ${D.toon} tot 10 — er moet er precies één kloppen`);
+    D.bellen.forEach(([x, y], j) => {
+      if (x < 0 || x > L.worldW || y < 0 || y > L.worldH) err(`duikboot ${i + 1}, bel ${j + 1} zweeft buiten de wereld`);
+    });
+    if (D.landX <= D.x) err(`duikboot ${i + 1}: de landingsplek (x=${D.landX}) ligt niet vóórbij de boot (x=${D.x})`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= D.x && px + pw >= D.x);
+    if (!support) err(`duikboot ${i + 1} staat niet op de grond`);
+    const land = L.platforms.some(([px, py, pw]) => py === groundTop && px <= D.landX && px + pw >= D.landX + 80);
+    if (!land) err(`duikboot ${i + 1}: de landingsplek (x=${D.landX}) heeft geen grond`);
+  });
 
   // Portaal-groepen: precies één som klopt, en doorlopende grond onder de
   // hele groep (inclusief de terug- en vooruit-teleportplekken).

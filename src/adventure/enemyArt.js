@@ -707,3 +707,218 @@ export function drawWaveMinion(scene, x, y) {
   c.add(g);
   return c;
 }
+
+// ===== DE REUZEN-GROMMEL (Wereld 10, Reuzenland) =====
+// De klassieke Grommel-baas maar dan GIGANTISCH — hij krimpt per beuk-fase
+// (de scene tweent zijn schaal), dus alles is relatief getekend. Het anker
+// staat 105px boven de grond zodat de voeten op schaal 1.5 op de grond staan.
+export function drawReusBoss(scene, x, groundY) {
+  const c = drawBoss(scene, x, groundY);
+  scene.tweens.killTweensOf(c); // de standaard dein-tween hoort bij de oude y
+  c.setScale(1.5);
+  c.y = groundY - 105; // voeten op de grond bij schaal 1.5 (70 × 1.5)
+  c.grondY = groundY;  // de scene rekent hiermee de y bij elke krimp-fase uit
+  scene.tweens.add({ targets: c, y: c.y - 8, duration: 1500, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+  return c;
+}
+
+// Rollende kei (de aanval van de Reuzen-Grommel): grijze rotsbal met mos.
+export function drawKei(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const shadow = scene.add.graphics();
+  shadow.fillStyle(0x000000, 0.16); shadow.fillEllipse(0, 0, 34, 8);
+  c.add(shadow);
+  const inner = scene.add.container(0, -17);
+  const g = scene.add.graphics();
+  g.fillStyle(0x8a8274, 1); g.fillCircle(0, 0, 16);
+  g.fillStyle(0x6f6858, 1); g.fillEllipse(5, 5, 10, 7); g.fillEllipse(-7, -3, 7, 5);
+  g.fillStyle(0xa8a091, 0.8); g.fillEllipse(-5, -7, 8, 5); // glansje
+  g.fillStyle(0x4fae4a, 0.9); g.fillEllipse(8, -10, 8, 4); // plukje mos
+  g.lineStyle(2.5, 0x57503f, 1); g.strokeCircle(0, 0, 16);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: -360, duration: 700, repeat: -1 }); // rollen!
+  return c;
+}
+
+// ===== DE STINKE-BIL (Wereld 11, Billenland) =====
+// Een grote mopperende bil die NIET in bad wil — hij heeft alle zeepbellen
+// gestolen en gooit stinkwolkjes. Vang de zeepbellen terug en hij wordt
+// schoongeboend (en stiekem heel blij).
+export function drawBilBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 64).setDepth(7);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 68, 120, 20);
+  // twee grote bollen + spleet
+  g.fillStyle(0xd9a184, 1);
+  g.fillCircle(-30, 10, 46); g.fillCircle(30, 10, 46);
+  g.fillRect(-58, 16, 116, 44);
+  g.fillStyle(0xe8b89c, 0.75); g.fillEllipse(-36, -8, 34, 24); g.fillEllipse(24, -8, 34, 24);
+  g.lineStyle(4.5, 0xa8714f, 1);
+  g.beginPath(); g.moveTo(0, -30); g.lineTo(0, 52); g.strokePath();
+  g.lineStyle(4, 0xa8714f, 0.9); g.strokeCircle(-30, 10, 46); g.strokeCircle(30, 10, 46);
+  // vieze vegen + vliegjes-lijntjes (hij stinkt!)
+  g.fillStyle(0x8a7a4a, 0.45); g.fillEllipse(-40, 26, 22, 10); g.fillEllipse(38, 18, 18, 9);
+  g.lineStyle(2, 0x7a9d4a, 0.7);
+  g.beginPath(); g.arc(-54, -34, 8, 0, 1.5 * Math.PI); g.strokePath();
+  g.beginPath(); g.arc(56, -28, 6, 0.4, 1.9 * Math.PI); g.strokePath();
+  c.add(g);
+  c.bodyG = g;
+  // boos gezichtje op de linkerbol
+  const eL = scene.add.circle(-40, -2, 9, 0xffffff).setStrokeStyle(2.5, 0x333333);
+  const eR = scene.add.circle(-18, -2, 9, 0xffffff).setStrokeStyle(2.5, 0x333333);
+  const pL = scene.add.circle(-40, 0, 3.6, 0x222222), pR = scene.add.circle(-18, 0, 3.6, 0x222222);
+  const br = scene.add.graphics(); br.lineStyle(3.5, 0x6e4a2c, 1);
+  br.beginPath(); br.moveTo(-50, -16); br.lineTo(-32, -10); br.strokePath();
+  br.beginPath(); br.moveTo(-8, -10); br.lineTo(-26, -13); br.strokePath();
+  const m = scene.add.graphics(); m.lineStyle(3, 0x6e4a2c, 1);
+  m.beginPath(); m.arc(-29, 22, 9, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.brow = br; c.mouth = m;
+
+  const bub = scene.add.container(0, -104);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Schoongeboend en dolblij: roze-fris, blosjes, lach en zeepbelletjes.
+export function happyBilBoss(scene, c) {
+  c.bodyG.clear();
+  const g = c.bodyG;
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 68, 120, 20);
+  g.fillStyle(0xf2b8a0, 1);
+  g.fillCircle(-30, 10, 46); g.fillCircle(30, 10, 46);
+  g.fillRect(-58, 16, 116, 44);
+  g.fillStyle(0xf8cdb8, 0.85); g.fillEllipse(-36, -8, 34, 24); g.fillEllipse(24, -8, 34, 24);
+  g.lineStyle(4.5, 0xd08a70, 1);
+  g.beginPath(); g.moveTo(0, -30); g.lineTo(0, 52); g.strokePath();
+  g.lineStyle(4, 0xd08a70, 0.9); g.strokeCircle(-30, 10, 46); g.strokeCircle(30, 10, 46);
+  // blosjes + frisse zeepbelletjes
+  g.fillStyle(0xf08a8a, 0.6); g.fillEllipse(-48, 12, 18, 11); g.fillEllipse(48, 12, 18, 11);
+  g.lineStyle(2, 0xbfe8f5, 0.95);
+  g.strokeCircle(-56, -34, 8); g.strokeCircle(54, -26, 6); g.strokeCircle(40, -46, 5);
+  c.brow.clear();
+  c.mouth.clear(); c.mouth.lineStyle(3.5, 0x8a4a30, 1);
+  c.mouth.beginPath(); c.mouth.arc(-29, 14, 11, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+}
+
+// Stinkwolkje (projectiel van de Stinke-Bil): groen-grijs walm-wolkje.
+export function drawStinkWolkje(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const inner = scene.add.container(0, -16);
+  const g = scene.add.graphics();
+  g.fillStyle(0x9dbb6a, 0.85);
+  g.fillCircle(-9, 2, 10); g.fillCircle(6, -3, 12); g.fillCircle(12, 5, 8);
+  g.fillStyle(0x7a9d4a, 0.7); g.fillCircle(0, 6, 9);
+  g.lineStyle(2, 0x5d7a35, 0.8);
+  g.beginPath(); g.arc(-2, -12, 5, 0.3, 1.6 * Math.PI); g.strokePath();
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, scale: 1.15, duration: 260, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Zeepbel (vang-doel bij de Stinke-Bil): glinsterende bel met badeend-glans.
+export function drawZeepbel(scene, i) {
+  const g = scene.add.graphics();
+  g.fillStyle(0xd7f0fa, 0.35); g.fillCircle(0, 0, 15);
+  g.lineStyle(2.5, 0xbfe8f5, 1); g.strokeCircle(0, 0, 15);
+  g.fillStyle(0xffffff, 0.75); g.fillEllipse(-5, -6, 7, 4.5);
+  // om en om een klein badeendje of hartje ín de bel
+  if (i % 2 === 0) {
+    g.fillStyle(0xffe16b, 1); g.fillEllipse(1, 3, 11, 8); g.fillCircle(6, -2, 4.5);
+    g.fillStyle(0xf6a723, 1); g.fillTriangle(9, -2, 13, -1, 9, 1);
+    g.fillStyle(0x16202b, 1); g.fillCircle(7, -3, 1);
+  } else {
+    g.fillStyle(0xff6b9d, 0.95); g.fillCircle(-3, 1, 4); g.fillCircle(3, 1, 4);
+    g.fillTriangle(-6.4, 3, 6.4, 3, 0, 10);
+  }
+  return g;
+}
+
+// ===== DE INKT-OCTOPUS (Wereld 12, de Bubbel-Zee) =====
+// Een grote paarse octopus die de doorgang dichthoudt met zijn tentakels en
+// inkt-klodders schiet. Je peutert hem tentakel voor tentakel los met
+// 10-maatjes (verliefde getallen) — daarna wordt hij roze en dolblij.
+export function drawOctopusBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 72).setDepth(7);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 76, 130, 20);
+  // tentakels (golvend onderaan)
+  g.fillStyle(0x7a4ea0, 1);
+  for (let i = 0; i < 5; i++) {
+    const tx = -52 + i * 26;
+    g.fillRoundedRect(tx - 8, 26, 16, 44, 8);
+    g.fillCircle(tx, 70, 9);
+  }
+  // zuignapjes
+  g.fillStyle(0xb98ad0, 0.9);
+  for (let i = 0; i < 5; i++) { const tx = -52 + i * 26; g.fillCircle(tx, 48, 3.4); g.fillCircle(tx, 62, 3); }
+  // bolle kop
+  g.fillStyle(0x8a5eb0, 1); g.fillEllipse(0, -8, 116, 96);
+  g.fillStyle(0x9d74c2, 0.8); g.fillEllipse(-18, -28, 52, 34);
+  g.lineStyle(4, 0x5d3a80, 1); g.strokeEllipse(0, -8, 116, 96);
+  c.add(g);
+  c.bodyG = g;
+  // boze ogen + frons
+  const eL = scene.add.circle(-20, -14, 11, 0xffffff).setStrokeStyle(3, 0x333333);
+  const eR = scene.add.circle(20, -14, 11, 0xffffff).setStrokeStyle(3, 0x333333);
+  const pL = scene.add.circle(-20, -12, 4.4, 0x222222), pR = scene.add.circle(20, -12, 4.4, 0x222222);
+  const br = scene.add.graphics(); br.lineStyle(4, 0x3d2456, 1);
+  br.beginPath(); br.moveTo(-32, -30); br.lineTo(-10, -24); br.strokePath();
+  br.beginPath(); br.moveTo(32, -30); br.lineTo(10, -24); br.strokePath();
+  const m = scene.add.graphics(); m.lineStyle(3, 0x3d2456, 1);
+  m.beginPath(); m.arc(0, 16, 11, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.brow = br; c.mouth = m;
+
+  const bub = scene.add.container(0, -110);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-34, -24, 68, 44, 12); bg.strokeRoundedRect(-34, -24, 68, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '24px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 7, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Losgepeuterd en dolgelukkig: zacht roze, blosjes en hartjes-oogjes.
+export function happyOctopusBoss(scene, c) {
+  c.bodyG.clear();
+  const g = c.bodyG;
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 76, 130, 20);
+  g.fillStyle(0xe08ab8, 1);
+  for (let i = 0; i < 5; i++) {
+    const tx = -52 + i * 26;
+    g.fillRoundedRect(tx - 8, 26, 16, 44, 8);
+    g.fillCircle(tx, 70, 9);
+  }
+  g.fillStyle(0xf2a7cc, 0.9);
+  for (let i = 0; i < 5; i++) { const tx = -52 + i * 26; g.fillCircle(tx, 48, 3.4); g.fillCircle(tx, 62, 3); }
+  g.fillStyle(0xe89ac2, 1); g.fillEllipse(0, -8, 116, 96);
+  g.fillStyle(0xf2b8d6, 0.85); g.fillEllipse(-18, -28, 52, 34);
+  g.lineStyle(4, 0xb05a8a, 1); g.strokeEllipse(0, -8, 116, 96);
+  g.fillStyle(0xf08a8a, 0.6); g.fillEllipse(-40, 4, 18, 11); g.fillEllipse(40, 4, 18, 11); // blosjes
+  c.brow.clear();
+  c.mouth.clear(); c.mouth.lineStyle(3.5, 0x8a3d66, 1);
+  c.mouth.beginPath(); c.mouth.arc(0, 8, 13, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+}
+
+// Inkt-klodder (projectiel van de Inkt-Octopus): donkere spetter-bal.
+export function drawInktKlodder(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const inner = scene.add.container(0, -15);
+  const g = scene.add.graphics();
+  g.fillStyle(0x2d2440, 0.95); g.fillCircle(0, 0, 11);
+  g.fillCircle(-9, 4, 6); g.fillCircle(9, 3, 5); g.fillCircle(3, -9, 5);
+  g.fillStyle(0x4a3a68, 0.9); g.fillCircle(-3, -3, 4);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: 360, duration: 900, repeat: -1 });
+  return c;
+}

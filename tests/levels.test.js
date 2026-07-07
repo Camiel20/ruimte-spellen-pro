@@ -81,6 +81,73 @@ describe('puzzellogica', () => {
     expect(validateLevel(goed)).toEqual([]);
   });
 
+  it('validateLevel: vangt een beuk-baas die niet krimpt of geen reuzenhap heeft', () => {
+    const basis = {
+      id: 'x-beuk', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      reuzenhappen: [[600, 600]],
+      boss: { x: 1200, look: 'reus', stijl: 'beuk', stages: [{ doel: 9 }, { doel: 6 }, { doel: 3 }] },
+      goal: { x: 1800, y: 588, value: 3 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    // doelen moeten AFLOPEN (de baas krimpt per beuk)
+    const groeit = { ...basis, boss: { ...basis.boss, stages: [{ doel: 3 }, { doel: 6 }] } };
+    expect(validateLevel(groeit).some((e) => e.includes('KRIMPEN'))).toBe(true);
+    // zonder reuzenhap kun je nooit beuken
+    const zonderHap = { ...basis, reuzenhappen: [] };
+    expect(validateLevel(zonderHap).some((e) => e.includes('onverslaanbaar'))).toBe(true);
+  });
+
+  it('validateLevel: vangt een kapot paren-bord (te klein of te groot getal)', () => {
+    const basis = {
+      id: 'x-paren', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      parenBorden: [{ x: 900, getal: 6 }],
+      goal: { x: 1800, y: 588, value: 3 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const teKlein = { ...basis, parenBorden: [{ x: 900, getal: 1 }] };
+    expect(validateLevel(teKlein).some((e) => e.includes('minstens 2'))).toBe(true);
+    const teGroot = { ...basis, parenBorden: [{ x: 900, getal: 15 }] };
+    expect(validateLevel(teGroot).some((e) => e.includes('te groot'))).toBe(true);
+    // geen aanloop-grond vóór de muur (muur op de rand van een platform)
+    const zonderGrond = { ...basis, platforms: [[0, 660, 950, 140], [1050, 660, 950, 140]], parenBorden: [{ x: 1100, getal: 6 }] };
+    expect(validateLevel(zonderGrond).some((e) => e.includes('doorlopende grond'))).toBe(true);
+  });
+
+  it('validateLevel: vangt een kapotte duikboot (geen of te veel 10-maatjes)', () => {
+    const basis = {
+      id: 'x-duik', worldW: 3000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 1200, 140], [1800, 660, 1200, 140]],
+      water: [[1200, 690, 600, 110]],
+      duikboten: [{ x: 1000, landX: 1960, toon: 7, bellen: [[500, 480, 3], [650, 400, 5]] }],
+      goal: { x: 2800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    // geen enkel 10-maatje tussen de bellen → onoplosbaar
+    const zonderMaatje = { ...basis, duikboten: [{ ...basis.duikboten[0], bellen: [[500, 480, 4], [650, 400, 5]] }] };
+    expect(validateLevel(zonderMaatje).some((e) => e.includes('precies één'))).toBe(true);
+    // landingsplek zonder grond
+    const zonderLand = { ...basis, duikboten: [{ ...basis.duikboten[0], landX: 1400 }] };
+    expect(validateLevel(zonderLand).some((e) => e.includes('geen grond'))).toBe(true);
+  });
+
+  it('validateLevel: vangt een tien-baas zonder kloppend 10-maatje', () => {
+    const basis = {
+      id: 'x-tien', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      boss: { x: 1200, look: 'octopus', stijl: 'tien', stages: [{ doel: 6, opties: [4, 2, 7] }] },
+      goal: { x: 1800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const kapot = { ...basis, boss: { ...basis.boss, stages: [{ doel: 6, opties: [2, 7, 9] }] } };
+    expect(validateLevel(kapot).some((e) => e.includes('precies één'))).toBe(true);
+  });
+
   it('validateLevel: vangt een onoplosbare brug (samen te weinig)', () => {
     const kapot = {
       id: 'x-1', worldW: 1000, worldH: 800, killY: 720,

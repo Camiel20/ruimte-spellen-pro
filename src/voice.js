@@ -18,7 +18,20 @@
 
 import { getAudioContext, isSoundOn } from './sound.js';
 
-const clips = {}; // naam -> HTMLAudioElement (toekomstige echte stemmen)
+// naam -> { url, raw: ArrayBuffer, buffer: AudioBuffer } — échte stemclips.
+// Ze spelen via Web Audio (niet via <audio>): zo liften ze mee op de bestaande
+// iOS-ontgrendeling van de AudioContext (eerste tik) en klinken ze overal.
+const clips = {};
+
+function speelClip(c) {
+  const ctx = getAudioContext(); if (!ctx || !c.buffer) return false;
+  const src = ctx.createBufferSource();
+  src.buffer = c.buffer;
+  const g = ctx.createGain(); g.gain.value = 0.95;
+  src.connect(g); g.connect(ctx.destination);
+  src.start();
+  return true;
+}
 
 function note(freq, t0, dur, { type = 'sine', vol = 0.18, glide = null } = {}) {
   const ctx = getAudioContext(); if (!ctx) return;
@@ -63,17 +76,39 @@ const CUES = {
 };
 
 export const Voice = {
-  // Registreer (later) een echt stemfragment voor een cue. naam bv. 'cheer'
-  // of 'number-5'. url is een pad onder public/, bv. 'voice/vijf.mp3'.
-  registerClip(name, url) { try { const el = new Audio(url); el.preload = 'auto'; clips[name] = el; } catch (e) {} },
+  // Registreer een echt stemfragment voor een cue. naam bv. 'cheer' of
+  // 'number-5'. url is een pad onder public/, bv. 'voice/vijf.mp3'.
+  // De mp3 wordt alvast opgehaald; decoderen gebeurt (lazy) zodra de
+  // AudioContext bestaat — die ontstaat pas na de eerste tik (iOS).
+  registerClip(name, url) {
+    const c = { url, raw: null, buffer: null, decoding: false };
+    clips[name] = c;
+    fetch(url)
+      .then((r) => (r.ok ? r.arrayBuffer() : null))
+      .then((ab) => { c.raw = ab; })
+      .catch(() => {});
+  },
   hasClip(name) { return !!clips[name]; },
 
-  // Speel een cue. Echte clip heeft voorrang; anders Web Audio-fallback.
+  // Speel een cue. Echte clip heeft voorrang; anders Web Audio-fallback
+  // (ook zolang een clip nog laadt/decodeert — er is dus altijd geluid).
   cue(name, data) {
     if (!isSoundOn()) return;
+    const ctx = getAudioContext();
     const clipKey = (name === 'number' && data != null) ? `number-${data}` : name;
-    if (clips[clipKey]) { try { const el = clips[clipKey].cloneNode(); el.play(); return; } catch (e) {} }
-    const ctx = getAudioContext(); if (!ctx) return;
+    const c = clips[clipKey];
+    if (c && ctx) {
+      if (c.buffer) { speelClip(c); return; }
+      if (c.raw && !c.decoding) {
+        c.decoding = true;
+        // slice(0): sommige browsers consumeren de ArrayBuffer bij het decoderen
+        ctx.decodeAudioData(c.raw.slice(0))
+          .then((buf) => { c.buffer = buf; speelClip(c); })
+          .catch(() => { c.decoding = false; });
+        return;
+      }
+    }
+    if (!ctx) return;
     const fn = CUES[name]; if (!fn) return;
     fn(ctx.currentTime + 0.01, data);
   },

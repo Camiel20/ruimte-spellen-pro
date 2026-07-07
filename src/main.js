@@ -21,6 +21,7 @@ import StatsScene from './scenes/StatsScene.js';
 import StickerScene from './scenes/StickerScene.js';
 import TovenScene from './scenes/TovenScene.js';
 import { installTracking } from './stats.js';
+import { Voice } from './voice.js';
 
 // Het hele spel wordt hier opgebouwd. Elk spel is een aparte "Scene"
 // in de map src/scenes/. Nieuwe spellen voeg je toe door een nieuwe
@@ -55,6 +56,15 @@ const config = {
 
 const game = new Phaser.Game(config);
 installTracking(game);
+
+// Echte stemclips (public/voice/, gegenereerd met tools/maak-stemmen.mjs):
+// het manifest vertelt welke er zijn; Voice speelt ze i.p.v. de piepjes.
+// Faalt dit (bv. offline vóór de allereerste cache), dan blijven de
+// Web Audio-piepjes gewoon werken — geluid valt nooit stil.
+fetch('voice/manifest.json')
+  .then((r) => (r.ok ? r.json() : null))
+  .then((m) => { if (m) Object.entries(m).forEach(([naam, bestand]) => Voice.registerClip(naam, `voice/${bestand}`)); })
+  .catch(() => {});
 
 // Alleen tijdens ontwikkelen: game-instance beschikbaar maken voor debuggen/
 // preview (bv. window.__game.scene.start('Adventure')). Weggelaten in de

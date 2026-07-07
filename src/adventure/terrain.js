@@ -231,6 +231,160 @@ export function buildBackground(scene, L) {
     return;
   }
 
+  if (L.terrain === 'reus') {
+    // REUZENLAND (Wereld 10): een frisse groene wereld waarin ALLES gigantisch
+    // is — reuzenpaddenstoelen en manshoge bloemen in de verte, dikke bolle
+    // wolken en een grote vrolijke zon. Jij bent hier maar klein… tot je hapt.
+    const zon = scene.add.container(scene.scale.width - 70, 88).setDepth(-28).setScrollFactor(0.22);
+    const zg = scene.add.circle(0, 0, 60, 0xfff3b0, 0.4);
+    zon.add([zg, scene.add.circle(0, 0, 36, 0xffe16b)]);
+    scene.tweens.add({ targets: zg, scale: 1.16, alpha: 0.55, duration: 1900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // reuzenpaddenstoelen + manshoge bloemen in de verte (parallax)
+    const verte = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    const vb = scene.scale.height - 130;
+    [[70, 1.5], [250, 1.0], [420, 1.7], [560, 1.1]].forEach(([px, sc]) => {
+      // dikke steel
+      verte.fillStyle(0xf3ead2, 0.95);
+      verte.fillRoundedRect(px - 13 * sc, vb - 120 * sc, 26 * sc, 120 * sc, 10 * sc);
+      // rode hoed met stippen
+      verte.fillStyle(0xe8402c, 0.95);
+      verte.fillEllipse(px, vb - 120 * sc, 92 * sc, 54 * sc);
+      verte.fillStyle(0xd0331f, 0.95);
+      verte.fillRect(px - 46 * sc, vb - 120 * sc, 92 * sc, 10 * sc);
+      verte.fillStyle(0xffffff, 0.9);
+      [[-24, -128], [10, -134], [30, -120], [-6, -118]].forEach(([dx, dy]) => verte.fillCircle(px + dx * sc, vb + dy * sc, 7 * sc));
+    });
+    // reuzenbloemen tussen de paddenstoelen
+    [[160, 1.1], [350, 1.4], [500, 0.9]].forEach(([px, sc]) => {
+      verte.fillStyle(0x4fae4a, 0.9); verte.fillRect(px - 4 * sc, vb - 96 * sc, 8 * sc, 96 * sc);
+      verte.fillStyle(0xffcf3f, 0.95);
+      for (let a = 0; a < 8; a++) { const ang = (a / 8) * Math.PI * 2; verte.fillEllipse(px + Math.cos(ang) * 22 * sc, vb - 96 * sc + Math.sin(ang) * 22 * sc, 15 * sc, 11 * sc); }
+      verte.fillStyle(0xe8912c, 1); verte.fillCircle(px, vb - 96 * sc, 13 * sc);
+    });
+
+    scene.clouds = [];
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(60, 240);
+      const s = Phaser.Math.FloatBetween(0.9, 1.5);
+      const c = scene.add.container(x, y).setDepth(-26).setScale(s).setScrollFactor(0.5);
+      const g = scene.add.graphics();
+      g.fillStyle(0xffffff, 0.95);
+      [[-30, 6, 20], [-6, -10, 28], [20, -2, 24], [42, 8, 16], [6, 12, 30]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 10);
+      scene.clouds.push(c);
+    }
+    const heuvels = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    heuvels.fillStyle(darker(L.bg.bottom, 18), 0.7);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) heuvels.fillCircle(x, scene.scale.height, 160);
+    return;
+  }
+
+  if (L.terrain === 'zee') {
+    // DE BUBBEL-ZEE (Wereld 12): we zijn ÓNDER water. Lichtstralen zakken
+    // van boven naar beneden, bubbels stijgen op, en in de verte zwemmen
+    // vissen-silhouetten langs koraal-torens. Geen zon — wel een waterlijn
+    // met glinstering bovenin.
+    const licht = scene.add.graphics().setDepth(-28).setScrollFactor(0.15);
+    licht.fillStyle(0xbfe8f5, 0.12);
+    [[60, 90], [220, 130], [420, 70], [560, 110]].forEach(([lx, lw]) => {
+      licht.fillTriangle(lx, 0, lx + lw, 0, lx + lw * 2.2, scene.scale.height);
+    });
+    scene.tweens.add({ targets: licht, alpha: 0.55, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    // glinsterende waterlijn bovenin
+    const lijn = scene.add.graphics().setDepth(-27).setScrollFactor(0.2);
+    lijn.fillStyle(0xd7f0fa, 0.35);
+    for (let x = -40; x < scene.scale.width + 60; x += 46) lijn.fillEllipse(x, 26, 34, 8);
+
+    // verre koraal-torens + wuivend zeewier
+    const verte = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    const vb = scene.scale.height - 140;
+    [[80, 1.2, 0xe07a9a], [260, 0.9, 0xf0a24d], [450, 1.4, 0xb96ad0]].forEach(([kx, sc, col]) => {
+      verte.fillStyle(col, 0.75);
+      verte.fillRoundedRect(kx - 10 * sc, vb - 120 * sc, 20 * sc, 120 * sc, 8 * sc);
+      verte.fillRoundedRect(kx - 34 * sc, vb - 80 * sc, 16 * sc, 80 * sc, 7 * sc);
+      verte.fillRoundedRect(kx + 20 * sc, vb - 95 * sc, 17 * sc, 95 * sc, 7 * sc);
+      verte.fillCircle(kx, vb - 124 * sc, 12 * sc); verte.fillCircle(kx - 26 * sc, vb - 82 * sc, 9 * sc); verte.fillCircle(kx + 28 * sc, vb - 98 * sc, 10 * sc);
+    });
+    // vissen-silhouetten
+    verte.fillStyle(0x2e5f7a, 0.55);
+    [[150, 180, 1], [340, 240, -1], [520, 150, 1], [240, 320, -1]].forEach(([fx, fy, dir]) => {
+      verte.fillEllipse(fx, fy, 26, 12);
+      verte.fillTriangle(fx - dir * 13, fy, fx - dir * 24, fy - 8, fx - dir * 24, fy + 8);
+    });
+
+    // opstijgende bubbels als "wolken" (driften omhoog i.p.v. opzij)
+    scene.clouds = [];
+    for (let i = 0; i < 8; i++) {
+      const x = (i / 8) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(100, 500);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5).setAlpha(0.7);
+      const g = scene.add.graphics();
+      g.lineStyle(2, 0xbfe8f5, 0.9);
+      g.strokeCircle(0, 0, 10); g.strokeCircle(16, -14, 6); g.strokeCircle(-12, -20, 4);
+      g.fillStyle(0xffffff, 0.4); g.fillCircle(-3, -3, 3);
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 9);
+      scene.clouds.push(c);
+    }
+    const heuvels = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    heuvels.fillStyle(darker(L.bg.bottom, 18), 0.7);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) heuvels.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
+  if (L.terrain === 'billen') {
+    // BILLENLAND (Wereld 11): een zacht-roze giechel-wereld. In de verte
+    // grote billen-heuvels (dubbel-bollen met blosjes) en zwevende
+    // zeepbellen — want de Stinke-Bil moet nodig in bad. Gek en knuffelbaar,
+    // net als Wc-Wonderland.
+    const zon = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
+    const zg = scene.add.circle(0, 0, 54, 0xfff3b0, 0.4);
+    zon.add([zg, scene.add.circle(0, 0, 32, 0xffe16b)]);
+    scene.tweens.add({ targets: zg, scale: 1.18, alpha: 0.55, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    const verte = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    const vb = scene.scale.height - 140;
+    // billen-heuvels: twee bollen naast elkaar met een spleet en blosjes
+    [[100, 1.4], [300, 1.0], [470, 1.25]].forEach(([hx, sc]) => {
+      verte.fillStyle(0xf2b8a0, 0.95);
+      verte.fillCircle(hx - 34 * sc, vb - 40 * sc, 52 * sc);
+      verte.fillCircle(hx + 34 * sc, vb - 40 * sc, 52 * sc);
+      verte.fillRect(hx - 60 * sc, vb - 30 * sc, 120 * sc, 32 * sc);
+      verte.lineStyle(3 * sc, 0xd08a70, 0.9);
+      verte.beginPath(); verte.moveTo(hx, vb - 78 * sc); verte.lineTo(hx, vb - 12 * sc); verte.strokePath();
+      // blosjes op beide bollen
+      verte.fillStyle(0xf08a8a, 0.55);
+      verte.fillEllipse(hx - 40 * sc, vb - 44 * sc, 20 * sc, 12 * sc);
+      verte.fillEllipse(hx + 40 * sc, vb - 44 * sc, 20 * sc, 12 * sc);
+    });
+    // zwevende zeepbellen (het bad wacht!)
+    for (let i = 0; i < 6; i++) {
+      const bx = 60 + i * 90, by = 150 + (i % 3) * 60;
+      verte.lineStyle(2, 0xbfe8f5, 0.8); verte.strokeCircle(bx, by, 9 + (i % 3) * 4);
+      verte.fillStyle(0xffffff, 0.5); verte.fillCircle(bx - 3, by - 4, 2.5);
+    }
+
+    scene.clouds = [];
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(70, 250);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5);
+      const g = scene.add.graphics();
+      g.fillStyle(0xffffff, 0.93);
+      [[-26, 4, 17], [-6, -8, 23], [16, 0, 20], [34, 7, 14]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 10);
+      scene.clouds.push(c);
+    }
+    const heuvels = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    heuvels.fillStyle(0xe8a58c, 0.7);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) heuvels.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
   // Zon (licht parallax)
   const sun = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
   const glow = scene.add.circle(0, 0, 54, 0xfff3b0, 0.35);
@@ -264,9 +418,11 @@ export function buildBackground(scene, L) {
 export function buildWater(scene, L) {
   const saus = L.terrain === 'pizza';
   const stroop = L.terrain === 'pannenkoek';
+  const diepzee = L.terrain === 'zee'; // de donkere geul — dieper dan diep
   const kleuren = saus
     ? [0xd0331f, 0xf07c5a, 0xffc14d]
-    : stroop ? [0xb96a1e, 0xdca050, 0xffe16b] : [0x3fa9e0, 0x7fd0f0, 0xffffff];
+    : stroop ? [0xb96a1e, 0xdca050, 0xffe16b]
+    : diepzee ? [0x123a52, 0x1f5f80, 0x7fd0f0] : [0x3fa9e0, 0x7fd0f0, 0xffffff];
   (L.water || []).forEach(([x, y, w, h]) => {
     const g = scene.add.graphics().setDepth(-14);
     g.fillStyle(kleuren[0], 1); g.fillRect(x, y, w, h);
@@ -472,6 +628,90 @@ export function drawGround(scene, x, y, w, h) {
       } else {
         g.fillStyle(0xf5f9fc, 1); g.fillRoundedRect(fx - 9, y - 14, 18, 14, 4);
         g.fillStyle(0xd9c9a8, 1); g.fillEllipse(fx, y - 7, 7, 4);
+      }
+    }
+  } else if (scene.level.terrain === 'zee') {
+    // DE BUBBEL-ZEE (Wereld 12): zeebodem — zand met een lichte toplaag,
+    // en om en om een koraaltje met anemoon-slierten en een blije zeester.
+    g.fillStyle(0xd9c08a, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0xc4ab74, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0xefd7a0, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(0xf8e6ba, 1); g.fillRect(x, y, w, 6);
+    // golf-ribbels in het zand
+    g.lineStyle(2, 0xc4ab74, 0.7);
+    for (let bx = x + 20; bx < x + w - 12; bx += 52) {
+      g.beginPath(); g.arc(bx, y + 8, 8, 0.15 * Math.PI, 0.85 * Math.PI); g.strokePath();
+    }
+    // om en om: koraaltje met anemoon en een blije zeester
+    let zee = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      zee = !zee;
+      if (zee) {
+        g.fillStyle(0xe07a9a, 1);
+        g.fillRoundedRect(fx - 3, y - 18, 6, 18, 3);
+        g.fillRoundedRect(fx - 12, y - 12, 5, 12, 2);
+        g.fillRoundedRect(fx + 7, y - 14, 5, 14, 2);
+        g.fillCircle(fx, y - 20, 4); g.fillCircle(fx - 10, y - 13, 3); g.fillCircle(fx + 9, y - 15, 3);
+      } else {
+        g.fillStyle(0xf0a24d, 1);
+        for (let a = 0; a < 5; a++) {
+          const ang = -Math.PI / 2 + a * (2 * Math.PI / 5);
+          g.fillEllipse(fx + Math.cos(ang) * 5, y - 6 + Math.sin(ang) * 5, 5, 5);
+        }
+        g.fillCircle(fx, y - 6, 3.6);
+        g.fillStyle(0x16202b, 1); g.fillCircle(fx - 1.4, y - 7, 0.8); g.fillCircle(1.4 + fx, y - 7, 0.8);
+      }
+    }
+  } else if (scene.level.terrain === 'billen') {
+    // BILLENLAND (Wereld 11): zachte perzik-grond met een roze bloesem-rand,
+    // en om en om een mini-bil met blosjes en een glinsterende zeepbel.
+    g.fillStyle(0xb98868, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0xa87556, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0xf2a7b8, 1); g.fillRect(x, y, w, 16);   // roze bloesem-laag
+    g.fillStyle(0xf8c4d0, 1); g.fillRect(x, y, w, 6);
+    g.fillStyle(0xe088a0, 1);
+    for (let bx = x + 6; bx < x + w; bx += 16) g.fillCircle(bx + 2, y - 2, 3); // bloesem-bolletjes
+    // om en om: mini-bil met blosjes en een zeepbel
+    let bil = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      bil = !bil;
+      if (bil) {
+        g.fillStyle(0xf2b8a0, 1); g.fillCircle(fx - 6, y - 8, 8); g.fillCircle(fx + 6, y - 8, 8);
+        g.fillRect(fx - 12, y - 8, 24, 8);
+        g.lineStyle(2, 0xd08a70, 1); g.beginPath(); g.moveTo(fx, y - 14); g.lineTo(fx, y); g.strokePath();
+        g.fillStyle(0xf08a8a, 0.6); g.fillEllipse(fx - 7, y - 9, 6, 4); g.fillEllipse(fx + 7, y - 9, 6, 4);
+      } else {
+        g.lineStyle(2, 0xbfe8f5, 0.9); g.strokeCircle(fx, y - 12, 8);
+        g.fillStyle(0xffffff, 0.55); g.fillCircle(fx - 3, y - 15, 2.2);
+      }
+    }
+  } else if (scene.level.terrain === 'reus') {
+    // REUZENLAND (Wereld 10): sappige groene grond met EXTRA hoge grassprieten
+    // en om en om een reuzen-madeliefje en een klein rood paddenstoeltje —
+    // alles net een maatje groter dan normaal.
+    g.fillStyle(0x7a5230, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0x694626, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0x4fae4a, 1); g.fillRect(x, y, w, 18);
+    g.fillStyle(lighten(0x4fae4a, 22), 1); g.fillRect(x, y, w, 7);
+    // hoge grassprieten
+    g.fillStyle(0x3f9d3f, 1);
+    for (let bx = x + 6; bx < x + w; bx += 14) g.fillTriangle(bx, y, bx + 6, y, bx + 3, y - 11);
+    // om en om: reuzen-madeliefje en rood paddenstoeltje
+    let reus = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      reus = !reus;
+      if (reus) {
+        g.fillStyle(0x2f7d33, 1); g.fillRect(fx - 2, y - 20, 4, 20);
+        g.fillStyle(0xffffff, 1);
+        for (let a = 0; a < 8; a++) { const ang = (a / 8) * Math.PI * 2; g.fillEllipse(fx + Math.cos(ang) * 8, y - 22 + Math.sin(ang) * 8, 5, 3.4); }
+        g.fillStyle(0xffcf3f, 1); g.fillCircle(fx, y - 22, 5);
+      } else {
+        g.fillStyle(0xf5efe2, 1); g.fillRoundedRect(fx - 4, y - 16, 8, 16, 3);
+        g.fillStyle(0xe8402c, 1); g.slice(fx, y - 15, 12, Math.PI, 0, false); g.fillPath();
+        g.fillStyle(0xffffff, 1); g.fillCircle(fx - 4, y - 18, 2); g.fillCircle(fx + 4, y - 19, 2); g.fillCircle(fx, y - 15, 1.8);
       }
     }
   } else if (scene.level.terrain === 'bos') {

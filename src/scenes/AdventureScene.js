@@ -11,8 +11,10 @@ import { buildBackground, buildWater, buildPlatforms } from '../adventure/terrai
 import { drawGrommelArt, recolorGrommelArt } from '../adventure/enemyArt.js';
 import { bossLook } from '../adventure/bossRegistry.js';
 import { SYSTEMS } from '../adventure/systems/index.js';
+import { GIANT_MIN } from '../adventure/systems/grootte.js';
 import { drawTopping } from '../adventure/systems/bakkerij.js';
 import { tekenPot } from '../adventure/systems/spoelpotten.js';
+import { tekenGetalBel } from '../adventure/systems/duikboot.js';
 // LET OP: het bestand heet 'maatje.js' en niet 'nul.js' — NUL is een
 // gereserveerde apparaatnaam op Windows (git kan zo'n bestand niet openen!).
 import { buildNul, updateNul } from '../adventure/maatje.js';
@@ -60,6 +62,10 @@ export default class AdventureScene extends Phaser.Scene {
 
     this.mode = 'explore';
     this.playerValue = L.startValue || 1;
+    // MAAT (Reuzenland, W10): een schaal-factor bovenop je waarde. 1 = normaal,
+    // GIANT = reus (verplettert reuzenblokken), TINY = muisje (past door lage
+    // tunnels). Loopt via het veilige drawPlayer-resize-pad.
+    this.reus = L.startReus || 1;
     // Checkpoint bewaart de VOETEN-positie (bottom), niet het midden: de
     // spelerhoogte verandert (groeien/krimpen) en met een midden-positie kwam
     // een gegroeide speler tot z'n knieën in de grond terecht → val-lus.
@@ -307,7 +313,7 @@ export default class AdventureScene extends Phaser.Scene {
       zone: new Phaser.Geom.Rectangle(B.x - 210, groundTop - 160, 190, 200),
       prompt: 'Versla de Baas!', bossBody: body, bossArt: art,
     };
-    art.bubbleText.setText(`${pz.doel}`);
+    art.bubbleText.setText(pz.stijl === 'tien' ? `${pz.doel}+?` : `${pz.doel}`);
     pz.onSolve = () => this.defeatBoss(pz);
     this.puzzles.push(pz);
   }
@@ -315,10 +321,26 @@ export default class AdventureScene extends Phaser.Scene {
   bossStageReact(pz) {
     const c = pz.bossArt;
     c.bubbleText.setText(`${pz.doel}`);
-    this.tweens.add({ targets: c, scaleX: 1.12, scaleY: 0.86, duration: 130, yoyo: true, repeat: 1, ease: 'Quad.out' });
+    if (pz.stijl === 'beuk') {
+      // DE KRIMP — het hart van dit gevecht: elke beuk maakt de Reuzen-Grommel
+      // zichtbaar een maat kleiner (het getal in zijn wolkje krimpt mee).
+      const sc = Math.max(0.8, c.scaleX * 0.76);
+      const gy = c.grondY != null ? c.grondY : this.level.platforms[0][1];
+      this.tweens.killTweensOf(c);
+      this.tweens.add({
+        targets: c, scaleX: sc, scaleY: sc, y: gy - 70 * sc, duration: 420, ease: 'Back.out',
+        onComplete: () => this.tweens.add({ targets: c, y: c.y - 8, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.inOut' }),
+      });
+    } else {
+      this.tweens.add({ targets: c, scaleX: 1.12, scaleY: 0.86, duration: 130, yoyo: true, repeat: 1, ease: 'Quad.out' });
+    }
     this.sparkleAt(c.x, c.y, 12); SFX.combine(pz.doel);
     const left = pz.stages.length - pz.stageIndex;
-    const actie = pz.stijl === 'vang' ? `vang er ${pz.doel}` : pz.stijl === 'spoel' ? `zoek de pot met ${pz.doel}` : `bouw de ${pz.doel}`;
+    const actie = pz.stijl === 'vang' ? `vang er ${pz.doel}`
+      : pz.stijl === 'spoel' ? `zoek de pot met ${pz.doel}`
+      : pz.stijl === 'beuk' ? 'word een reus en RAM hem'
+      : pz.stijl === 'tien' ? `${pz.doel} + ? = 10` : `bouw de ${pz.doel}`;
+    if (pz.stijl === 'tien') c.bubbleText.setText(`${pz.doel}+?`);
     this.questText.setText(`De Baas wankelt! Nog ${left}× — ${actie}!`);
     this.vierMijlpaal(pz.bossArt.x);
 
@@ -369,8 +391,15 @@ export default class AdventureScene extends Phaser.Scene {
     pz.faseActief = true;
     Voice.number(pz.doel);
     if (pz.stijl === 'vang') {
-      this.questText.setText(`Vang ${pz.doel} toppings terug! 🍅`);
+      const look = bossLook(pz.look);
+      this.questText.setText((look.vangTekst || 'Vang {n} toppings terug! 🍅').replace('{n}', pz.doel));
       this.strooiToppings(pz);
+    } else if (pz.stijl === 'beuk') {
+      this.questText.setText(`Hij is ${pz.doel} groot! Hap een appel en RAM hem! 🍎🦣`);
+    } else if (pz.stijl === 'tien') {
+      this.questText.setText(`${pz.doel} + ? = 10 — raak de goede bel! 💙`);
+      pz.bossArt.bubbleText.setText(`${pz.doel}+?`);
+      this.toonBossBellen(pz);
     } else {
       this.questText.setText(`Spring in de pot met ${pz.doel}! 🚽`);
       this.toonBossPotten(pz);
@@ -384,9 +413,11 @@ export default class AdventureScene extends Phaser.Scene {
     }
   }
 
-  // De Kaas-Grommel strooit zijn gestolen toppings door de arena.
+  // De vang-baas strooit zijn gestolen buit door de arena — wat het is,
+  // bepaalt de look: toppings (Kaas-Grommel) of zeepbellen (Stinke-Bil).
   strooiToppings(pz) {
     const groundTop = this.level.platforms[0][1];
+    const maakVangst = bossLook(pz.look).vangArt || ((s, i) => drawTopping(s, i));
     const n = pz.doel + 2; // een paar extra — het gaat om PRECIES doel vangen
     pz.vangst = 0; pz.fruit = [];
     this.tweens.add({ targets: pz.bossArt, angle: -8, duration: 160, yoyo: true, repeat: 2 });
@@ -395,7 +426,7 @@ export default class AdventureScene extends Phaser.Scene {
       const hoog = i % 3 === 1;
       const doelY = hoog ? groundTop - Phaser.Math.Between(170, 235) : groundTop - 55;
       const c = this.add.container(pz.bossArt.x - 40, groundTop - 130).setDepth(6);
-      c.add(drawTopping(this, i));
+      c.add(maakVangst(this, i));
       pz.fruit.push(c);
       const boog = { t: 0 }; const sx = c.x, sy = c.y;
       this.tweens.add({
@@ -413,7 +444,8 @@ export default class AdventureScene extends Phaser.Scene {
         color: '#ffffff', backgroundColor: '#b93227dd', padding: { x: 14, y: 6 },
       }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(60);
     }
-    pz.teller.setText(`🍅 0 / ${pz.doel}`).setVisible(true);
+    pz.vangIcoon = bossLook(pz.look).vangIcoon || '🍅';
+    pz.teller.setText(`${pz.vangIcoon} 0 / ${pz.doel}`).setVisible(true);
   }
 
   // De Reuzen-Drol kan alleen DOORGESPOELD worden: drie potten met sommen.
@@ -434,6 +466,25 @@ export default class AdventureScene extends Phaser.Scene {
     });
   }
 
+  // De Inkt-Octopus toont zijn getal — drie zwevende bellen, raak de bel die
+  // het tot 10 aanvult (het "verliefde" 10-maatje) en een tentakel laat los.
+  toonBossBellen(pz) {
+    const stage = pz.stages[pz.stageIndex];
+    const groundTop = this.level.platforms[0][1];
+    const opties = [...stage.opties];
+    for (let k = opties.length - 1; k > 0; k--) {
+      const j = Math.floor(Math.random() * (k + 1));
+      [opties[k], opties[j]] = [opties[j], opties[k]];
+    }
+    pz.belSprites = opties.map((w, i) => {
+      const hoog = i % 2 === 1;
+      const bel = tekenGetalBel(this, pz.bossArt.x - 560 + i * 170, hoog ? groundTop - 200 : groundTop - 70, w);
+      bel.setScale(0.2);
+      this.tweens.add({ targets: bel, scale: 1, duration: 320, delay: i * 120, ease: 'Back.out' });
+      return bel;
+    });
+  }
+
   // Per frame: vang-toppings rapen / op de goede pot springen.
   updateBossFase(time) {
     const p = this.player;
@@ -448,13 +499,55 @@ export default class AdventureScene extends Phaser.Scene {
             this.tweens.killTweensOf(f);
             this.tweens.add({ targets: f, scale: 0, y: f.y - 22, duration: 220, ease: 'Back.in', onComplete: () => f.destroy() });
             SFX.coin(); Voice.number(pz.vangst);
-            pz.teller.setText(`🍅 ${pz.vangst} / ${pz.doel}`);
+            pz.teller.setText(`${pz.vangIcoon || '🍅'} ${pz.vangst} / ${pz.doel}`);
             this.tweens.add({ targets: pz.teller, scale: 1.18, duration: 110, yoyo: true });
             if (pz.vangst >= pz.doel) {
               pz.fruit.forEach((r) => { if (r.active && !r.taken) this.tweens.add({ targets: r, alpha: 0, scale: 0.4, duration: 300, onComplete: () => r.destroy() }); });
               this.advanceBossStage(pz);
             }
           }
+        }
+      } else if (pz.stijl === 'beuk' && time > (pz.beukCd || 0)) {
+        // Dicht genoeg bij de Reuzen-Grommel? Als REUS ram je hem een maat
+        // kleiner; op je eigen maat krijg je een hint (de appel wacht).
+        if (Math.abs(p.x - pz.bossArt.x) < 175 && Math.abs(p.y - pz.bossArt.y) < 230) {
+          if ((this.reus || 1) >= GIANT_MIN) {
+            pz.beukCd = time + 1000;
+            this.beukBoss(pz);
+          } else if (!this._beukHintAt || time > this._beukHintAt) {
+            this._beukHintAt = time + 1900;
+            this.questText.setText('Zó ram je hem niet om — word eerst een REUS! 🍎');
+          }
+        }
+      } else if (pz.stijl === 'tien' && time > (pz.belCd || 0)) {
+        for (const bel of (pz.belSprites || [])) {
+          if (!bel.active || bel.taken) continue;
+          const dxB = Math.max(p.body.left - bel.x, 0, bel.x - p.body.right);
+          const dyB = Math.max(p.body.top - bel.y, 0, bel.y - p.body.bottom);
+          if (dxB * dxB + dyB * dyB > 50 * 50) continue;
+          pz.belCd = time + 900;
+          if (bel.waarde === 10 - pz.doel) {
+            // HET MAATJE! Hartjes, en een tentakel laat los.
+            bel.taken = true;
+            SFX.correct(); Voice.number(bel.waarde);
+            this.tweens.killTweensOf(bel);
+            this.heart(bel.x, bel.y - 20); this.heart(bel.x - 20, bel.y); this.heart(bel.x + 20, bel.y);
+            this.tweens.add({ targets: bel, scale: 0, y: bel.y - 26, duration: 260, ease: 'Back.in', onComplete: () => bel.destroy() });
+            this.tweens.add({ targets: pz.bossArt, angle: { from: -7, to: 7 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => pz.bossArt.setAngle(0) });
+            this.advanceBossStage(pz);
+          } else {
+            // vriendelijke plop — probeer een andere bel
+            bel.taken = true;
+            SFX.oops(); Voice.cue('oops');
+            this.rekenFouten += 1;
+            this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 240, ease: 'Back.in' });
+            this.questText.setText(`${pz.doel} + ${bel.waarde} is geen 10 — een andere bel! 💛`);
+            this.time.delayedCall(2200, () => {
+              if (!bel.active || pz.solved) return;
+              bel.taken = false; bel.setScale(1).setAlpha(1); SFX.sparkle();
+            });
+          }
+          break;
         }
       } else if (pz.stijl === 'spoel' && time > (pz.potCd || 0)) {
         const onFloor = p.body.blocked.down || p.body.touching.down;
@@ -474,6 +567,20 @@ export default class AdventureScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  // BEUK! Als reus ram je de Reuzen-Grommel — hij krimpt een maat, jij bent
+  // je reuzenkracht kwijt (terug naar de appel voor de volgende beuk).
+  beukBoss(pz) {
+    const c = pz.bossArt;
+    SFX.stomp(); Voice.cue('cheer');
+    this.cameraPunch(0.06, 9);
+    this.burstStars(c.x, c.y - 20, 12);
+    this.tweens.add({ targets: c, x: c.x + 26, duration: 90, yoyo: true, repeat: 1, ease: 'Quad.out' }); // hij wankelt opzij
+    const dir = this.player.x < c.x ? -1 : 1; // -1 = speler staat links → stuiter naar links
+    this.setReus(1, 'normaal');
+    this.player.body.setVelocity(dir * 300, -340); // stuiter van de baas af
+    this.advanceBossStage(pz);
   }
 
   // RAAK! De goede pot spuit een waterstraal die de Reuzen-Drol natspettert.
@@ -506,6 +613,8 @@ export default class AdventureScene extends Phaser.Scene {
     pz.faseActief = false;
     (pz.potten || []).forEach((pot) => this.tweens.add({ targets: pot, scale: 0, alpha: 0, duration: 280, onComplete: () => pot.destroy() }));
     pz.potten = [];
+    (pz.belSprites || []).forEach((bel) => { if (bel.active) this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 280, onComplete: () => bel.destroy() }); });
+    pz.belSprites = [];
     if (pz.teller) pz.teller.setVisible(false);
     if (pz.stageIndex < pz.stages.length - 1) {
       pz.stageIndex += 1;
@@ -556,6 +665,15 @@ export default class AdventureScene extends Phaser.Scene {
     } else if (t === 'wc') {
       g.fillStyle(0x8a5a33, 1); g.fillEllipse(0, 2, 16, 9); g.fillEllipse(1, -4, 11, 7);
       g.fillStyle(0xa9713f, 0.7); g.fillEllipse(-3, 1, 6, 4);
+    } else if (t === 'billen') {
+      // roze zeep-klodder met glans en een belletje
+      g.fillStyle(0xf2a7b8, 0.95); g.fillCircle(-4, 2, 7); g.fillCircle(5, 0, 8); g.fillCircle(0, -5, 6);
+      g.fillStyle(0xffffff, 0.6); g.fillEllipse(-2, -5, 6, 4);
+      g.lineStyle(1.5, 0xbfe8f5, 0.9); g.strokeCircle(8, -8, 4);
+    } else if (t === 'zee') {
+      // inkt-klodder van een zee-werper
+      g.fillStyle(0x2d2440, 0.95); g.fillCircle(0, 0, 8); g.fillCircle(-6, 3, 4); g.fillCircle(6, 2, 4);
+      g.fillStyle(0x4a3a68, 0.9); g.fillCircle(-2, -2, 3);
     } else {
       g.fillStyle(0x8a8f96, 1); g.fillCircle(0, 0, 7);
       g.fillStyle(0xb9bfc6, 0.8); g.fillCircle(-2, -2, 3);
@@ -741,7 +859,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.player.setPosition(this.player.x, bottom - this.player.totalH / 2);
     this.player.body.reset(this.player.x, this.player.y);
     SFX.split(); Voice.cue('whee');
-    this.tweens.add({ targets: this.player.art, scaleX: 1.2, scaleY: 0.85, duration: 120, yoyo: true, ease: 'Quad.out' });
+    this.squashArt(1.2, 0.85, 120);
 
     // Het blokje blijft naast je liggen. Tik je vaker? Dan groeit hetzelfde
     // bolletje mee (+1 → +2 → +3) i.p.v. een regen aan losse muntjes.
@@ -765,22 +883,37 @@ export default class AdventureScene extends Phaser.Scene {
 
   drawPlayer() {
     const v = this.playerValue;
+    const f = this.reus || 1;          // MAAT-factor (reus/muisje) bovenop de waarde
+    const w = PW * f, cell = CELL * f;
     const art = this.player.art;
     art.removeAll(true);
+    // vangnet: gestrande squash-tweens nooit mee laten liften in de herbouw
+    this.tweens.killTweensOf(art);
+    art.setScale(art.scaleX < 0 ? -1 : 1, 1);
     // Eén is rood; groeien houdt de rode identiteit.
-    const { top, totalH } = drawCubeStack(this, art, v, { w: PW, cell: CELL, color: sig(1) });
-    addFeet(this, art, darker(sig(1), 40), PW, totalH);
-    addNumberDisc(this, art, v, top - 9, 13, '17px');
+    const { top, totalH } = drawCubeStack(this, art, v, { w, cell, color: sig(1) });
+    addFeet(this, art, darker(sig(1), 40), w, totalH);
+    addNumberDisc(this, art, v, top - 9 * f, 13 * f, `${Math.round(17 * f)}px`);
 
     const body = this.player.body;
     const oldBottom = body ? (this.player.y - body.height / 2 + body.height) : null;
-    body.setSize(PW, totalH);
-    body.setOffset(-PW / 2, -totalH / 2);
+    body.setSize(w, totalH);
+    body.setOffset(-w / 2, -totalH / 2);
     if (oldBottom != null) this.player.y = oldBottom - totalH / 2;
     this.player.totalH = totalH;
-    // tik-gebied meegroeien met de nieuwe lengte (voor zelf-splitsen)
+    // ALTIJD de body hersyncen na een resize — de body is de baas: zonder
+    // reset raakte body en figuur uit de pas en zakte een REUS die midden in
+    // een sprong een groei-bolletje pakte dwars door de vloer (killY →
+    // stille respawn → "ineens weer normaal", speeltest W10). De snelheid
+    // blijft bewaard zodat sprongen en terugstuiters gewoon doorlopen.
+    if (body) {
+      const vx = body.velocity.x, vy = body.velocity.y;
+      body.reset(this.player.x, this.player.y);
+      body.setVelocity(vx, vy);
+    }
+    // tik-gebied meegroeien met de nieuwe maat (voor zelf-splitsen)
     if (this.player.input) {
-      this.player.input.hitArea.setTo(-PW / 2 - 10, -totalH / 2 - 10, PW + 20, totalH + 20);
+      this.player.input.hitArea.setTo(-w / 2 - 10, -totalH / 2 - 10, w + 20, totalH + 20);
     }
   }
 
@@ -790,8 +923,73 @@ export default class AdventureScene extends Phaser.Scene {
     this.drawPlayer();
     SFX.grow(this.playerValue);
     Voice.cue('cheer');
-    this.tweens.add({ targets: this.player.art, scaleX: 1.2, scaleY: 0.85, duration: 130, yoyo: true, ease: 'Quad.out' });
+    this.squashArt(1.2, 0.85);
     this.sparkleAt(this.player.x, this.player.y, 12);
+  }
+
+  // Eén choke-point voor ALLE squash-en-stretch op het speler-art. De losse
+  // tweens (sprong, groei, maat-wissel) vochten om scaleX/scaleY: een yoyo
+  // die halverwege door een nieuwe tween werd afgekapt "yoyo'de" terug naar
+  // een gecapturede tussenwaarde — de speler bleef dan permanent te klein of
+  // te groot GETEKEND (de Adrian-bug in Reuzenland). Nu: eerst alles killen,
+  // schaal normaliseren (facing behouden!), dán pas de nieuwe squash.
+  squashArt(sx, sy, dur = 130) {
+    const art = this.player.art;
+    const face = art.scaleX < 0 ? -1 : 1;
+    this.tweens.killTweensOf(art);
+    art.setScale(face, 1);
+    this.tweens.add({ targets: art, scaleX: face * sx, scaleY: sy, duration: dur, yoyo: true, ease: 'Quad.out' });
+  }
+
+  // ============================================================ MAAT (Reuzenland)
+  // Van maat wisselen door fruit te happen (het grootte-systeem roept dit aan).
+  // Zelfde veilige resize als splitsen: voeten-anker vasthouden + body.reset.
+  setReus(factor, soort) {
+    if (this.mode !== 'explore' || this.won) return;
+    if ((this.reus || 1) === factor) return; // al deze maat
+    const bottom = this.player.body.bottom;
+    // snelheid bewaren: wie de appel in volle vlucht grijpt, vliegt als
+    // reus gewoon door (body.reset zou het momentum op nul zetten)
+    const vx = this.player.body.velocity.x, vy = this.player.body.velocity.y;
+    this.reus = factor;
+    this.drawPlayer();
+    this.player.setPosition(this.player.x, bottom - this.player.totalH / 2);
+    this.player.body.reset(this.player.x, this.player.y);
+    this.player.body.setVelocity(vx, vy);
+    this.laatsteVoortgang = this.time.now;
+    this.squashArt(1.25, 0.8, 150);
+    this.sparkleAt(this.player.x, this.player.y, 12);
+    if (soort === 'groot') {
+      SFX.grow(9); Voice.cue('cheer'); this.cameraPunch(0.06, 8);
+      this.nulReact('blij');
+      this.questText.setText('REUUUS! Stamp door de reuzenblokken! 🦣');
+    } else if (soort === 'klein') {
+      SFX.shrink(); Voice.cue('whee');
+      this.nulReact('zorg');
+      this.questText.setText('Muizeklein! Kruip door de lage gangen 🐭');
+    } else {
+      SFX.pop(); Voice.cue('great');
+      this.nulReact('blij');
+      this.questText.setText('Weer je eigen maat 🙂');
+    }
+  }
+
+  // Als reus loop je dwars door een reuzenblok — BOEM, steengruis!
+  smashReuzenBlok(block) {
+    if (block._broken) return; block._broken = true;
+    block.body.enable = false;
+    this.reuzenBlokGroup.remove(block, false, false);
+    if (block._art) {
+      const a = block._art;
+      this.tweens.add({ targets: a, scaleY: 0.2, scaleX: 1.3, alpha: 0, angle: Phaser.Math.Between(-14, 14), duration: 280, ease: 'Quad.in', onComplete: () => a.destroy() });
+    }
+    for (let i = 0; i < 9; i++) {
+      const r = this.add.rectangle(block.x + Phaser.Math.Between(-block.width / 2, block.width / 2), block.y + Phaser.Math.Between(-block.height / 2, block.height / 2), Phaser.Math.Between(9, 18), Phaser.Math.Between(9, 18), 0x9a8f7a).setDepth(9).setStrokeStyle(2, 0x6a6152);
+      this.tweens.add({ targets: r, x: r.x + Phaser.Math.Between(-70, 70), y: r.y + Phaser.Math.Between(30, 110), alpha: 0, angle: Phaser.Math.Between(-120, 120), duration: 520, ease: 'Quad.in', onComplete: () => r.destroy() });
+    }
+    SFX.stomp(); this.cameraPunch(0.05, 9); this.burstStars(block.x, block.y, 8);
+    this.questText.setText('BOEM! De reuzenblok is verpletterd! 💥');
+    this.vierMijlpaal(block.x);
   }
 
   // ============================================================ BESTURING (touch)
@@ -1064,6 +1262,17 @@ export default class AdventureScene extends Phaser.Scene {
   // ============================================================ GROMMEL-INTERACTIE
   hitGrommel(gr) {
     if (!gr.alive || this.mode !== 'explore') return;
+    // Als REUS ben je onaantastbaar: je stampt elke Grommel plat, van welke
+    // kant je 'm ook raakt.
+    if ((this.reus || 1) >= GIANT_MIN) {
+      gr.alive = false; gr.body.enable = false;
+      this.tweens.killTweensOf(gr.art);
+      this.recolorGrommel(gr);
+      SFX.stomp(); Voice.cue('cheer'); this.burstStars(gr.x, gr.y - 10, 8); this.cameraPunch(0.03, 5);
+      this.tweens.add({ targets: gr.art, scaleY: 0.4, scaleX: 1.4, duration: 160, yoyo: true, ease: 'Quad.out' });
+      this.checkGrommelMissie();
+      return;
+    }
     const p = this.player.body, gb = gr.body;
     const falling = p.velocity.y > 20;
     const above = p.bottom <= gb.top + 18;
@@ -1092,7 +1301,9 @@ export default class AdventureScene extends Phaser.Scene {
     SFX.shrink(); Voice.cue('oops');
     const dir = this.player.x < gr.x ? -1 : 1;
     this.player.body.setVelocity(dir * 190, -240);
-    this.tweens.add({ targets: this.player.art, alpha: 0.3, duration: 110, yoyo: true, repeat: 4, onComplete: () => this.player.art.setAlpha(1) });
+    // knipper op de ROOT-container (niet op art): squashArt kilt alle
+    // art-tweens en zou de knipper anders halfdoorzichtig laten stranden
+    this.tweens.add({ targets: this.player, alpha: 0.3, duration: 110, yoyo: true, repeat: 4, onComplete: () => this.player.setAlpha(1) });
     this.nulReact('zorg'); // Nul schrikt met je mee
 
     // Tijdens een achtervolging krimp je nooit onder de 2: kleiner = lager
@@ -1148,6 +1359,7 @@ export default class AdventureScene extends Phaser.Scene {
     // voeten net boven de checkpoint-vloer — zo sta je nooit ín de grond
     // (diepe overlap kan Arcade Physics niet scheiden → je zakte erdoorheen).
     this.playerValue = Math.max(1, this.playerValue);
+    this.reus = 1; // na een val altijd terug op je eigen maat (nooit vast als reus/muisje)
     this.drawPlayer();
     this.player.setPosition(this.checkpoint.x, this.checkpoint.bottom - this.player.totalH / 2 - 2);
     // body.reset synct de physics-body (incl. vorige-positie) met de nieuwe
@@ -1208,7 +1420,8 @@ export default class AdventureScene extends Phaser.Scene {
       + (L.rescues || []).length + (L.doors || []).length
       + (L.plates || []).length + (L.vraagMuren || []).length
       + (L.portalen || []).length + (L.achtervolgingen || []).length
-      + (L.grauwMuren || []).length
+      + (L.grauwMuren || []).length + (L.reuzenBlokken || []).length
+      + (L.parenBorden || []).length + (L.duikboten || []).length
       + (L.raket ? 1 : 0) + (L.boss ? L.boss.stages.length : 0);
   }
 
@@ -1352,7 +1565,7 @@ export default class AdventureScene extends Phaser.Scene {
       this.jumpsUsed += 1;
       body.setVelocityY(-(JUMP_BASE + (this.playerValue - 1) * JUMP_PER_LEVEL));
       SFX.pick(); Voice.cue(second ? 'whee' : 'jump');
-      this.tweens.add({ targets: p.art, scaleX: 0.85, scaleY: 1.18, duration: 130, yoyo: true, ease: 'Quad.out' });
+      this.squashArt(0.85, 1.18);
       if (second) this.sparkleAt(p.x, p.y + p.totalH / 2, 8);
     }
 
@@ -1448,7 +1661,7 @@ export default class AdventureScene extends Phaser.Scene {
       this.burstStars(this.goudenNul.x, this.goudenNul.y, 14);
       this.nulReact('ster');
       this.cameraPunch(0.05, 6);
-      this.questText.setText(`GOUDEN NUL gevonden! ⭕ (${telGoudenNullen()} van de 6)`);
+      this.questText.setText(`GOUDEN NUL gevonden! ⭕ (${telGoudenNullen()} van de ${LEVELS.filter((l) => l.goudenNul).length})`);
       this.tweens.add({ targets: this.goudenNul, scale: 2, alpha: 0, angle: 260, duration: 500, ease: 'Back.in' });
     }
 
@@ -1469,9 +1682,12 @@ export default class AdventureScene extends Phaser.Scene {
     }
 
     // In een kloof gevallen → zacht terug naar checkpoint. Check op de
-    // VOETEN: het midden van een lange speler (waarde 4-5) komt anders nooit
-    // onder de grens uit.
-    if (body.bottom > this.level.killY) this.respawn();
+    // VOETEN (speler-y + halve lengte): het midden van een lange speler komt
+    // anders nooit onder de grens uit. BEWUST niet body.bottom: die is op een
+    // resize-frame (groeien/maat-wissel) heel even oude-positie+nieuwe-hoogte
+    // — die transient triggerde een valse respawn ("reus ineens weer
+    // normaal", speeltest W10).
+    if (this.player.y + this.player.totalH / 2 > this.level.killY) this.respawn();
 
     // Grommels patrouilleren; springers HUPPEN, vliegers zweven, werpers
     // gooien, glijders stormen en loerders duiken op uit hun pot.
@@ -1573,8 +1789,10 @@ export default class AdventureScene extends Phaser.Scene {
       const w = this.bossWaves[i];
       if (w.x <= w.stopX) { this.splashWave(i); continue; } // uitgedoofd
       if (time > this.invulnUntil && Math.abs(p.x - w.x) < 34 && body.bottom > w.y - 26) {
-        this.splashWave(i); // raak: golf spat uiteen…
-        this.shrinkPlayer(w); // …en je krimpt (zelfde straf als een Grommel)
+        this.splashWave(i); // raak: het projectiel spat uiteen…
+        // …een REUS voelt er niks van (Reuzenland); anders krimp je
+        if ((this.reus || 1) < GIANT_MIN) this.shrinkPlayer(w);
+        else { SFX.stomp(); this.cameraPunch(0.02, 4); }
       }
     }
 

@@ -13,6 +13,9 @@ import {
   drawGrauwBoss, happyGrauwBoss, drawGrauwWolkje,
   drawKaasBoss, happyKaasBoss, drawKaasWiel,
   drawDrolBoss, happyDrolBoss, drawDrolletje,
+  drawReusBoss, drawKei,
+  drawBilBoss, happyBilBoss, drawStinkWolkje, drawZeepbel,
+  drawOctopusBoss, happyOctopusBoss, drawInktKlodder,
 } from './enemyArt.js';
 import { sig } from './palette.js';
 
@@ -67,6 +70,16 @@ export const BOSS_LOOKS = {
     speed: -225,
     waarschuwing: 'Pas op — een kaaswiel! Spring! 🧀',
   },
+  // De Reuzen-Grommel (W10, Reuzenland): rollende keien. Verslaan doe je
+  // niet met bouwen maar met BEUKEN (stijl 'beuk'): word zelf een reus en
+  // ram hem — hij krimpt per klap (de scene tweent zijn schaal omlaag).
+  reus: {
+    draw: (s, x, groundTop) => drawReusBoss(s, x, groundTop),
+    happy: (s, c, pz) => recolorBossHappy(s, c, sig(pz.stages[pz.stages.length - 1].doel)),
+    projectile: drawKei,
+    speed: -190,
+    waarschuwing: 'Pas op — een rollende kei! Spring! 🪨',
+  },
   // De Reuzen-Drol (W9, Wc-Wonderland): huppelende drolletjes.
   drol: {
     draw: (s, x, groundTop) => drawDrolBoss(s, x, groundTop),
@@ -74,6 +87,28 @@ export const BOSS_LOOKS = {
     projectile: drawDrolletje,
     speed: -240,
     waarschuwing: 'Pas op — een drolletje! Spring! 💩',
+  },
+  // De Stinke-Bil (W11, Billenland): wil NIET in bad — gooit stinkwolkjes.
+  // Vang-stijl met een eigen vangst: zeepbellen i.p.v. pizza-toppings.
+  bil: {
+    draw: (s, x, groundTop) => drawBilBoss(s, x, groundTop),
+    happy: (s, c) => happyBilBoss(s, c),
+    projectile: drawStinkWolkje,
+    speed: -210,
+    waarschuwing: 'Pas op — een stinkwolkje! Spring! 💨',
+    vangArt: drawZeepbel,
+    vangIcoon: '🧼',
+    vangTekst: 'Vang {n} zeepbellen — dan moet hij in bad! 🧼',
+  },
+  // De Inkt-Octopus (W12, de Bubbel-Zee): inkt-klodders. Verslaan met
+  // stijl 'tien': raak per fase de bel die zijn getal tot 10 aanvult
+  // (verliefde getallen) — dan laat een tentakel los.
+  octopus: {
+    draw: (s, x, groundTop) => drawOctopusBoss(s, x, groundTop),
+    happy: (s, c) => happyOctopusBoss(s, c),
+    projectile: drawInktKlodder,
+    speed: -215,
+    waarschuwing: 'Pas op — een inkt-klodder! Spring! 🖤',
   },
   // BARON GRAUW (W6, de finale): grauw-wolkjes — het allersnelst.
   grauw: {

@@ -28,5 +28,10 @@ import patroon from './patroon.js';
 import spoelpotten from './spoelpotten.js';
 import wcRollen from './wcrollen.js';
 import stinkZones from './stinkzones.js';
+import grootte from './grootte.js';
+import bilTrampolines from './biltrampoline.js';
+import parenBorden from './parenbord.js';
+import zwemZones from './zwemzones.js';
+import duikboten from './duikboot.js';
 
-export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon, spoelpotten, wcRollen, stinkZones];
+export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon, spoelpotten, wcRollen, stinkZones, grootte, bilTrampolines, parenBorden, zwemZones, duikboten];

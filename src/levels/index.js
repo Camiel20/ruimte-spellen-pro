@@ -12,6 +12,9 @@ import { WORLD6 } from './world6.js';
 import { WORLD7 } from './world7.js';
 import { WORLD8 } from './world8.js';
 import { WORLD9 } from './world9.js';
+import { WORLD10 } from './world10.js';
+import { WORLD11 } from './world11.js';
+import { WORLD12 } from './world12.js';
 import { WORLD0 } from './world0.js';
 
 // `sterren` = hoeveel verdiende sterren de wereld opent (à la Mario World).
@@ -28,6 +31,9 @@ export const WORLDS = [
   { levels: WORLD7, naam: 'Wereld 7 · De Pizza-Vulkaan 🍕', top: 0x8fd3ff, bottom: 0xf0b24a, sterren: 33 },
   { levels: WORLD8, naam: 'Wereld 8 · Het Pannenkoeken-Paradijs 🥞', top: 0x8fd3ff, bottom: 0xf3d9a4, sterren: 39 },
   { levels: WORLD9, naam: 'Wereld 9 · Wc-Wonderland 💩', top: 0x8fd3ff, bottom: 0xcfe8b8, sterren: 45 },
+  { levels: WORLD10, naam: 'Wereld 10 · Reuzenland 🦣', top: 0x8fd3ff, bottom: 0x86cf63, sterren: 51 },
+  { levels: WORLD11, naam: 'Wereld 11 · Billenland 🍑', top: 0x8fd3ff, bottom: 0xf5c8c0, sterren: 57 },
+  { levels: WORLD12, naam: 'Wereld 12 · De Bubbel-Zee 🌊', top: 0x5fb8dd, bottom: 0x1f6f96, sterren: 63 },
   { levels: WORLD0, naam: 'Geheime Nul-Wereld ⭕', top: 0xeaf6ff, bottom: 0xdfefff, geheim: true, nullen: 5, sterren: 0 },
 ];
 

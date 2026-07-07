@@ -28,6 +28,9 @@ export function muziekVoorTerrein(terrain) {
     pizza: { pitch: 1.059, tempo: 1.08 },  // +1, vlotter: smikkel-feest
     pannenkoek: { pitch: 1.26, tempo: 0.97 }, // +4, dromerig zoet
     wc: { pitch: 0.944, tempo: 1.12 },     // −1, hupsend: giechel-tempo
+    reus: { pitch: 1.122, tempo: 0.92 },   // +2, traag & groots: reuzenstappen
+    billen: { pitch: 0.891, tempo: 1.15 }, // −2, hupsend: stuiter-giechel
+    zee: { pitch: 1.059, tempo: 0.84 },    // +1, traag golvend: onderwater-dromen
   }[terrain] || { pitch: 1, tempo: 1 };
 }
 
