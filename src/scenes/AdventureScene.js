@@ -313,7 +313,12 @@ export default class AdventureScene extends Phaser.Scene {
       zone: new Phaser.Geom.Rectangle(B.x - 210, groundTop - 160, 190, 200),
       prompt: 'Versla de Baas!', bossBody: body, bossArt: art,
     };
-    art.bubbleText.setText(pz.stijl === 'tien' ? `${pz.doel}+?` : pz.stijl === 'surf' ? '?' : `${pz.doel}`);
+    if (pz.stijl === 'splits') {
+      const st0 = pz.stages[0];
+      art.bubbleText.setText(`${st0.van}=${st0.weg}+?`).setFontSize(14);
+    } else {
+      art.bubbleText.setText(pz.stijl === 'tien' ? `${pz.doel}+?` : pz.stijl === 'surf' ? '?' : `${pz.doel}`);
+    }
     pz.onSolve = () => this.defeatBoss(pz);
     this.puzzles.push(pz);
   }
@@ -341,9 +346,14 @@ export default class AdventureScene extends Phaser.Scene {
       : pz.stijl === 'beuk' ? 'word een reus en RAM hem'
       : pz.stijl === 'tien' ? `${pz.doel} + ? = 10`
       : pz.stijl === 'surf' ? 'tel de golven'
-      : pz.stijl === 'schud' ? `stamp en raap er ${pz.doel}` : `bouw de ${pz.doel}`;
+      : pz.stijl === 'schud' ? `stamp en raap er ${pz.doel}`
+      : pz.stijl === 'splits' ? 'splits het getal' : `bouw de ${pz.doel}`;
     if (pz.stijl === 'tien') c.bubbleText.setText(`${pz.doel}+?`);
     if (pz.stijl === 'surf') c.bubbleText.setText('?'); // niet verklappen!
+    if (pz.stijl === 'splits') {
+      const st = pz.stages[pz.stageIndex];
+      c.bubbleText.setText(`${st.van}=${st.weg}+?`).setFontSize(14);
+    }
     this.questText.setText(`De Baas wankelt! Nog ${left}× — ${actie}!`);
     this.vierMijlpaal(pz.bossArt.x);
 
@@ -392,11 +402,12 @@ export default class AdventureScene extends Phaser.Scene {
 
   startBossFase(pz) {
     pz.faseActief = true;
-    // bij 'surf' zou het getal het TEL-antwoord verklappen — dus stil
-    if (pz.stijl !== 'surf') Voice.number(pz.doel);
+    // bij 'surf'/'splits' zou het getal het antwoord verklappen — dus stil
+    const stil = pz.stijl === 'surf' || pz.stijl === 'splits';
+    if (!stil) Voice.number(pz.doel);
     // gesproken aanmoediging per stijl, netjes ná het getal
-    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud' };
-    Voice.hint(BAAS_CLIP[pz.stijl], pz.stijl === 'surf' ? 200 : 1100);
+    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud', splits: 'baas-splits' };
+    Voice.hint(BAAS_CLIP[pz.stijl], stil ? 200 : 1100);
     if (pz.stijl === 'vang') {
       const look = bossLook(pz.look);
       this.questText.setText((look.vangTekst || 'Vang {n} toppings terug! 🍅').replace('{n}', pz.doel));
@@ -416,6 +427,11 @@ export default class AdventureScene extends Phaser.Scene {
       // eerst de boom wakker stampen — dán vallen de eikels
       pz.eikelsLos = false;
       this.questText.setText('STAMP naast de boom — schud de eikels los! 🌰');
+    } else if (pz.stijl === 'splits') {
+      const st = pz.stages[pz.stageIndex];
+      this.questText.setText(`${st.van} = ${st.weg} + ? — raak het goede kristal! 💎`);
+      pz.bossArt.bubbleText.setText(`${st.van}=${st.weg}+?`).setFontSize(14);
+      this.toonBossBellen(pz);
     } else {
       this.questText.setText(`Spring in de pot met ${pz.doel}! 🚽`);
       this.toonBossPotten(pz);
@@ -574,14 +590,18 @@ export default class AdventureScene extends Phaser.Scene {
             this.questText.setText('Zó ram je hem niet om — word eerst een REUS! 🍎');
           }
         }
-      } else if (pz.stijl === 'tien' && time > (pz.belCd || 0)) {
+      } else if ((pz.stijl === 'tien' || pz.stijl === 'splits') && time > (pz.belCd || 0)) {
+        // tien: raak het 10-maatje (goed = 10 − getoond getal)
+        // splits: raak het ontbrekende stuk (goed = van − weg = pz.doel)
+        const goedWaarde = pz.stijl === 'tien' ? 10 - pz.doel : pz.doel;
+        const st = pz.stages[pz.stageIndex];
         for (const bel of (pz.belSprites || [])) {
           if (!bel.active || bel.taken) continue;
           const dxB = Math.max(p.body.left - bel.x, 0, bel.x - p.body.right);
           const dyB = Math.max(p.body.top - bel.y, 0, bel.y - p.body.bottom);
           if (dxB * dxB + dyB * dyB > 50 * 50) continue;
           pz.belCd = time + 900;
-          if (bel.waarde === 10 - pz.doel) {
+          if (bel.waarde === goedWaarde) {
             // HET MAATJE! Hartjes, en een tentakel laat los.
             bel.taken = true;
             SFX.correct(); Voice.number(bel.waarde);
@@ -596,13 +616,15 @@ export default class AdventureScene extends Phaser.Scene {
             SFX.oops(); Voice.cue('oops');
             this.rekenFouten += 1;
             this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 240, ease: 'Back.in' });
-            this.questText.setText(`${pz.doel} + ${bel.waarde} is geen 10 — een andere bel! 💛`);
-            // anti-gok: na 2 fouten pulseert het 10-maatje zachtjes
+            this.questText.setText(pz.stijl === 'tien'
+              ? `${pz.doel} + ${bel.waarde} is geen 10 — een andere bel! 💛`
+              : `${st.weg} + ${bel.waarde} is geen ${st.van} — een ander kristal! 💎`);
+            // anti-gok: na 2 fouten pulseert het juiste antwoord zachtjes
             pz.fouten = (pz.fouten || 0) + 1;
             if (pz.fouten >= 2) {
-              const maatje = (pz.belSprites || []).find((b) => b.active && b.waarde === 10 - pz.doel);
+              const maatje = (pz.belSprites || []).find((b) => b.active && b.waarde === goedWaarde);
               if (maatje) this.pulsHulp(maatje);
-              Voice.hint('baas-tien', 900);
+              Voice.hint(pz.stijl === 'tien' ? 'baas-tien' : 'baas-splits', 900);
             }
             this.time.delayedCall(2200, () => {
               if (!bel.active || pz.solved) return;

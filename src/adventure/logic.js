@@ -177,6 +177,15 @@ export function validateLevel(L) {
       } else if (stijl === 'beuk') {
         if (!S.doel || S.doel < 1) err(`baas-fase ${i + 1} (beuk): doel (zijn grootte-getal) ontbreekt`);
         if (i > 0 && S.doel >= B.stages[i - 1].doel) err(`baas-fase ${i + 1} (beuk): de baas moet KRIMPEN — doelen horen af te lopen`);
+      } else if (stijl === 'splits') {
+        if (!S.van || S.van < 2 || S.van > 20) err(`baas-fase ${i + 1} (splits): 'van' moet 2-20 zijn`);
+        if (S.weg == null || S.weg < 1 || S.weg >= S.van) err(`baas-fase ${i + 1} (splits): 'weg' moet 1..van-1 zijn`);
+        if (S.doel !== S.van - S.weg) err(`baas-fase ${i + 1} (splits): doel (${S.doel}) is niet van − weg (${S.van} − ${S.weg})`);
+        if (!Array.isArray(S.opties) || S.opties.length < 2) err(`baas-fase ${i + 1} (splits): minstens 2 kristallen nodig`);
+        else {
+          const goed = S.opties.filter((w) => w === S.doel).length;
+          if (goed !== 1) err(`baas-fase ${i + 1} (splits): ${goed} kristallen maken het raadsel af — er moet er precies één kloppen`);
+        }
       } else if (stijl === 'schud') {
         if (!S.doel || S.doel < 1 || S.doel > 10) err(`baas-fase ${i + 1} (schud): doel moet 1-10 eikels zijn`);
       } else if (stijl === 'surf') {

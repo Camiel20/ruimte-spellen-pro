@@ -135,6 +135,21 @@ describe('puzzellogica', () => {
     expect(validateLevel(zonderLand).some((e) => e.includes('geen grond'))).toBe(true);
   });
 
+  it('validateLevel: vangt een splits-baas met een kloppend raadsel-gat', () => {
+    const basis = {
+      id: 'x-splits', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      boss: { x: 1200, look: 'kristal', stijl: 'splits', stages: [{ van: 10, weg: 6, doel: 4, opties: [4, 3, 6] }] },
+      goal: { x: 1800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const fouteSom = { ...basis, boss: { ...basis.boss, stages: [{ van: 10, weg: 6, doel: 5, opties: [5, 3, 6] }] } };
+    expect(validateLevel(fouteSom).some((e) => e.includes('van − weg'))).toBe(true);
+    const geenGoed = { ...basis, boss: { ...basis.boss, stages: [{ van: 10, weg: 6, doel: 4, opties: [3, 6, 7] }] } };
+    expect(validateLevel(geenGoed).some((e) => e.includes('precies één'))).toBe(true);
+  });
+
   it('validateLevel: vangt een schud-baas zonder stamp-kracht', () => {
     const basis = {
       id: 'x-schud', worldW: 2000, worldH: 800, killY: 720,

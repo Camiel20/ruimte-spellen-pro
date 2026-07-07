@@ -16,7 +16,7 @@ import {
   drawReusBoss, drawKei,
   drawBilBoss, happyBilBoss, drawStinkWolkje, drawZeepbel,
   drawOctopusBoss, happyOctopusBoss, drawInktKlodder,
-  drawSchelpKeuze, drawEikeltje,
+  drawSchelpKeuze, drawEikeltje, drawKristalKeuze,
 } from './enemyArt.js';
 import { sig } from './palette.js';
 
@@ -57,6 +57,7 @@ export const BOSS_LOOKS = {
     projectile: drawCrystalShard,
     speed: -215,
     waarschuwing: 'Pas op — een kristal! Spring! 💎',
+    keuzeArt: drawKristalKeuze, // stijl 'splits': antwoord-kristallen
   },
   // Meteoor-Grommel (W5): de snelste vuurballen.
   meteoor: {

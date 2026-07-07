@@ -960,3 +960,27 @@ export function drawEikeltje(scene) {
   g.fillStyle(0xd9a86a, 0.6); g.fillEllipse(-4, 3, 5, 9);
   return g;
 }
+
+// ===== ANTWOORD-KRISTAL (Kristal-Baas, stijl 'splits') =====
+// Zelfde contract als tekenGetalBel: een zwevend paars kristal-brok met het
+// getal erin — raak het brok dat het splits-raadsel compleet maakt.
+export function drawKristalKeuze(scene, x, y, waarde) {
+  const c = scene.add.container(x, y).setDepth(6);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.12); g.fillEllipse(0, 28, 40, 8);
+  g.fillStyle(0x9b6dd6, 0.95);
+  g.fillPoints([{ x: 0, y: -26 }, { x: 20, y: -6 }, { x: 13, y: 22 }, { x: -13, y: 22 }, { x: -20, y: -6 }], true);
+  g.fillStyle(0xc7a6ee, 0.85);
+  g.fillPoints([{ x: 0, y: -26 }, { x: 20, y: -6 }, { x: 0, y: 0 }], true);
+  g.fillStyle(0x7a4eb0, 0.9);
+  g.fillPoints([{ x: -20, y: -6 }, { x: 0, y: 0 }, { x: -13, y: 22 }], true);
+  g.lineStyle(2.5, 0x5d3a80, 1);
+  g.strokePoints([{ x: 0, y: -26 }, { x: 20, y: -6 }, { x: 13, y: 22 }, { x: -13, y: 22 }, { x: -20, y: -6 }], true);
+  c.add(g);
+  c.add(scene.add.text(0, 0, `${waarde}`, {
+    fontFamily: 'Arial Black, Arial', fontSize: '19px', fontStyle: 'bold', color: '#ffffff',
+  }).setOrigin(0.5).setStroke('#4a2a66', 4));
+  scene.tweens.add({ targets: c, y: y - 9, duration: 900 + (waarde % 3) * 170, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  c.waarde = waarde; c.spawnY = y; c.taken = false;
+  return c;
+}
