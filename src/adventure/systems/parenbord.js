@@ -54,6 +54,12 @@ function hit(s, pb, blok) {
     SFX.wrong(); Voice.cue('oops');
     s.tweens.add({ targets: bc, x: bc.x + 6, duration: 60, yoyo: true, repeat: 3 });
     s.questText.setText('Oeps — kijk naar de stipjes: heeft iedereen een maatje?');
+    // anti-gok: na 2 fouten pulseert het juiste blok zachtjes
+    pb.fouten = (pb.fouten || 0) + 1;
+    if (pb.fouten >= 2) {
+      s.pulsHulp(pb.blokken[pb.goedIdx]._art);
+      Voice.hint('hint-paren', 900);
+    }
   }
 }
 
@@ -147,7 +153,7 @@ export default {
     for (const pb of s.parenBorden) {
       if (pb.opgelost) continue;
       if (Math.abs(p.x - (pb.x - 140)) < 170) {
-        if (!pb.cuePlayed) { pb.cuePlayed = true; Voice.number(pb.getal); }
+        if (!pb.cuePlayed) { pb.cuePlayed = true; Voice.number(pb.getal); Voice.hint('hint-paren', 1100); }
         s.questText.setText('Heeft iedereen een maatje? Spring tegen het goede blok! ⬆');
       }
     }

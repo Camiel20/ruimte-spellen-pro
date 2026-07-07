@@ -160,7 +160,7 @@ export default {
     if (Math.abs(p.x - R.c.x) < 60) {
       if (R.ready) launch(s);
       else if (time > R.cueAt) {
-        if (!R.cueAt) Voice.cue('greet');
+        if (!R.cueAt) { Voice.cue('greet'); Voice.hint('hint-raket', 700); }
         R.cueAt = time + 2600;
         s.questText.setText(`De raket wil PRECIES ${R.doel} brandstof — pak de vaatjes van 10! ⛽`);
       }

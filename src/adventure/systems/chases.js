@@ -39,6 +39,7 @@ function start(s, ch) {
   ch.rots = c;
   SFX.stomp(); s.cameraPunch(0.02, 6); Voice.cue('oops');
   s.questText.setText(ch.skin === 'komeet' ? 'RENNEN! De komeet komt! ☄️' : 'RENNEN! 🪨');
+  Voice.hint('hint-rennen'); // direct, geen delay — urgentie!
 }
 
 function crash(s, ch, geraakt) {

@@ -65,6 +65,7 @@ export default {
       if (!s.powers.mega && s.time.now > muur.hintAt) {
         muur.hintAt = s.time.now + 2600;
         s.questText.setText('Een grauwe muur… alleen de TIEN-kracht breekt hem! 🔟');
+        if (!muur.hintOoit) { muur.hintOoit = true; Voice.hint('hint-grauwmuur', 300); }
       }
       return true;
     });

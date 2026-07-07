@@ -390,6 +390,9 @@ export default class AdventureScene extends Phaser.Scene {
   startBossFase(pz) {
     pz.faseActief = true;
     Voice.number(pz.doel);
+    // gesproken aanmoediging per stijl, netjes ná het getal
+    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien' };
+    Voice.hint(BAAS_CLIP[pz.stijl], 1100);
     if (pz.stijl === 'vang') {
       const look = bossLook(pz.look);
       this.questText.setText((look.vangTekst || 'Vang {n} toppings terug! 🍅').replace('{n}', pz.doel));
@@ -542,6 +545,13 @@ export default class AdventureScene extends Phaser.Scene {
             this.rekenFouten += 1;
             this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 240, ease: 'Back.in' });
             this.questText.setText(`${pz.doel} + ${bel.waarde} is geen 10 — een andere bel! 💛`);
+            // anti-gok: na 2 fouten pulseert het 10-maatje zachtjes
+            pz.fouten = (pz.fouten || 0) + 1;
+            if (pz.fouten >= 2) {
+              const maatje = (pz.belSprites || []).find((b) => b.active && b.waarde === 10 - pz.doel);
+              if (maatje) this.pulsHulp(maatje);
+              Voice.hint('baas-tien', 900);
+            }
             this.time.delayedCall(2200, () => {
               if (!bel.active || pz.solved) return;
               bel.taken = false; bel.setScale(1).setAlpha(1); SFX.sparkle();
@@ -561,6 +571,13 @@ export default class AdventureScene extends Phaser.Scene {
               this.tweens.add({ targets: pot, angle: { from: -5, to: 5 }, duration: 70, yoyo: true, repeat: 4, onComplete: () => pot.setAngle(0) });
               p.body.setVelocity(-220, -300); // zachtjes teruggeworpen
               this.questText.setText(`Die som is geen ${pz.doel} — een andere pot! 💛`);
+              // anti-gok: na 2 fouten pulseert de juiste pot zachtjes
+              pz.fouten = (pz.fouten || 0) + 1;
+              if (pz.fouten >= 2) {
+                const goed = (pz.potten || []).find((pt) => pt.active && pt.som[0] + pt.som[1] === pz.doel);
+                if (goed) this.pulsHulp(goed);
+                Voice.hint('baas-spoel', 900);
+              }
             }
             break;
           }
@@ -611,6 +628,7 @@ export default class AdventureScene extends Phaser.Scene {
   // Fase klaar (vang of spoel): volgende fase of de overwinning.
   advanceBossStage(pz) {
     pz.faseActief = false;
+    pz.fouten = 0; // anti-gok-teller per fase opnieuw
     (pz.potten || []).forEach((pot) => this.tweens.add({ targets: pot, scale: 0, alpha: 0, duration: 280, onComplete: () => pot.destroy() }));
     pz.potten = [];
     (pz.belSprites || []).forEach((bel) => { if (bel.active) this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 280, onComplete: () => bel.destroy() }); });
@@ -640,6 +658,7 @@ export default class AdventureScene extends Phaser.Scene {
     confettiBurst(this, 150); this.cameraPunch(0.05, 7); SFX.yay(); Voice.cue('cheer'); this.burstStars(c.x, c.y - 20, 16);
     this.tweens.add({ targets: c, y: c.y - 30, duration: 250, yoyo: true, repeat: 3, ease: 'Sine.inOut' });
     this.questText.setText('Baas verslagen! Ren naar de vlag! 🚩');
+    Voice.hint('naar-de-vlag', 900);
     this.vierMijlpaal(c.x);
   }
 
@@ -803,6 +822,7 @@ export default class AdventureScene extends Phaser.Scene {
     this.goal.disc.setFillStyle(sig(this.goal.value));
     this.tweens.add({ targets: this.goal, scale: 1.15, duration: 200, yoyo: true, repeat: 2 });
     this.questText.setText('Alle Grommels blij! Ren naar de vlag! 🚩');
+    Voice.hint('naar-de-vlag', 900);
   }
 
   // ============================================================ SPELER (Één)
@@ -927,6 +947,13 @@ export default class AdventureScene extends Phaser.Scene {
     this.sparkleAt(this.player.x, this.player.y, 12);
   }
 
+  // Anti-gok-hulp (Reken-Raket-regel): na 2 fouten op hetzelfde keuzepunt
+  // pulseert het juiste antwoord zachtjes — van gokken weer leren maken.
+  pulsHulp(target) {
+    if (!target || !target.active) return;
+    this.tweens.add({ targets: target, scale: (target.scale || 1) * 1.16, duration: 260, yoyo: true, repeat: 3, ease: 'Sine.inOut' });
+  }
+
   // Eén choke-point voor ALLE squash-en-stretch op het speler-art. De losse
   // tweens (sprong, groei, maat-wissel) vochten om scaleX/scaleY: een yoyo
   // die halverwege door een nieuwe tween werd afgekapt "yoyo'de" terug naar
@@ -963,10 +990,12 @@ export default class AdventureScene extends Phaser.Scene {
       SFX.grow(9); Voice.cue('cheer'); this.cameraPunch(0.06, 8);
       this.nulReact('blij');
       this.questText.setText('REUUUS! Stamp door de reuzenblokken! 🦣');
+      Voice.hint('reus-je-bent');
     } else if (soort === 'klein') {
       SFX.shrink(); Voice.cue('whee');
       this.nulReact('zorg');
       this.questText.setText('Muizeklein! Kruip door de lage gangen 🐭');
+      Voice.hint('muis-je-bent');
     } else {
       SFX.pop(); Voice.cue('great');
       this.nulReact('blij');
@@ -1202,6 +1231,8 @@ export default class AdventureScene extends Phaser.Scene {
     };
     SFX.fanfare();
     this.questText.setText(`Nieuwe kracht van ${who}: ${NAMEN[power] || power}`);
+    const KRACHT_CLIP = { doubleJump: 'kracht-dubbelsprong', stamp: 'kracht-stamp', duw: 'kracht-duw', mega: 'kracht-tien' };
+    Voice.hint(KRACHT_CLIP[power], 900);
     this.vierNieuweKracht(power, who);
   }
 
@@ -1607,8 +1638,12 @@ export default class AdventureScene extends Phaser.Scene {
     }
     this.updateBossFase(time);
     if (this.nearPuzzle) {
-      // Eerste keer bij deze puzzel: vrolijk begroetings-cue (hoorbare uitnodiging).
-      if (!this.nearPuzzle.cuePlayed) { this.nearPuzzle.cuePlayed = true; Voice.cue('greet'); }
+      // Eerste keer bij deze puzzel: begroeting + gesproken instructie.
+      if (!this.nearPuzzle.cuePlayed) {
+        this.nearPuzzle.cuePlayed = true;
+        Voice.cue('greet');
+        Voice.hint(this.nearPuzzle.type === 'boss' ? 'baas-bouw' : 'hint-handje', 700);
+      }
       this.setBuildBtnVisible(true);
       this.btnBuildLabel.setText(this.nearPuzzle.prompt);
       this.questText.setText(`Tik op ✋: ${this.nearPuzzle.prompt}`);
@@ -1627,10 +1662,12 @@ export default class AdventureScene extends Phaser.Scene {
         else if (this.playerValue < door.doel) {
           door.hintText.setText('Word groter!');
           this.questText.setText(`Wees ${door.doel} om de deur te openen — pak bolletjes!`);
+          if (!door.hintOoit) { door.hintOoit = true; Voice.hint('hint-deur', 900); }
         } else {
           // te groot → splits jezelf: tik op je eigen figuurtje (−1)
           door.hintText.setText('Tik op jezelf: −1');
           this.questText.setText(`Te groot! Tik op jezelf om een blokje af te splitsen ✂️`);
+          if (!door.splitsHintOoit) { door.splitsHintOoit = true; Voice.hint('hint-splits', 900); }
         }
       } else if (door.hintText.text !== `Wees ${door.doel}!`) {
         door.hintText.setText(`Wees ${door.doel}!`);
@@ -1657,7 +1694,7 @@ export default class AdventureScene extends Phaser.Scene {
       && Math.abs(p.x - this.goudenNul.x) < 52 && Math.abs(p.y - this.goudenNul.y) < 64) {
       this.goudenNul.taken = true;
       markGoudenNul(this.level.id);
-      SFX.fanfare(); Voice.cue('star'); confettiBurst(this, 100);
+      SFX.fanfare(); Voice.cue('star'); Voice.hint('gouden-nul', 600); confettiBurst(this, 100);
       this.burstStars(this.goudenNul.x, this.goudenNul.y, 14);
       this.nulReact('ster');
       this.cameraPunch(0.05, 6);

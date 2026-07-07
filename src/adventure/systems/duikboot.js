@@ -198,6 +198,13 @@ export default {
             s.rekenFouten += 1;
             s.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 260, ease: 'Back.in' });
             s.questText.setText(`${D.toon} + ${bel.waarde} is geen 10 — zoek het maatje van ${D.toon}!`);
+            // anti-gok: na 2 fouten pulseert het 10-maatje zachtjes
+            D.fouten = (D.fouten || 0) + 1;
+            if (D.fouten >= 2) {
+              const maatje = D.belSprites.find((b) => b.active && b.waarde === 10 - D.toon);
+              if (maatje) s.pulsHulp(maatje);
+              Voice.hint('hint-duikboot', 900);
+            }
             s.time.delayedCall(2400, () => {
               if (!bel.active) return;
               bel.taken = false; bel.setScale(1).setAlpha(1); SFX.sparkle();
@@ -211,7 +218,7 @@ export default {
       if (Math.abs(p.x - D.c.x) < 64) {
         if (D.vol) vaar(s, D);
         else if (time > D.cueAt) {
-          if (!D.cueAt) Voice.cue('greet');
+          if (!D.cueAt) { Voice.cue('greet'); Voice.hint('hint-duikboot', 700); }
           D.cueAt = time + 2600;
           s.questText.setText(`De tank wil PRECIES 10: ${D.toon} + ? — pak de goede lucht-bel! 🫧`);
         }

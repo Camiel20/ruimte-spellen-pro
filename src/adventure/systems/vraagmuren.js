@@ -33,6 +33,12 @@ function hit(s, vm, blok) {
     flash.fillStyle(0xe8402c, 0.45); flash.fillRoundedRect(bc.x - 28, bc.y - 26, 56, 52, 10);
     s.tweens.add({ targets: flash, alpha: 0, duration: 500, onComplete: () => flash.destroy() });
     s.questText.setText(vm.kies === 'meer' ? 'Oeps — welk getal is MEER?' : 'Oeps — welk getal is MINDER?');
+    // anti-gok: na 2 fouten pulseert het juiste blok zachtjes
+    vm.fouten = (vm.fouten || 0) + 1;
+    if (vm.fouten >= 2) {
+      s.pulsHulp(vm.blokken[vm.goedIdx]._art);
+      Voice.hint(vm.kies === 'meer' ? 'hint-meer' : 'hint-minder', 900);
+    }
   }
 }
 
@@ -123,7 +129,10 @@ export default {
     for (const vm of s.vraagMuren) {
       if (vm.opgelost) continue;
       if (Math.abs(p.x - (vm.x - 140)) < 170) {
-        if (!vm.cuePlayed) { vm.cuePlayed = true; Voice.cue('greet'); }
+        if (!vm.cuePlayed) {
+          vm.cuePlayed = true; Voice.cue('greet');
+          Voice.hint(vm.kies === 'meer' ? 'hint-meer' : 'hint-minder', 700);
+        }
         s.questText.setText(`Spring tegen het blok met ${vm.kies.toUpperCase()}! ⬆`);
       }
     }

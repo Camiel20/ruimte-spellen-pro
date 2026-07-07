@@ -15,6 +15,7 @@
 
 import Phaser from 'phaser';
 import { SFX } from '../../sound.js';
+import { Voice } from '../../voice.js';
 
 export const GIANT = 1.75;   // schaal als reus
 export const TINY = 0.5;     // schaal als muisje
@@ -121,6 +122,11 @@ export default {
     for (const f of s.grootteFruit) {
       if (f.taken) continue;
       const factor = f.soort === 'groot' ? GIANT : f.soort === 'klein' ? TINY : 1;
+      // eerste keer bij maat-fruit in dit level: gesproken uitleg
+      if (!s._maatHint && f.soort !== 'normaal' && Math.abs(s.player.x - f.x) < 260) {
+        s._maatHint = true;
+        Voice.hint(f.soort === 'groot' ? 'hint-reus' : 'hint-muis', 300);
+      }
       if ((s.reus || 1) === factor) continue; // al deze maat — fruit blijft liggen
       // Ruimhartig vangen, gemeten aan je LIJF (niet je midden — het midden
       // van een lange speler hangt hoog en miste het fruit juist bij een

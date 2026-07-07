@@ -114,4 +114,19 @@ export const Voice = {
   },
 
   number(n) { this.cue('number', n); },
+
+  // Gesproken HINT (instructie-clips zoals 'hint-deur'). Anders dan cue():
+  // - speelt alleen als de clip bestaat (instructies hebben geen jingle-vorm)
+  // - GLOBAAL gethrottled (~4s) zodat twee systemen nooit door elkaar praten
+  // - optionele delay om netjes NA een number-clip te spreken
+  hint(name, delayMs = 0) {
+    if (!isSoundOn() || !clips[name]) return;
+    const nu = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    if (nu < hintSlotTot) return;
+    hintSlotTot = nu + delayMs + 4000;
+    if (delayMs > 0) setTimeout(() => this.cue(name), delayMs);
+    else this.cue(name);
+  },
 };
+
+let hintSlotTot = 0; // tot wanneer het hint-"spreekkanaal" bezet is

@@ -8,6 +8,7 @@
 
 import Phaser from 'phaser';
 import { SFX } from '../../sound.js';
+import { Voice } from '../../voice.js';
 
 const ZWEM_OMHOOG = -300; // max stijg-snelheid (zwemslag-plafond)
 const ZWEM_OMLAAG = 130;  // max zak-snelheid (dobberen, nooit pletter-vallen)
@@ -47,6 +48,7 @@ export default {
       if (inZone) {
         SFX.sparkle();
         s.questText.setText('Diep water — tik-tik-tik omhoog zwemmen! 🐠');
+        if (!s._zwemHint) { s._zwemHint = true; Voice.hint('hint-zwem', 300); }
       }
     }
     if (inZone) {

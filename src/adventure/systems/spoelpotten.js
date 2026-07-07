@@ -77,6 +77,12 @@ function spoel(s, G, pot, goed) {
         } else {
           SFX.oops(); Voice.cue('laugh');
           s.questText.setText(`Brrr — die som is geen ${G.doel}! Probeer een andere pot 💛`);
+          // anti-gok: na 2 fouten pulseert de juiste pot zachtjes
+          G.fouten = (G.fouten || 0) + 1;
+          if (G.fouten >= 2) {
+            if (G.potten[G.goedIdx]) s.pulsHulp(G.potten[G.goedIdx]);
+            Voice.hint('hint-pot', 900);
+          }
         }
       });
     },

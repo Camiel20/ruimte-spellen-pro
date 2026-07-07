@@ -112,6 +112,7 @@ export default {
       if (po.opgelost || time < po.cooldownTot) continue;
       if (!po.cuePlayed && Math.abs(p.x - po.x) < 300) {
         po.cuePlayed = true; Voice.cue('greet');
+        Voice.hint('hint-portaal', 700);
         s.questText.setText(`Stap in het portaal waar de som ${po.doel} is! ✨`);
       }
       for (const pt of po.ringen) {
@@ -131,6 +132,13 @@ export default {
             teleport(s, po.x - 170);
             SFX.wrong(); Voice.cue('oops');
             s.questText.setText(`Dat is samen ${pt.som}, niet ${po.doel} — probeer een ander portaal!`);
+            // anti-gok: na 2 fouten pulseert het juiste portaal zachtjes
+            po.fouten = (po.fouten || 0) + 1;
+            if (po.fouten >= 2) {
+              const goed = po.ringen.find((r) => r.som === po.doel);
+              if (goed) s.pulsHulp(goed.art);
+              Voice.hint('hint-portaal', 900);
+            }
           }
           break;
         }

@@ -5,6 +5,7 @@
 // Leveldata: duwKisten: [x, x, ...] (de kist staat op de grond).
 
 import { darker, sig } from '../palette.js';
+import { Voice } from '../../voice.js';
 
 const KIST = 58; // breedte/hoogte
 
@@ -59,6 +60,7 @@ export default {
         && (s.player.body.touching.left || s.player.body.touching.right)) {
         kist._hintAt = time + 2600;
         s.questText.setText('Oef, te zwaar… hiervoor heb je de DUW-kracht van Vier nodig! 💪');
+        if (!kist._hintOoit) { kist._hintOoit = true; Voice.hint('hint-duwkist', 300); }
       }
     }
   },

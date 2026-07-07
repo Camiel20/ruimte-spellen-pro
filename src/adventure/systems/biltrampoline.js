@@ -39,6 +39,8 @@ export default {
     if (!s.bilTrampolines || !s.bilTrampolines.length) return;
     const p = s.player, b = p.body;
     for (const bil of s.bilTrampolines) {
+      // eerste keer in de buurt van een stuiter-bil: gesproken uitleg
+      if (!s._bilHint && Math.abs(p.x - bil.x) < 240) { s._bilHint = true; Voice.hint('hint-bil'); }
       if (time < bil.cd) continue;
       // alleen bij LANDEN op de bil (vallend, voeten rond de bovenkant)
       if (b.velocity.y > 60 && Math.abs(p.x - bil.x) < 52

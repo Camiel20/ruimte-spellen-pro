@@ -58,6 +58,45 @@ const CLIPS = {
   'number-19': ['negentien', 'Negentien!'],
   'number-20': ['twintig', 'Twintig!'],
 
+  // ===== HINT-CLIPS (fase 2, renovatie-sprint) =====
+  // Gesproken instructies voor niet-lezers: bij eerste nadering per level en
+  // na een fout antwoord. Kort en energiek; het uitroepteken stuurt de
+  // neural stem naar vrolijk.
+  'hint-deur': ['hint-deur', 'Word net zo groot als het getal op de deur!'],
+  'hint-splits': ['hint-splits', 'Te groot! Tik op jezelf!'],
+  'hint-handje': ['hint-handje', 'Tik op het handje!'],
+  'hint-meer': ['hint-meer', 'Waar is meer? Spring ertegen!'],
+  'hint-minder': ['hint-minder', 'Waar is minder? Spring ertegen!'],
+  'hint-plaat': ['hint-plaat', 'Geef blokjes op de plaat!'],
+  'hint-portaal': ['hint-portaal', 'Stap in het portaal met de goede som!'],
+  'hint-raket': ['hint-raket', 'Pak de vaatjes van tien!'],
+  'hint-duikboot': ['hint-duikboot', 'Zoek het maatje van tien!'],
+  'hint-grauwmuur': ['hint-grauwmuur', 'Alleen de tien-kracht breekt hem!'],
+  'hint-duwkist': ['hint-duwkist', 'Hiervoor heb je de duw-kracht nodig!'],
+  'hint-rennen': ['hint-rennen', 'Rennen, rennen, rennen!'],
+  'hint-zwem': ['hint-zwem', 'Tik, tik, tik — omhoog zwemmen!'],
+  'hint-bil': ['hint-bil', 'Spring op de stuiter-bil!'],
+  'hint-paren': ['hint-paren', 'Heeft iedereen een maatje?'],
+  'hint-reus': ['hint-reus', 'Hap de appel en word een reus!'],
+  'hint-muis': ['hint-muis', 'Eet het besje en word klein!'],
+  'hint-pot': ['hint-pot', 'Spring in de pot met de goede som!'],
+  // krachten (bij het leren van een nieuwe kracht)
+  'kracht-dubbelsprong': ['kracht-dubbelsprong', 'Dubbelsprong!'],
+  'kracht-stamp': ['kracht-stamp', 'Stampen!'],
+  'kracht-duw': ['kracht-duw', 'Duwen!'],
+  'kracht-tien': ['kracht-tien', 'Tien-kracht!'],
+  // baas-aanmoedigingen (per stijl, bij de fase-start)
+  'baas-bouw': ['baas-bouw', 'Bouw het getal!'],
+  'baas-vang': ['baas-vang', 'Vang ze allemaal!'],
+  'baas-spoel': ['baas-spoel', 'Zoek de goede pot!'],
+  'baas-beuk': ['baas-beuk', 'Word een reus en ram hem!'],
+  'baas-tien': ['baas-tien', 'Maak er samen tien van!'],
+  // mijlpalen
+  'naar-de-vlag': ['naar-de-vlag', 'Naar de vlag!'],
+  'gouden-nul': ['gouden-nul', 'Een gouden nul!'],
+  'reus-je-bent': ['reus-je-bent', 'Reus!'],
+  'muis-je-bent': ['muis-je-bent', 'Muizeklein!'],
+
   // tientallen + honderd (Tel-Slang-feestjes, Nul-Raket)
   'number-30': ['dertig', 'Dertig!'],
   'number-40': ['veertig', 'Veertig!'],

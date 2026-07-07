@@ -75,7 +75,7 @@ export default {
     for (const pl of s.plates) {
       if (pl.given) continue;
       if (Math.abs(p.x - pl.x) < 42 && onFloor) {
-        if (!pl.cuePlayed) { pl.cuePlayed = true; Voice.number(pl.doel); }
+        if (!pl.cuePlayed) { pl.cuePlayed = true; Voice.number(pl.doel); Voice.hint('hint-plaat', 1100); }
         if (s.playerValue > pl.doel) give(s, pl);
         else s.questText.setText(`Geef ${pl.doel} blokjes — word eerst groter! (pak bolletjes)`);
       }
