@@ -346,7 +346,12 @@ export default class WorldMapScene extends Phaser.Scene {
     const W = this.scale.width, H = this.scale.height;
     const paneel = this.add.container(0, 0).setScrollFactor(0).setDepth(120);
     this._hoedjesPaneel = paneel;
-    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x16202b, 0.72).setInteractive();
+    // LET OP: het paneel zit in een scrollFactor(0)-container, maar de input-
+    // hittest kijkt naar de scrollFactor van het object ZELF. Zonder
+    // setScrollFactor(0) op de klikvlakken schuift het klikgebied mee met de
+    // camera-scroll (buiten beeld) → hoedjes onklikbaar na scrollen. Vandaar
+    // scrollFactor(0) op elk interactief element hieronder.
+    const dim = this.add.rectangle(W / 2, H / 2, W, H, 0x16202b, 0.72).setScrollFactor(0).setInteractive();
     paneel.add(dim);
     const kaart = this.add.graphics();
     kaart.fillStyle(0xfdf6ec, 1); kaart.fillRoundedRect(24, 90, W - 48, H - 240, 22);
@@ -381,7 +386,7 @@ export default class WorldMapScene extends Phaser.Scene {
       if (gekozen) tegel.add(this.add.text(CEL / 2 - 16, -CEL / 2 + 15, '✔', { fontFamily: 'Arial Black, Arial', fontSize: '16px', color: '#2fae4e' }).setOrigin(0.5));
       paneel.add(tegel);
       if (vrij) {
-        const hit2 = this.add.rectangle(cx, cy, CEL - 8, CEL - 8, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+        const hit2 = this.add.rectangle(cx, cy, CEL - 8, CEL - 8, 0xffffff, 0.001).setScrollFactor(0).setInteractive({ useHandCursor: true });
         hit2.on('pointerdown', () => {
           setSetting('hoedje', h.id);
           SFX.sparkle(); Voice.cue('cheer'); // jingle — geen spraak (stem-spaarzaam)
@@ -399,7 +404,7 @@ export default class WorldMapScene extends Phaser.Scene {
     paneel.add(this.add.text(W / 2, H - 167, 'Klaar', {
       fontFamily: 'Arial Black, Arial', fontSize: '18px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5));
-    const sluitHit = this.add.rectangle(W / 2, H - 167, 130, 54, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+    const sluitHit = this.add.rectangle(W / 2, H - 167, 130, 54, 0xffffff, 0.001).setScrollFactor(0).setInteractive({ useHandCursor: true });
     sluitHit.on('pointerdown', () => { SFX.click(); sluit(); });
     paneel.add(sluitHit);
   }
