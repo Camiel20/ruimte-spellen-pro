@@ -469,5 +469,20 @@ export function validateLevel(L) {
     if (!support) err(`portaal-groep ${i + 1}: geen doorlopende grond rond de portalen`);
   });
 
+  // Schrijf-poorten (Letter-Land): geldige kleine letter, kloof binnen de
+  // wereld en niet dichtgemetseld, trigger vóór de kloof.
+  (L.schrijfPoorten || []).forEach((P, i) => {
+    if (!P.letter || !/^[a-z]$/.test(P.letter)) err(`schrijf-poort ${i + 1}: letter moet een kleine letter a-z zijn`);
+    if (P.gapX == null || P.gapW == null) { err(`schrijf-poort ${i + 1} mist gapX/gapW`); return; }
+    if (P.gapX + P.gapW > L.worldW) err(`schrijf-poort ${i + 1}: kloof steekt buiten de wereld`);
+    const trigger = P.triggerX != null ? P.triggerX : P.gapX - 150;
+    if (trigger >= P.gapX) err(`schrijf-poort ${i + 1}: trigger ligt niet vóór de kloof`);
+    L.platforms.forEach(([px, py, pw], pi) => {
+      if (py === groundTop && px < P.gapX + P.gapW && px + pw > P.gapX) {
+        err(`schrijf-poort ${i + 1}: platform ${pi} overlapt de kloof — geen echte kloof`);
+      }
+    });
+  });
+
   return errors;
 }

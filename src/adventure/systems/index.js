@@ -33,5 +33,6 @@ import bilTrampolines from './biltrampoline.js';
 import parenBorden from './parenbord.js';
 import zwemZones from './zwemzones.js';
 import duikboten from './duikboot.js';
+import schrijf from './schrijf.js';
 
-export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon, spoelpotten, wcRollen, stinkZones, grootte, bilTrampolines, parenBorden, zwemZones, duikboten];
+export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon, spoelpotten, wcRollen, stinkZones, grootte, bilTrampolines, parenBorden, zwemZones, duikboten, schrijf];

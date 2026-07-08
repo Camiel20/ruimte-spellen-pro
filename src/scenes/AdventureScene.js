@@ -21,6 +21,7 @@ import { tekenGetalBel } from '../adventure/systems/duikboot.js';
 import { buildNul, updateNul } from '../adventure/maatje.js';
 import { CELL, PW, MOVE_SPEED, JUMP_BASE, JUMP_PER_LEVEL, COYOTE_MS, BUFFER_MS } from '../adventure/constants.js';
 import { LEVELS } from '../levels/index.js';
+import { LOWER_PATHS, TraceChallenge } from '../glyphs.js';
 
 // ===== TEL-AVONTUUR — level-engine =====
 // Data-gedreven 2D-platformer in de sfeer van Numberblocks (100% zelf getekend).
@@ -46,17 +47,25 @@ export default class AdventureScene extends Phaser.Scene {
   create(data) {
     initAudio();
 
+    // Welke level-SET? Standaard de getallen-werelden (LEVELS). Een los spel
+    // (bv. Letter-Land) geeft een eigen `levelSet` + `homeScene` mee; dan
+    // hervatten/bewaren we niet in de getallen-voortgang.
+    this.levels = (data && data.levelSet) || LEVELS;
+    this.persistCur = !(data && data.levelSet);
+    this.homeScene = (data && data.homeScene) || 'WorldMap';
     // Welk level? Expliciet meegegeven (wereldkaart/level-ketting) wint;
     // anders hervatten waar je gebleven was ("verder spelen"); anders 1-1.
     if (data && data.levelIndex != null) {
       this.levelIndex = data.levelIndex;
-    } else {
+    } else if (this.persistCur) {
       const cur = getAdventureCurrent();
-      const idx = cur ? LEVELS.findIndex((l) => l.id === cur) : -1;
+      const idx = cur ? this.levels.findIndex((l) => l.id === cur) : -1;
       this.levelIndex = idx >= 0 ? idx : 0;
+    } else {
+      this.levelIndex = 0;
     }
-    this.level = LEVELS[this.levelIndex] || LEVELS[0];
-    setAdventureCurrent(this.level.id); // onthoud waar we zijn (ook na app-sluiten)
+    this.level = this.levels[this.levelIndex] || this.levels[0];
+    if (this.persistCur) setAdventureCurrent(this.level.id); // onthoud waar we zijn
     const L = this.level;
     // avontuur-deuntje in de klankkleur van deze wereld
     startMusic('adventure', muziekVoorTerrein(L.terrain));
@@ -996,8 +1005,11 @@ export default class AdventureScene extends Phaser.Scene {
     pole.fillStyle(0xffffff, 0.6); pole.fillRect(-3, -70, 2, 150);
     c.add(pole);
     const disc = this.add.circle(0, -48, 30, 0xbfc4c9).setStrokeStyle(4, 0x16202b);
-    // driecijferige doelen (100!) iets kleiner, zodat ze in de schijf passen
-    const num = this.add.text(0, -48, `${L.goal.value}`, { fontFamily: 'Arial Black, Arial', fontSize: L.goal.value >= 100 ? '23px' : '34px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+    // Letter-Land: de vlag toont het WOORD; anders het doelgetal (100! iets
+    // kleiner zodat het in de schijf past).
+    const label = L.goal.woord != null ? L.goal.woord : `${L.goal.value}`;
+    const fs = L.goal.woord != null ? (label.length >= 5 ? '18px' : '22px') : (L.goal.value >= 100 ? '23px' : '34px');
+    const num = this.add.text(0, -48, label, { fontFamily: 'Arial Black, Arial', fontSize: fs, fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
     c.add([disc, num]);
     c.disc = disc; c.num = num; c.value = L.goal.value; c.reached = false;
     this.tweens.add({ targets: c, y: L.goal.y - 6, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
@@ -1308,7 +1320,7 @@ export default class AdventureScene extends Phaser.Scene {
       panel.add([g, ic, hit]);
     };
     // verder spelen (groen, rechts) & stoppen naar de kaart (blauw, links)
-    mkBtn(W / 2 - 75, 0x38b6cf, 0x1f7a9e, '🗺️', () => { SFX.click(); this.scene.start('WorldMap'); });
+    mkBtn(W / 2 - 75, 0x38b6cf, 0x1f7a9e, '🗺️', () => { SFX.click(); this.scene.start(this.homeScene); });
     mkBtn(W / 2 + 75, 0x2fae4e, 0x1f7a36, '▶', () => {
       SFX.click();
       panel.destroy(); this.exitPanel = null; this.physics.resume();
@@ -1367,7 +1379,7 @@ export default class AdventureScene extends Phaser.Scene {
 
     const perRow = 6, chipW = 74, rowH = 44;
     const startX = W / 2 - ((perRow - 1) * chipW) / 2;
-    LEVELS.forEach((lvl, i) => {
+    this.levels.forEach((lvl, i) => {
       const active = i === this.levelIndex;
       const cx = startX + (i % perRow) * chipW;
       const cy = 150 + Math.floor(i / perRow) * rowH;
@@ -1377,10 +1389,10 @@ export default class AdventureScene extends Phaser.Scene {
         backgroundColor: active ? '#ffe16b' : '#2b3d52',
         padding: { x: 9, y: 7 },
       }).setOrigin(0.5).setScrollFactor(0).setDepth(241).setInteractive({ useHandCursor: true });
-      c.on('pointerdown', () => { SFX.click(); this.scene.restart({ levelIndex: i }); });
+      c.on('pointerdown', () => { SFX.click(); this.scene.restart(this.restartData(i)); });
       items.push(c);
     });
-    items.push(this.add.text(W / 2, 150 + Math.ceil(LEVELS.length / perRow) * rowH + 8, 'tik ernaast om te sluiten', {
+    items.push(this.add.text(W / 2, 150 + Math.ceil(this.levels.length / perRow) * rowH + 8, 'tik ernaast om te sluiten', {
       fontFamily: 'Arial', fontSize: '13px', color: '#94a3b8',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(241));
     this.testPanelItems = items;
@@ -1389,7 +1401,44 @@ export default class AdventureScene extends Phaser.Scene {
   // ============================================================ BOUW-MODUS
   // De hele bouw-overlay (paneel, blokken, samenvoegen/splitsen, hints,
   // telmoment) leeft in adventure/BuildOverlay.js. De ✋-knop roept dit aan.
-  enterBuild() { this.buildUI.enter(); }
+  enterBuild() {
+    // Schrijf-poorten (Letter-Land) openen de overtrek-overlay i.p.v. de
+    // blokjes-bouwoverlay; de rest gaat gewoon naar BuildOverlay.
+    if (this.nearPuzzle && this.nearPuzzle.type === 'schrijf') this.enterSchrijf(this.nearPuzzle);
+    else this.buildUI.enter();
+  }
+
+  // Data om dezelfde scene op een ander level te herstarten — inclusief de
+  // level-set + thuisscherm zodat een los spel (Letter-Land) niet terugvalt op
+  // de getallen-werelden.
+  restartData(idx) {
+    return this.persistCur ? { levelIndex: idx } : { levelSet: this.levels, levelIndex: idx, homeScene: this.homeScene };
+  }
+
+  // Schrijf-poort: bevries het lopen (zoals de bouw-overlay) en open de
+  // overtrek-uitdaging met de kleine letter. Gelukt → blok wakker + brug.
+  enterSchrijf(pz) {
+    if (this.mode !== 'explore' || pz.solved) return;
+    this.mode = 'build';
+    this.physics.pause();
+    if (this.clearBossWaves) this.clearBossWaves();
+    this.player.body.setVelocity(0, 0);
+    this.setBuildBtnVisible(false);
+    [this.btnLeft, this.btnRight, this.btnJump].forEach((b) => { b.g.setVisible(false); b.t.setVisible(false); b.hit.disableInteractive(); });
+    Voice.cue('klank-' + pz.letter);
+    this.schrijfOverlay = new TraceChallenge(this, {
+      label: pz.letter,
+      paths: LOWER_PATHS[pz.letter],
+      onDone: () => {
+        this.schrijfOverlay = null;
+        [this.btnLeft, this.btnRight, this.btnJump].forEach((b) => { b.g.setVisible(true); b.t.setVisible(true); b.hit.setInteractive(); });
+        this.physics.resume();
+        this.mode = 'explore';
+        pz.solved = true;
+        pz.onSolve();
+      },
+    });
+  }
 
   // ============================================================ BRUG NEERLEGGEN
   solveBridge(pz) {
@@ -1718,7 +1767,7 @@ export default class AdventureScene extends Phaser.Scene {
 
     const L = this.level;
     // finale-level: hierna komt het grote feest, geen volgend level
-    const hasNext = !!LEVELS[this.levelIndex + 1] && !L.finale;
+    const hasNext = !!this.levels[this.levelIndex + 1] && !L.finale;
     const R = L.reward || {};
 
     // VERDIENDE sterren (max 3): finish + de geheime ster + foutloos gerekend.
@@ -1743,21 +1792,25 @@ export default class AdventureScene extends Phaser.Scene {
 
     // Voortgang vastleggen: gehaald, ster en beste sterren-score.
     markLevelDone(L.id, { ...(heeftSter ? { star: true } : {}), sterren: verdiend });
-    if (hasNext) setAdventureCurrent(LEVELS[this.levelIndex + 1].id);
+    if (hasNext && this.persistCur) setAdventureCurrent(this.levels[this.levelIndex + 1].id);
 
     // TEL-FINALE: de vlag telt hoorbaar naar zijn getal — jij maakt hem
     // compleet! Ronde tientallen tellen met sprongen van 10 (20, 30 … 100).
-    const val = this.goal.value;
-    const perTien = val >= 20 && val % 10 === 0;
-    const stappen = perTien ? val / 10 : val;
-    for (let i = 0; i < stappen; i++) {
-      this.time.delayedCall(140 + i * 110, () => {
-        this.goal.num.setText(`${perTien ? (i + 1) * 10 : i + 1}`);
-        SFX.grow(i + 1);
-        this.tweens.add({ targets: this.goal.disc, scale: 1.15, duration: 80, yoyo: true });
-      });
+    // Letter-Land: de vlag toont het WOORD (L.goal.woord) i.p.v. te tellen.
+    let telKlaar = 140;
+    if (!L.goal.woord) {
+      const val = this.goal.value;
+      const perTien = val >= 20 && val % 10 === 0;
+      const stappen = perTien ? val / 10 : val;
+      for (let i = 0; i < stappen; i++) {
+        this.time.delayedCall(140 + i * 110, () => {
+          this.goal.num.setText(`${perTien ? (i + 1) * 10 : i + 1}`);
+          SFX.grow(i + 1);
+          this.tweens.add({ targets: this.goal.disc, scale: 1.15, duration: 80, yoyo: true });
+        });
+      }
+      telKlaar = 140 + stappen * 110;
     }
-    const telKlaar = 140 + stappen * 110;
     this.tweens.add({ targets: this.goal, scale: 1.2, duration: 200, delay: telKlaar, yoyo: true, repeat: 2 });
 
     this.time.delayedCall(telKlaar + 520, () => {
@@ -1770,8 +1823,8 @@ export default class AdventureScene extends Phaser.Scene {
         buttonText: L.finale ? 'FEEST! 🎉' : hasNext ? 'Volgend level ▶' : 'Nog een keer! 🔄',
         onClose: () => {
           if (L.finale) this.scene.start('Feest', { slot: L.finale === 'slot' });
-          else if (hasNext) this.scene.restart({ levelIndex: this.levelIndex + 1 });
-          else this.scene.restart({ levelIndex: this.levelIndex });
+          else if (hasNext) this.scene.restart(this.restartData(this.levelIndex + 1));
+          else this.scene.restart(this.restartData(this.levelIndex));
         },
       });
     });
@@ -1916,7 +1969,7 @@ export default class AdventureScene extends Phaser.Scene {
       this.burstStars(this.goudenNul.x, this.goudenNul.y, 14);
       this.nulReact('ster');
       this.cameraPunch(0.05, 6);
-      this.questText.setText(`GOUDEN NUL gevonden! ⭕ (${telGoudenNullen()} van de ${LEVELS.filter((l) => l.goudenNul).length})`);
+      this.questText.setText(`GOUDEN NUL gevonden! ⭕ (${telGoudenNullen()} van de ${this.levels.filter((l) => l.goudenNul).length})`);
       this.tweens.add({ targets: this.goudenNul, scale: 2, alpha: 0, angle: 260, duration: 500, ease: 'Back.in' });
     }
 
