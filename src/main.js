@@ -21,6 +21,7 @@ import VillageScene from './scenes/VillageScene.js';
 import StatsScene from './scenes/StatsScene.js';
 import StickerScene from './scenes/StickerScene.js';
 import TovenScene from './scenes/TovenScene.js';
+import AlfaScene from './scenes/AlfaScene.js';
 import { installTracking } from './stats.js';
 import { Voice } from './voice.js';
 
@@ -51,7 +52,7 @@ const config = {
     TraceScene, TraceMenuScene, ClickerScene, PianoScene,
     AwardsScene, SettingsScene, BezorgScene, NumberTowerScene, ZeroRocketScene,
     AdventureScene, IntroScene, ReisScene, FeestScene, WorldMapScene, VillageScene, StatsScene,
-    StickerScene, TovenScene,
+    StickerScene, TovenScene, AlfaScene,
   ],
 };
 

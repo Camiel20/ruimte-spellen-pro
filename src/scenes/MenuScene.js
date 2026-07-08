@@ -169,6 +169,8 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '🚀', name: 'Nul-Raket',        color: 0x6366f1, go: () => this.scene.start('ZeroRocket') },
       { icon: '🐍', name: 'Tel-Slang',        color: 0x06b6d4, go: () => this.launchSnake() },
       { icon: '📖', name: 'Plakboek',         color: 0xf59e0b, go: () => this.scene.start('Sticker') },
+      // test: true = nog achter Ouder-modus tot de speeltest met Adrian slaagt.
+      { icon: '🔤', name: 'Alfa-Blokken', test: true, color: 0xf43f5e, go: () => this.scene.start('Alfa') },
       // test: true = nog niet klaar voor Adrian — alleen zichtbaar in de
       // Ouder-modus (testversie). De Toverwinkel wacht op de speelgoed-pass.
       { icon: '🧪', name: 'Toverwinkel', test: true, color: 0x7c3aed, go: () => this.scene.start('Toverwinkel') },

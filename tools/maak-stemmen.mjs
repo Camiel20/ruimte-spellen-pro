@@ -15,6 +15,7 @@ import { MsEdgeTTS, OUTPUT_FORMAT, ProsodyOptions } from 'msedge-tts';
 import { createWriteStream, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { KLANKEN, WERELDEN } from '../src/alfaLogic.js';
 
 const DOEL = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'voice');
 
@@ -114,6 +115,21 @@ const CLIPS = {
   'number-90': ['negentig', 'Negentig!'],
   'number-100': ['honderd', 'Honderd!'],
 };
+
+// ===== ALFA-BLOKKEN (schrijfspel) =====
+// Afgeleid uit de woord-data zodat het altijd in sync is: één klank-clip per
+// letter (voor het 'blenden') + één clip per te schrijven woord. De klank-
+// tekst komt uit KLANKEN (bv. 'mm', 'buh') — de neural stem maakt daar de
+// letterklank van. Bij een rare klank: pas KLANKEN in src/alfaLogic.js aan en
+// draai opnieuw.
+for (const [letter, klank] of Object.entries(KLANKEN)) {
+  CLIPS[`klank-${letter}`] = [`klank-${letter}`, klank];
+}
+for (const W of WERELDEN) {
+  for (const { w } of W.woorden) {
+    CLIPS[`woord-${w}`] = [`woord-${w}`, `${w[0].toUpperCase()}${w.slice(1)}!`];
+  }
+}
 
 async function maakClip(tts, tekst, pad) {
   const opts = new ProsodyOptions();
