@@ -484,5 +484,14 @@ export function validateLevel(L) {
     });
   });
 
+  // De Sisser (Letter-Land baas): op de grond, binnen de wereld, en er moeten
+  // schrijf-poorten zijn (elke geschreven letter laat hem krimpen → verslagen).
+  if (L.sisser) {
+    if (L.sisser.x == null || L.sisser.x < 0 || L.sisser.x > L.worldW) err('sisser staat buiten de wereld');
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= L.sisser.x && px + pw >= L.sisser.x);
+    if (!support) err('sisser staat niet op de grond');
+    if (!(L.schrijfPoorten || []).length) err('sisser-baas zonder schrijf-poorten — nooit te verslaan');
+  }
+
   return errors;
 }

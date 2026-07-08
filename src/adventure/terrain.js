@@ -5,6 +5,21 @@
 
 import Phaser from 'phaser';
 import { lighten, darker } from './palette.js';
+import { LOWER_PATHS, RAINBOW } from '../glyphs.js';
+
+// Teken een kleine letter (uit LOWER_PATHS) op graphics g — voor het
+// letter-terrein (zwevende letters + letter-tegeltjes in het gras).
+function letterStroke(g, ch, ox, oy, sz, lw, col) {
+  const paths = LOWER_PATHS[ch];
+  if (!paths) return;
+  g.lineStyle(lw, col, 1);
+  for (const st of paths) {
+    g.beginPath(); g.moveTo(ox + st[0][0] * sz, oy + st[0][1] * sz);
+    for (let i = 1; i < st.length; i++) g.lineTo(ox + st[i][0] * sz, oy + st[i][1] * sz);
+    g.strokePath();
+  }
+}
+const ABC = 'abcdefghijklmnopqrstuvwxyz';
 
 export function buildBackground(scene, L) {
   const sky = scene.add.graphics().setDepth(-30).setScrollFactor(0);
@@ -385,6 +400,47 @@ export function buildBackground(scene, L) {
     return;
   }
 
+  if (L.terrain === 'letters') {
+    // DE PRAATWEIDE (Letter-Land, Wereld 1): een vrolijke, kleurige weide waar
+    // woorden groeien. Zon, wolkjes én zwevende pastel-letters in de verte —
+    // eigen identiteit, geen kaal gras. (De grond krijgt letter-tegeltjes.)
+    const zon = scene.add.container(scene.scale.width - 70, 88).setDepth(-28).setScrollFactor(0.24);
+    const zg = scene.add.circle(0, 0, 56, 0xfff3b0, 0.4);
+    zon.add([zg, scene.add.circle(0, 0, 33, 0xffe16b)]);
+    scene.tweens.add({ targets: zg, scale: 1.16, alpha: 0.55, duration: 1900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // zwevende pastel-letters (drijven mee als "wolken")
+    scene.clouds = [];
+    for (let i = 0; i < 8; i++) {
+      const x = (i / 8) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(60, 250);
+      const c = scene.add.container(x, y).setDepth(-27).setScrollFactor(0.5).setAlpha(0.55);
+      const g = scene.add.graphics();
+      const col = RAINBOW[i % RAINBOW.length];
+      g.fillStyle(col, 0.55); g.fillRoundedRect(-21, -21, 42, 42, 11);
+      g.fillStyle(0xffffff, 0.2); g.fillRoundedRect(-21, -21, 42, 16, 11);
+      letterStroke(g, ABC[i % 26], -21 + 42 * 0.16, -21 + 42 * 0.16, 42 * 0.68, 5, 0xffffff);
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 9);
+      scene.clouds.push(c);
+    }
+    // een paar echte witte wolkjes ertussen
+    for (let i = 0; i < 3; i++) {
+      const x = (i / 3) * L.worldW + Phaser.Math.Between(-30, 60);
+      const c = scene.add.container(x, Phaser.Math.Between(90, 200)).setDepth(-27).setScrollFactor(0.5).setAlpha(0.85);
+      const g = scene.add.graphics();
+      g.fillStyle(0xffffff, 0.92);
+      [[-24, 4, 15], [-6, -7, 21], [14, 0, 18], [30, 6, 12]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(5, 10);
+      scene.clouds.push(c);
+    }
+    const hillsL = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    hillsL.fillStyle(darker(L.bg.bottom, 18), 0.7);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) hillsL.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
   // Zon (licht parallax)
   const sun = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
   const glow = scene.add.circle(0, 0, 54, 0xfff3b0, 0.35);
@@ -736,6 +792,34 @@ export function drawGround(scene, x, y, w, h) {
         g.fillStyle(0x2f7d33, 1);
         g.fillTriangle(fx - 14, y - 12, fx + 14, y - 12, fx, y - 34);
         g.fillTriangle(fx - 11, y - 24, fx + 11, y - 24, fx, y - 44);
+      }
+    }
+  } else if (scene.level.terrain === 'letters') {
+    // DE PRAATWEIDE (Letter-Land): fris gras met om en om een gekleurd
+    // letter-tegeltje en een vrolijk bloemetje — de weide waar woorden groeien.
+    g.fillStyle(0xb07a45, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0x9c6b3f, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0x63c24d, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(lighten(0x63c24d, 22), 1); g.fillRect(x, y, w, 6);
+    g.fillStyle(0x3f9d3f, 1);
+    for (let bx = x + 6; bx < x + w; bx += 16) g.fillTriangle(bx, y, bx + 5, y, bx + 2.5, y - 6);
+    let lt = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 130) {
+      lt = !lt;
+      const k = Math.floor(fx / 130);
+      if (lt) {
+        // klein letter-tegeltje dat uit het gras piept
+        const col = RAINBOW[k % RAINBOW.length];
+        g.fillStyle(col, 1); g.fillRoundedRect(fx - 9, y - 20, 18, 18, 5);
+        g.fillStyle(0xffffff, 0.22); g.fillRoundedRect(fx - 9, y - 20, 18, 7, 5);
+        g.lineStyle(2, 0x2b2f3a, 1); g.strokeRoundedRect(fx - 9, y - 20, 18, 18, 5);
+        letterStroke(g, ABC[k % 26], fx - 9 + 18 * 0.16, y - 20 + 18 * 0.16, 18 * 0.68, 2.4, 0xffffff);
+      } else {
+        // vrolijk bloemetje
+        g.fillStyle(0xff6b9d, 1);
+        for (let a = 0; a < 5; a++) { const ang = -Math.PI / 2 + a * (2 * Math.PI / 5); g.fillCircle(fx + Math.cos(ang) * 4, y - 8 + Math.sin(ang) * 4, 3); }
+        g.fillStyle(0xffe16b, 1); g.fillCircle(fx, y - 8, 2.4);
       }
     }
   } else {

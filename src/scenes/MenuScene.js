@@ -4,7 +4,6 @@ import { getStars, getMedalCount, getSetting } from '../progress.js';
 import { startMusic } from '../music.js';
 import { notePlay, startTimer, stopTimer } from '../stats.js';
 import { maakNul } from '../theme.js';
-import { LETTER_LEVELS } from '../levels/letterLevels.js';
 
 export default class MenuScene extends Phaser.Scene {
   constructor() { super('Menu'); }
@@ -170,9 +169,10 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '🚀', name: 'Nul-Raket',        color: 0x6366f1, go: () => this.scene.start('ZeroRocket') },
       { icon: '🐍', name: 'Tel-Slang',        color: 0x06b6d4, go: () => this.launchSnake() },
       { icon: '📖', name: 'Plakboek',         color: 0xf59e0b, go: () => this.scene.start('Sticker') },
-      // Letter-Land: rondloop-schrijfwereld op de Getallen-Land-engine.
+      // Letter-Land: rondloop-schrijfwereld op de Getallen-Land-engine. Eerste
+      // keer: eerst het (woordeloze) verhaal van De Sisser; daarna de kaart.
       // test: true = nog achter Ouder-modus tot de speeltest met Adrian slaagt.
-      { icon: '🔤', name: 'Letter-Land', test: true, color: 0xf43f5e, go: () => this.scene.start('Adventure', { levelSet: LETTER_LEVELS, levelIndex: 0, homeScene: 'Menu' }) },
+      { icon: '🔤', name: 'Letter-Land', test: true, color: 0xf43f5e, go: () => this.scene.start(getSetting('letterIntroGezien') ? 'LetterMap' : 'LetterIntro') },
       // test: true = nog niet klaar voor Adrian — alleen zichtbaar in de
       // Ouder-modus (testversie). De Toverwinkel wacht op de speelgoed-pass.
       { icon: '🧪', name: 'Toverwinkel', test: true, color: 0x7c3aed, go: () => this.scene.start('Toverwinkel') },

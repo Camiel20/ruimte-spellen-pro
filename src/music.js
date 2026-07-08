@@ -31,6 +31,7 @@ export function muziekVoorTerrein(terrain) {
     reus: { pitch: 1.122, tempo: 0.92 },   // +2, traag & groots: reuzenstappen
     billen: { pitch: 0.891, tempo: 1.15 }, // −2, hupsend: stuiter-giechel
     zee: { pitch: 1.059, tempo: 0.84 },    // +1, traag golvend: onderwater-dromen
+    letters: { pitch: 1.091, tempo: 1.06 }, // +1.5, vlot & vrolijk: pratende weide
   }[terrain] || { pitch: 1, tempo: 1 };
 }
 

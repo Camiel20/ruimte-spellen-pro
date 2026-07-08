@@ -10,28 +10,35 @@
 //   - scene.laatsteVoortgang                    — timer voor de wijs-hint
 
 import { Voice } from '../voice.js';
+import { tekenPotloodLijf } from './letterCast.js';
 
 export function buildNul(s) {
   const c = s.add.container(s.level.start.x - 44, s.level.start.y - 60).setDepth(11);
   // binnenste container: reactie-tweens (hupje/draai) vechten zo niet met
   // de volg-beweging die elke frame de buitenpositie zet
   const lijf = s.add.container(0, 0);
-  const g = s.add.graphics();
-  g.fillStyle(0x000000, 0.1); g.fillEllipse(0, 22, 26, 6);
-  g.fillStyle(0x7fd0f0, 1); g.fillCircle(0, 0, 15);
-  g.fillStyle(0xbfe8ff, 0.85); g.fillCircle(-5, -6, 5); // glansje
-  g.lineStyle(3, 0x2b7fae, 1); g.strokeCircle(0, 0, 15);
-  lijf.add(g);
-  lijf.add(s.add.circle(-5.5, -3, 4, 0xffffff).setStrokeStyle(1.8, 0x16202b));
-  lijf.add(s.add.circle(5.5, -3, 4, 0xffffff).setStrokeStyle(1.8, 0x16202b));
-  lijf.add(s.add.circle(-5.5, -2.4, 1.8, 0x16202b));
-  lijf.add(s.add.circle(5.5, -2.4, 1.8, 0x16202b));
-  const m = s.add.graphics(); m.lineStyle(2.2, 0x16202b, 1);
-  m.beginPath(); m.arc(0, 4, 5, 0.15 * Math.PI, 0.85 * Math.PI); m.strokePath();
-  lijf.add(m);
-  // '0'-schijfje boven het hoofd — zelfde beeldtaal als alle vriendjes
-  lijf.add(s.add.circle(0, -25, 8, 0xffffff).setStrokeStyle(2, 0x16202b));
-  lijf.add(s.add.text(0, -25, '0', { fontFamily: 'Arial Black, Arial', fontSize: '11px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5));
+  // Letter-Land heeft een eigen maatje: Priet het potlood (niet stil te
+  // krijgen), i.p.v. Nul. Zelfde volg-/wijs-gedrag; alleen het plaatje verschilt.
+  if (s.level.maatje === 'potlood') {
+    tekenPotloodLijf(s, lijf);
+  } else {
+    const g = s.add.graphics();
+    g.fillStyle(0x000000, 0.1); g.fillEllipse(0, 22, 26, 6);
+    g.fillStyle(0x7fd0f0, 1); g.fillCircle(0, 0, 15);
+    g.fillStyle(0xbfe8ff, 0.85); g.fillCircle(-5, -6, 5); // glansje
+    g.lineStyle(3, 0x2b7fae, 1); g.strokeCircle(0, 0, 15);
+    lijf.add(g);
+    lijf.add(s.add.circle(-5.5, -3, 4, 0xffffff).setStrokeStyle(1.8, 0x16202b));
+    lijf.add(s.add.circle(5.5, -3, 4, 0xffffff).setStrokeStyle(1.8, 0x16202b));
+    lijf.add(s.add.circle(-5.5, -2.4, 1.8, 0x16202b));
+    lijf.add(s.add.circle(5.5, -2.4, 1.8, 0x16202b));
+    const m = s.add.graphics(); m.lineStyle(2.2, 0x16202b, 1);
+    m.beginPath(); m.arc(0, 4, 5, 0.15 * Math.PI, 0.85 * Math.PI); m.strokePath();
+    lijf.add(m);
+    // '0'-schijfje boven het hoofd — zelfde beeldtaal als alle vriendjes
+    lijf.add(s.add.circle(0, -25, 8, 0xffffff).setStrokeStyle(2, 0x16202b));
+    lijf.add(s.add.text(0, -25, '0', { fontFamily: 'Arial Black, Arial', fontSize: '11px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5));
+  }
   c.add(lijf);
   c.lijf = lijf;
   c.modeNul = 'volg';

@@ -1713,6 +1713,7 @@ export default class AdventureScene extends Phaser.Scene {
       + (L.portalen || []).length + (L.achtervolgingen || []).length
       + (L.grauwMuren || []).length + (L.reuzenBlokken || []).length
       + (L.parenBorden || []).length + (L.duikboten || []).length
+      + (L.schrijfPoorten || []).length
       + (L.raket ? 1 : 0) + (L.boss ? L.boss.stages.length : 0);
   }
 
@@ -1822,7 +1823,8 @@ export default class AdventureScene extends Phaser.Scene {
         medal: R.medal, medalLabel: R.medalLabel,
         buttonText: L.finale ? 'FEEST! 🎉' : hasNext ? 'Volgend level ▶' : 'Nog een keer! 🔄',
         onClose: () => {
-          if (L.finale) this.scene.start('Feest', { slot: L.finale === 'slot' });
+          if (L.finale === 'letter') this.scene.start('LetterFeest');
+          else if (L.finale) this.scene.start('Feest', { slot: L.finale === 'slot' });
           else if (hasNext) this.scene.restart(this.restartData(this.levelIndex + 1));
           else this.scene.restart(this.restartData(this.levelIndex));
         },
