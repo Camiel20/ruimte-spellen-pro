@@ -28,6 +28,27 @@ export default class LetterFeestScene extends Phaser.Scene {
     zg.fillStyle(0xfff3b0, 0.4); zg.fillCircle(W - 66, 84, 52);
     zg.fillStyle(0xffe16b, 1); zg.fillCircle(W - 66, 84, 32);
 
+    // De Praatweide bloeit weer: bloemetjes poppen op langs het gras (de kleur
+    // keert terug — de payoff van "De Grote Stilte").
+    const bloemKleuren = [0xff6b9d, 0xffd23f, 0xff8c42, 0xa16bff, 0x4ec94e];
+    for (let i = 0; i < 11; i++) {
+      const bx = 40 + i * (W - 80) / 10, by = H - 40 - (i % 2) * 16;
+      const bl = this.add.container(bx, by).setDepth(3).setScale(0);
+      const bg = this.add.graphics();
+      bg.fillStyle(0x2e8b2e, 1); bg.fillRect(-2, 0, 4, 34); // steel
+      const kl = bloemKleuren[i % bloemKleuren.length];
+      bg.fillStyle(kl, 1);
+      for (let p = 0; p < 5; p++) { const a = (p / 5) * Math.PI * 2; bg.fillCircle(Math.cos(a) * 9, Math.sin(a) * 9, 7); }
+      bg.fillStyle(0xffe16b, 1); bg.fillCircle(0, 0, 5);
+      bl.add(bg);
+      this.tweens.add({ targets: bl, scale: 1, duration: 420, delay: 900 + i * 110, ease: 'Back.out' });
+      this.tweens.add({ targets: bl, angle: 6, duration: 1400, yoyo: true, repeat: -1, delay: i * 90, ease: 'Sine.inOut' });
+    }
+
+    // "De stilte is voorbij" — een grijze waas die wegtrekt zodra het feest begint.
+    const waas = this.add.rectangle(W / 2, H / 2, W, H, 0x8a9199, 0.72).setDepth(45);
+    this.tweens.add({ targets: waas, alpha: 0, duration: 1300, ease: 'Sine.in', onComplete: () => waas.destroy() });
+
     this.add.text(W / 2, 92, 'HOERA!', {
       fontFamily: 'Arial Black, Arial', fontSize: '50px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5).setStroke('#e8402c', 12);
@@ -43,6 +64,8 @@ export default class LetterFeestScene extends Phaser.Scene {
     chars.forEach((ch, i) => {
       const b = tekenAlfaBlok(this, startX + i * 66, 320, ch, RAINBOW[i % RAINBOW.length], true, 54);
       this.tweens.add({ targets: b, y: 300, duration: 360 + (i % 4) * 70, yoyo: true, repeat: -1, ease: 'Quad.out', delay: i * 90 });
+      // de letters klinken weer: spel het woord één keer uit (fonetiek)
+      this.time.delayedCall(1500 + i * 460, () => { Voice.cue('klank-' + ch); this.tweens.add({ targets: b, scale: { from: 1.25, to: 1 }, duration: 260, ease: 'Back.out' }); });
       // muzieknootjes: ze praten weer!
       this.time.addEvent({ delay: 900 + i * 120, loop: true, callback: () => {
         const n = this.add.text(b.x + 18, b.y - 34, '♪', { fontSize: '16px', color: '#ffffff' }).setOrigin(0.5);

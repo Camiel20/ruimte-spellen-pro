@@ -3,6 +3,7 @@
 // fasen, golf-physics) blijft in de scene.
 
 import { sig, lighten, darker } from './palette.js';
+import { tekenSisser } from './letterCast.js';
 
 // Het grijze Grommel-lijfje (tekent ín de art-container van makeGrommel).
 // type 'springer' = FELORANJE springveren + gele pet (onmiskenbaar: die gaat
@@ -920,6 +921,55 @@ export function drawInktKlodder(scene, x, y) {
   inner.add(g);
   c.add(inner);
   scene.tweens.add({ targets: inner, angle: 360, duration: 900, repeat: -1 });
+  return c;
+}
+
+// ===== DE SISSER — de Letter-Land-baas =====
+// Look voor de baas-registry (stijl 'sisser'): De Grote Stilte zelf. Hergebruikt
+// tekenSisser (letterCast.js) en volgt het baas-contract (bubble/bubbleText;
+// bodyG voor de happy-redraw). Het gestolen woord staat in z'n wolkje en kleurt
+// letter voor letter terug naarmate jij ze schrijft.
+export function drawSisserBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 82).setDepth(7);
+  const sis = tekenSisser(scene, 0, 0, 1.55, false); // de villain, fors
+  c.add(sis);
+  c._sis = sis; c.bodyG = sis._graphics;
+
+  // tekstwolkje met het gestolen woord (met blanks: "··· → p·· → pe· → pen")
+  const bub = scene.add.container(0, -152);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-42, -24, 84, 46, 12); bg.strokeRoundedRect(-42, -24, 84, 46, 12); bg.fillTriangle(-6, 20, 6, 20, 0, 32);
+  const wn = scene.add.text(0, -1, '', { fontFamily: 'Arial Black, Arial', fontSize: '26px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 7, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Verslagen → bekeerd: de boze villain maakt plaats voor de blije gedaante
+// (paarse strepen, lach, muzieknootje). Zelfde slot in de container.
+export function happySisserBoss(scene, c) {
+  if (c._sis) c._sis.destroy();
+  const blij = tekenSisser(scene, 0, 0, 1.55, true);
+  c.addAt(blij, 0);
+  c._sis = blij; c.bodyG = blij._graphics;
+  scene.tweens.add({ targets: c, scaleX: 0.95, scaleY: 0.95, duration: 420, ease: 'Back.out' });
+}
+
+// Stilte-wolkje (projectiel van De Sisser): een grijs "sss"-pluisje dat naar je
+// toe drijft — spring eroverheen. Zelfde contract als drawInktKlodder.
+export function drawStilPuff(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const inner = scene.add.container(0, -15);
+  const g = scene.add.graphics();
+  g.fillStyle(0xcfd4db, 0.95);
+  g.fillCircle(-9, 0, 11); g.fillCircle(6, -4, 13); g.fillCircle(13, 5, 9); g.fillCircle(-2, 7, 10);
+  g.lineStyle(2.5, 0x9198a1, 1);
+  g.strokeCircle(-9, 0, 11); g.strokeCircle(6, -4, 13);
+  inner.add(g);
+  inner.add(scene.add.text(2, -2, 'sss', { fontFamily: 'Arial Black, Arial', fontSize: '15px', fontStyle: 'bold', color: '#5a6069' }).setOrigin(0.5));
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: 10, duration: 480, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   return c;
 }
 

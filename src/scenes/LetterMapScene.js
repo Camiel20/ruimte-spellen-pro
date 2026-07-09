@@ -76,7 +76,7 @@ export default class LetterMapScene extends Phaser.Scene {
     const rec = getLevelRecord(L.id) || {};
     const open = getSetting('ouderModus') || i === 0 || (getLevelRecord(LETTER_LEVELS[i - 1].id) || {}).done;
     const kleur = RAINBOW[i % RAINBOW.length];
-    const isBoss = !!L.sisser;
+    const isBoss = !!L.boss || !!L.sisser;
     const c = this.add.container(x, y).setDepth(5);
     const g = this.add.graphics();
     const R = isBoss ? 34 : 28;

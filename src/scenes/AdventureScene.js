@@ -21,7 +21,8 @@ import { tekenGetalBel } from '../adventure/systems/duikboot.js';
 import { buildNul, updateNul } from '../adventure/maatje.js';
 import { CELL, PW, MOVE_SPEED, JUMP_BASE, JUMP_PER_LEVEL, COYOTE_MS, BUFFER_MS } from '../adventure/constants.js';
 import { LEVELS } from '../levels/index.js';
-import { LOWER_PATHS, TraceChallenge } from '../glyphs.js';
+import { LOWER_PATHS, TraceChallenge, RAINBOW } from '../glyphs.js';
+import { tekenAlfaBlok } from '../adventure/letterCast.js';
 
 // ===== TEL-AVONTUUR — level-engine =====
 // Data-gedreven 2D-platformer in de sfeer van Numberblocks (100% zelf getekend).
@@ -136,6 +137,12 @@ export default class AdventureScene extends Phaser.Scene {
 
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(140, 220);
+    // VOORUIT kijken (look-ahead): de camera leunt in je loop-richting mee, zodat
+    // je veel meer vóór je ziet (bruggen die uitrollen, vijanden die aankomen).
+    // Dynamisch (per richting) i.p.v. een vaste offset — anders zie je juist
+    // achter je, of val je bij teruglopen van het scherm. Alleen horizontaal;
+    // de verticale follow (klim-levels) blijft ongewijzigd. Zie updateCameraLook.
+    this._camLook = 0;
     this.cameras.main.fadeIn(400, 8, 16, 26);
 
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -324,7 +331,13 @@ export default class AdventureScene extends Phaser.Scene {
       zone: new Phaser.Geom.Rectangle(B.x - 210, groundTop - 160, 190, 200),
       prompt: 'Versla de Baas!', bossBody: body, bossArt: art,
     };
-    if (pz.stijl === 'splits') {
+    if (pz.stijl === 'sisser') {
+      // De Sisser: hij houdt een heel WOORD gevangen; jij schrijft het letter
+      // voor letter terug. Het woord staat (met blanks) in z'n wolkje.
+      pz.woord = B.woord || (B.stages || []).map((s) => s.letter).join('');
+      pz.prompt = 'Schrijf de letter!';
+      art.bubbleText.setText(this.maskWoord(pz.woord, 0)).setFontSize(22);
+    } else if (pz.stijl === 'splits') {
       const st0 = pz.stages[0];
       art.bubbleText.setText(`${st0.van}=${st0.weg}+?`).setFontSize(14);
     } else {
@@ -336,8 +349,15 @@ export default class AdventureScene extends Phaser.Scene {
 
   bossStageReact(pz) {
     const c = pz.bossArt;
-    c.bubbleText.setText(`${pz.doel}`);
-    if (pz.stijl === 'beuk') {
+    if (pz.stijl !== 'sisser') c.bubbleText.setText(`${pz.doel}`);
+    if (pz.stijl === 'sisser') {
+      // DE KRIMP: elke teruggeschreven letter maakt De Sisser kleiner. Het
+      // woord in z'n wolkje kleurt een letter terug.
+      const sc = Math.max(0.5, c.scaleX * 0.82);
+      this.tweens.add({ targets: c, scaleX: sc, scaleY: sc, duration: 360, ease: 'Back.in' });
+      this.tweens.add({ targets: c, angle: 8, duration: 70, yoyo: true, repeat: 3 });
+      c.bubbleText.setText(this.maskWoord(pz.woord, pz.stageIndex));
+    } else if (pz.stijl === 'beuk') {
       // DE KRIMP — het hart van dit gevecht: elke beuk maakt de Reuzen-Grommel
       // zichtbaar een maat kleiner (het getal in zijn wolkje krimpt mee).
       const sc = Math.max(0.8, c.scaleX * 0.76);
@@ -350,7 +370,7 @@ export default class AdventureScene extends Phaser.Scene {
     } else {
       this.tweens.add({ targets: c, scaleX: 1.12, scaleY: 0.86, duration: 130, yoyo: true, repeat: 1, ease: 'Quad.out' });
     }
-    this.sparkleAt(c.x, c.y, 12); SFX.combine(pz.doel);
+    this.sparkleAt(c.x, c.y, 12); SFX.combine(pz.doel || 4);
     const left = pz.stages.length - pz.stageIndex;
     const actie = pz.stijl === 'vang' ? `vang er ${pz.doel}`
       : pz.stijl === 'spoel' ? `zoek de pot met ${pz.doel}`
@@ -360,6 +380,7 @@ export default class AdventureScene extends Phaser.Scene {
       : pz.stijl === 'schud' ? `stamp en raap er ${pz.doel}`
       : pz.stijl === 'splits' ? 'splits het getal'
       : pz.stijl === 'stomp' ? 'spring op zijn kop'
+      : pz.stijl === 'sisser' ? `schrijf de "${pz.stages[pz.stageIndex].letter}"`
       : pz.stijl === 'finale' ? ({ vang: 'vang de kleur-orbs', muur: 'ram zijn schilden', bouw: `bouw de ${pz.doel}` })[pz.stages[pz.stageIndex].soort]
       : `bouw de ${pz.doel}`;
     if (pz.stijl === 'tien') c.bubbleText.setText(`${pz.doel}+?`);
@@ -416,11 +437,11 @@ export default class AdventureScene extends Phaser.Scene {
 
   startBossFase(pz) {
     pz.faseActief = true;
-    // bij 'surf'/'splits' zou het getal het antwoord verklappen — dus stil
-    const stil = pz.stijl === 'surf' || pz.stijl === 'splits';
+    // bij 'surf'/'splits'/'sisser' is er geen getal-doel om voor te lezen
+    const stil = pz.stijl === 'surf' || pz.stijl === 'splits' || pz.stijl === 'sisser';
     if (!stil) Voice.number(pz.doel);
     // gesproken aanmoediging per stijl, netjes ná het getal
-    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud', splits: 'baas-splits', stomp: 'baas-stomp' };
+    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud', splits: 'baas-splits', stomp: 'baas-stomp', sisser: 'baas-bouw' };
     const finaleClip = pz.stijl === 'finale'
       ? ({ vang: 'baas-vang', muur: 'hint-grauwmuur', bouw: 'baas-bouw' })[pz.stages[pz.stageIndex].soort] : null;
     Voice.hint(finaleClip || BAAS_CLIP[pz.stijl], stil ? 200 : 1100);
@@ -450,6 +471,13 @@ export default class AdventureScene extends Phaser.Scene {
       this.toonBossBellen(pz);
     } else if (pz.stijl === 'stomp') {
       this.questText.setText('Zweef omhoog en spring ÓP zijn kop! 🌙');
+    } else if (pz.stijl === 'sisser') {
+      // De Sisser: schrijf de fase-letter terug (loop naar het slapende blok →
+      // ✋). Ondertussen hijst hij stilte-wolkjes naar je toe (ontwijken!).
+      const letter = pz.stages[pz.stageIndex].letter;
+      this.questText.setText(`Schrijf de "${letter}" om De Sisser te verzwakken! ✍️`);
+      pz.bossArt.bubbleText.setText(this.maskWoord(pz.woord, pz.stageIndex));
+      this.toonSisserBlok(pz);
     } else if (pz.stijl === 'finale') {
       // BARON GRAUW: drie aktes die de hele reis samenvatten. Elke akte
       // delegeert naar een bestaande sub-flow via het soort-veld.
@@ -1301,6 +1329,11 @@ export default class AdventureScene extends Phaser.Scene {
     this.exitPanel = panel;
     const dim = this.add.graphics();
     dim.fillStyle(0x0a1420, 0.7); dim.fillRect(0, 0, W, H);
+    // BELANGRIJK: interactieve kinderen van een scrollFactor(0)-container krijgen
+    // een verschoven tik-zone bij camera-scroll (Phaser-valkuil). Zet daarom
+    // setScrollFactor(0) op de hitvlakken ZELF, anders werkt de kaart-knop diep
+    // in een level (grote scrollX) niet meer. Zelfde fix als hoedjes/bakkerij.
+    dim.setScrollFactor(0);
     dim.setInteractive(new Phaser.Geom.Rectangle(0, 0, W, H), Phaser.Geom.Rectangle.Contains);
     const box = this.add.graphics();
     box.fillStyle(0xffffff, 1); box.fillRoundedRect(W / 2 - 150, H / 2 - 105, 300, 190, 22);
@@ -1315,7 +1348,7 @@ export default class AdventureScene extends Phaser.Scene {
       g.fillStyle(col, 1); g.fillCircle(x, H / 2 + 14, 42);
       g.lineStyle(4, edge, 1); g.strokeCircle(x, H / 2 + 14, 42);
       const ic = this.add.text(x, H / 2 + 14, icon, { fontSize: '34px' }).setOrigin(0.5);
-      const hit = this.add.circle(x, H / 2 + 14, 48, 0xffffff, 0.001).setInteractive({ useHandCursor: true });
+      const hit = this.add.circle(x, H / 2 + 14, 48, 0xffffff, 0.001).setScrollFactor(0).setInteractive({ useHandCursor: true });
       hit.on('pointerdown', cb);
       panel.add([g, ic, hit]);
     };
@@ -1405,6 +1438,7 @@ export default class AdventureScene extends Phaser.Scene {
     // Schrijf-poorten (Letter-Land) openen de overtrek-overlay i.p.v. de
     // blokjes-bouwoverlay; de rest gaat gewoon naar BuildOverlay.
     if (this.nearPuzzle && this.nearPuzzle.type === 'schrijf') this.enterSchrijf(this.nearPuzzle);
+    else if (this.nearPuzzle && this.nearPuzzle.type === 'boss' && this.nearPuzzle.stijl === 'sisser') this.enterSchrijfBoss(this.nearPuzzle);
     else this.buildUI.enter();
   }
 
@@ -1438,6 +1472,69 @@ export default class AdventureScene extends Phaser.Scene {
         pz.onSolve();
       },
     });
+  }
+
+  // ============================================================ DE SISSER (schrijf-baas)
+  // Het woord met de eerste n letters teruggekleurd, de rest als "·".
+  maskWoord(woord, n) {
+    return [...(woord || '')].map((ch, i) => (i < n ? ch : '·')).join(' ');
+  }
+
+  // Plaats/ververs het slapende Alfa-Blok van de huidige fase-letter in de arena
+  // (net links van De Sisser). Loop erheen → ✋ → schrijven.
+  toonSisserBlok(pz) {
+    if (pz.schrijfBlok) { pz.schrijfBlok.destroy(); pz.schrijfBlok = null; }
+    const letter = pz.stages[pz.stageIndex].letter;
+    const groundTop = this.level.platforms[0][1];
+    const kleur = RAINBOW[pz.stageIndex % RAINBOW.length];
+    const bx = pz.bossArt.x - 150, by = groundTop - 31;
+    pz.schrijfBlok = tekenAlfaBlok(this, bx, by, letter, kleur, false);
+    this.tweens.add({ targets: pz.schrijfBlok, y: by - 7, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  }
+
+  // De ✋-knop bij de sisser-baas: bevries + overtrek de fase-letter. Gelukt →
+  // het blok wordt wakker en De Sisser krimpt (advanceBossStage).
+  enterSchrijfBoss(pz) {
+    if (this.mode !== 'explore' || pz.solved || pz.schrijfBezig) return;
+    const letter = pz.stages[pz.stageIndex].letter;
+    pz.schrijfBezig = true;
+    this.mode = 'build';
+    this.physics.pause();
+    if (this.clearBossWaves) this.clearBossWaves();
+    this.player.body.setVelocity(0, 0);
+    this.setBuildBtnVisible(false);
+    [this.btnLeft, this.btnRight, this.btnJump].forEach((b) => { b.g.setVisible(false); b.t.setVisible(false); b.hit.disableInteractive(); });
+    Voice.cue('klank-' + letter);
+    this.schrijfOverlay = new TraceChallenge(this, {
+      label: letter,
+      paths: LOWER_PATHS[letter],
+      onDone: () => {
+        this.schrijfOverlay = null;
+        [this.btnLeft, this.btnRight, this.btnJump].forEach((b) => { b.g.setVisible(true); b.t.setVisible(true); b.hit.setInteractive(); });
+        this.physics.resume();
+        this.mode = 'explore';
+        pz.schrijfBezig = false;
+        this.sisserRaak(pz);
+      },
+    });
+  }
+
+  // Letter geschreven → het blok wordt wakker (klank + feestje), het woord in het
+  // wolkje kleurt een letter terug, en De Sisser gaat naar de volgende fase
+  // (advanceBossStage doet de krimp / bij de laatste letter defeatBoss = bekeren).
+  sisserRaak(pz) {
+    const letter = pz.stages[pz.stageIndex].letter;
+    if (pz.schrijfBlok) {
+      const b = pz.schrijfBlok; pz.schrijfBlok = null;
+      this.tweens.killTweensOf(b);
+      const awake = tekenAlfaBlok(this, b.x, b.y, letter, RAINBOW[pz.stageIndex % RAINBOW.length], true);
+      b.destroy();
+      this.tweens.add({ targets: awake, y: awake.y - 46, alpha: 0, scale: 1.3, duration: 620, ease: 'Quad.out', onComplete: () => awake.destroy() });
+    }
+    this.burstStars(pz.bossArt.x - 150, this.level.platforms[0][1] - 60, 10);
+    Voice.cue('klank-' + letter);
+    pz.bossArt.bubbleText.setText(this.maskWoord(pz.woord, pz.stageIndex + 1));
+    this.advanceBossStage(pz);
   }
 
   // ============================================================ BRUG NEERLEGGEN
@@ -1856,6 +1953,13 @@ export default class AdventureScene extends Phaser.Scene {
     body.setVelocityX(dir * MOVE_SPEED);
     if (dir !== 0) p.art.scaleX = dir;
 
+    // Look-ahead: laat de camera meeleunen in de loop-richting (dir>0 → speler
+    // links op het scherm → je ziet meer naar rechts). Soepel gelerpt zodat het
+    // niet schokt; bij stilstand centreert 't zachtjes terug.
+    const lookDoel = dir !== 0 ? -dir * 150 : 0;
+    this._camLook += (lookDoel - this._camLook) * 0.045;
+    this.cameras.main.setFollowOffset(this._camLook, 0);
+
     // Springen: coyote-time + jump-buffer + eventueel dubbelsprong
     if (Phaser.Input.Keyboard.JustDown(this.keySpace) || (this.cursors.up && Phaser.Input.Keyboard.JustDown(this.cursors.up))) {
       this.jumpBufferedAt = time;
@@ -1904,7 +2008,11 @@ export default class AdventureScene extends Phaser.Scene {
       if (pz.solved || (pz.cooldownUntil && time < pz.cooldownUntil)) continue;
       // vang-/spoel-bazen hebben geen bouw-knop: hun fase start vanzelf
       if (pz.type === 'boss' && pz.stijl !== 'bouw') {
-        if (!pz.faseActief && Phaser.Geom.Rectangle.Contains(pz.zone, p.x, p.y) && onFloor) this.startBossFase(pz);
+        const inZone = Phaser.Geom.Rectangle.Contains(pz.zone, p.x, p.y) && onFloor;
+        if (!pz.faseActief && inZone) this.startBossFase(pz);
+        // De Sisser is een SCHRIJF-baas: toon de ✋ zodra de fase loopt en je in
+        // de arena staat (schrijf de fase-letter → hij krimpt).
+        if (pz.stijl === 'sisser' && pz.faseActief && !pz.schrijfBezig && inZone) { this.nearPuzzle = pz; break; }
         continue;
       }
       if (Phaser.Geom.Rectangle.Contains(pz.zone, p.x, p.y) && onFloor) { this.nearPuzzle = pz; break; }

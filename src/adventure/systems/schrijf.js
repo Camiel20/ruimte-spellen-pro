@@ -63,6 +63,7 @@ function bouwPoort(s, L, P, idx) {
     type: 'schrijf', letter: P.letter, solved: false,
     gapX: P.gapX, gapW: P.gapW, kleur,
     friend, friendPos: { x: fx, y: fy }, zzz,
+    geeft: P.geeft || null, // dit gewekte blok schenkt een kracht (Deel 1)
     zone: new Phaser.Geom.Rectangle(triggerX, groundTop - 120, triggerW, 160),
     prompt: 'Schrijf de letter!',
   };
@@ -85,6 +86,12 @@ function solvePoort(s, L, pz) {
   s.time.delayedCall(280, () => Voice.cue('klank-' + pz.letter));
   if (s.questText) s.questText.setText('Ren verder! 🚩');
   if (s.vierMijlpaal) s.vierMijlpaal(pz.gapX + pz.gapW / 2); // stilte-waas trekt weg
+
+  // Dit gewekte Alfa-Blok schenkt je z'n kracht (krachten verdien je al
+  // schrijvend — hergebruikt grantPower + het stralen-banner).
+  if (pz.geeft && s.grantPower && !s.powers?.[pz.geeft]) {
+    s.time.delayedCall(560, () => s.grantPower(pz.geeft, 'het Alfa-Blok'));
+  }
 
   reactSisser(s);
 }

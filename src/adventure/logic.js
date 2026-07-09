@@ -212,6 +212,8 @@ export function validateLevel(L) {
           const goed = S.opties.filter((w) => w === 10 - S.doel).length;
           if (goed !== 1) err(`baas-fase ${i + 1} (tien): ${goed} bellen maken ${S.doel} tot 10 — er moet er precies één kloppen`);
         }
+      } else if (stijl === 'sisser') {
+        if (!S.letter || !/^[a-z]$/.test(S.letter)) err(`baas-fase ${i + 1} (sisser): letter moet een kleine letter a-z zijn`);
       } else err(`baas: onbekende stijl '${stijl}'`);
     });
     // Beuken kan alleen als reus: zonder reuzenhap is de baas onverslaanbaar.
@@ -231,6 +233,13 @@ export function validateLevel(L) {
     if (stijl === 'finale') {
       if (!L.startMega) err('finale-baas zonder startMega — de schilden zijn niet te rammen');
       if (!(L.grauwMuren || []).length) err('finale-baas zonder grauwe muur in het level — de schild-collider bestaat dan niet');
+    }
+    // De Sisser (schrijf-baas): op de grond, en het woord (indien gezet) moet
+    // even lang zijn als het aantal fasen (één letter per fase).
+    if (stijl === 'sisser') {
+      const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= B.x && px + pw >= B.x);
+      if (!support) err('sisser-baas staat niet op de grond');
+      if (B.woord && [...B.woord].length !== B.stages.length) err('sisser-baas: woord-lengte ≠ aantal fasen');
     }
     if (L.goal && L.goal.x < B.x) err('vlag staat vóór de baas — baas is te omzeilen');
   }
@@ -477,6 +486,9 @@ export function validateLevel(L) {
     if (P.gapX + P.gapW > L.worldW) err(`schrijf-poort ${i + 1}: kloof steekt buiten de wereld`);
     const trigger = P.triggerX != null ? P.triggerX : P.gapX - 150;
     if (trigger >= P.gapX) err(`schrijf-poort ${i + 1}: trigger ligt niet vóór de kloof`);
+    if (P.geeft != null && !['doubleJump', 'stamp', 'duw', 'mega'].includes(P.geeft)) {
+      err(`schrijf-poort ${i + 1}: 'geeft' moet doubleJump/stamp/duw/mega zijn`);
+    }
     L.platforms.forEach(([px, py, pw], pi) => {
       if (py === groundTop && px < P.gapX + P.gapW && px + pw > P.gapX) {
         err(`schrijf-poort ${i + 1}: platform ${pi} overlapt de kloof — geen echte kloof`);

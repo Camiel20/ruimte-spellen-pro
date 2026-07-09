@@ -18,6 +18,7 @@ import {
   drawOctopusBoss, happyOctopusBoss, drawInktKlodder,
   drawSchelpKeuze, drawEikeltje, drawKristalKeuze, drawKleurOrb,
   drawPanBoss, happyPanBoss, drawPannenkoekje, drawBordKeuze,
+  drawSisserBoss, happySisserBoss, drawStilPuff,
 } from './enemyArt.js';
 import { sig } from './palette.js';
 
@@ -136,6 +137,16 @@ export const BOSS_LOOKS = {
     vangArt: drawKleurOrb, // finale akte 1: vang de gestolen kleur terug
     vangIcoon: '🌈',
     vangTekst: 'Vang {n} kleur-orbs terug! 🌈',
+  },
+  // DE SISSER (Letter-Land, De Praatweide): stilte-wolkjes. Verslaan met stijl
+  // 'sisser': ontwijk de wolkjes en SCHRIJF per fase een letter van zijn
+  // gestolen woord terug — dan krimpt hij; bij het hele woord bekeert hij zich.
+  sisser: {
+    draw: (s, x, groundTop) => drawSisserBoss(s, x, groundTop),
+    happy: (s, c) => happySisserBoss(s, c),
+    projectile: drawStilPuff,
+    speed: -190,
+    waarschuwing: 'Pas op — een stilte-wolkje! Spring! 🤫',
   },
 };
 

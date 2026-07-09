@@ -130,6 +130,11 @@ for (const W of WERELDEN) {
     CLIPS[`woord-${w}`] = [`woord-${w}`, `${w[0].toUpperCase()}${w.slice(1)}!`];
   }
 }
+// Letter-Land woord-magie (Praatweide): een af woord klinkt als één schoon woord
+// (i.p.v. de losse klanken door elkaar). Deze woorden "gebeuren" in het spel.
+for (const w of ['zon', 'mat', 'bel', 'sok', 'bal', 'bok']) {
+  CLIPS[`woord-${w}`] = [`woord-${w}`, `${w[0].toUpperCase()}${w.slice(1)}!`];
+}
 
 async function maakClip(tts, tekst, pad) {
   const opts = new ProsodyOptions();

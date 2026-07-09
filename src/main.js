@@ -24,6 +24,7 @@ import TovenScene from './scenes/TovenScene.js';
 import LetterIntroScene from './scenes/LetterIntroScene.js';
 import LetterMapScene from './scenes/LetterMapScene.js';
 import LetterFeestScene from './scenes/LetterFeestScene.js';
+import LetterMissieScene from './scenes/LetterMissieScene.js';
 import { installTracking } from './stats.js';
 import { Voice } from './voice.js';
 
@@ -55,7 +56,7 @@ const config = {
     AwardsScene, SettingsScene, BezorgScene, NumberTowerScene, ZeroRocketScene,
     AdventureScene, IntroScene, ReisScene, FeestScene, WorldMapScene, VillageScene, StatsScene,
     StickerScene, TovenScene,
-    LetterIntroScene, LetterMapScene, LetterFeestScene,
+    LetterIntroScene, LetterMapScene, LetterFeestScene, LetterMissieScene,
   ],
 };
 
