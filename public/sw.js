@@ -5,8 +5,12 @@
 //    een update pas bij de TWEEDE keer openen — verwarrend bij het testen.)
 //  - assets: stale-while-revalidate. Vite hasht de namen, dus een nieuwe
 //    build betekent nieuwe bestandsnamen → geen verouderde code-mix.
-// CACHE-versie ophogen forceert een schone start.
-const CACHE = 'rsp-cache-v2';
+// CACHE-versie ophogen forceert een schone start. v3: de stem-clips (public/
+// voice/*.mp3) hebben VASTE namen (geen Vite-hash), dus na het opnieuw inspreken
+// van de letter-klanken moet de oude cache weg — anders hoor je op de iPad nog
+// de oude clips (stale-while-revalidate). Bij een volgende clip-wijziging: weer
+// ophogen (of /voice/ network-first maken).
+const CACHE = 'rsp-cache-v3';
 
 self.addEventListener('install', () => {
   self.skipWaiting();
