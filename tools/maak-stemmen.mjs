@@ -136,17 +136,18 @@ for (const w of ['zon', 'mat', 'bel', 'sok', 'bal', 'bok', 'vis', 'pen', 'bus'])
   CLIPS[`woord-${w}`] = [`woord-${w}`, `${w[0].toUpperCase()}${w.slice(1)}!`];
 }
 
-// Letter-NAMEN (het alfabet, schoon uitgesproken) voor het letter-voor-letter
-// uitspellen in Letter-Land: "z o n" klinkt als "zet · oo · en" (géén dubbele
-// klanken zoals de fonetische KLANKEN 'zz'/'nn'). Klinkers = hun lange naam,
-// medeklinkers = de Nederlandse letternaam.
-const LETTERNAMEN = {
-  a: 'aa', b: 'bee', c: 'see', d: 'dee', e: 'ee', f: 'ef', g: 'gee', h: 'haa',
-  i: 'ie', j: 'jee', k: 'kaa', l: 'el', m: 'em', n: 'en', o: 'oo', p: 'pee',
-  q: 'kuu', r: 'er', s: 'es', t: 'tee', u: 'uu', v: 'vee', w: 'wee', x: 'iks',
-  y: 'ij', z: 'zet',
+// Letter-KLANKEN (leren-lezen-methode) voor het letter-voor-letter uitspellen:
+// "z o n" klinkt als de KLANK van elke letter (mmm·aaa·t → mat), niet de naam
+// (em/en is verwarrend). Medeklinkers die je kunt aanhouden = de klank zelf
+// (mmm/sss/zzz…); plof-letters = met een korte 'uh' (buh/tuh…); klinkers = kort.
+// (Spellingen zijn best-effort voor de neural stem; per letter bijstelbaar.)
+const LETTERKLANKEN = {
+  a: 'aa', b: 'buh', c: 'kuh', d: 'duh', e: 'eh', f: 'fff', g: 'ggg', h: 'huh',
+  i: 'ie', j: 'juh', k: 'kuh', l: 'lll', m: 'mmm', n: 'nnn', o: 'oh', p: 'puh',
+  q: 'kuh', r: 'rrr', s: 'sss', t: 'tuh', u: 'uh', v: 'vvv', w: 'wuh', x: 'ks',
+  y: 'ie', z: 'zzz',
 };
-for (const [l, naam] of Object.entries(LETTERNAMEN)) CLIPS[`letter-${l}`] = [`letter-${l}`, naam];
+for (const [l, klank] of Object.entries(LETTERKLANKEN)) CLIPS[`letter-${l}`] = [`letter-${l}`, klank];
 
 async function maakClip(tts, tekst, pad) {
   const opts = new ProsodyOptions();
