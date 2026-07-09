@@ -132,9 +132,21 @@ for (const W of WERELDEN) {
 }
 // Letter-Land woord-magie (Praatweide): een af woord klinkt als één schoon woord
 // (i.p.v. de losse klanken door elkaar). Deze woorden "gebeuren" in het spel.
-for (const w of ['zon', 'mat', 'bel', 'sok', 'bal', 'bok']) {
+for (const w of ['zon', 'mat', 'bel', 'sok', 'bal', 'bok', 'vis', 'pen', 'bus']) {
   CLIPS[`woord-${w}`] = [`woord-${w}`, `${w[0].toUpperCase()}${w.slice(1)}!`];
 }
+
+// Letter-NAMEN (het alfabet, schoon uitgesproken) voor het letter-voor-letter
+// uitspellen in Letter-Land: "z o n" klinkt als "zet · oo · en" (géén dubbele
+// klanken zoals de fonetische KLANKEN 'zz'/'nn'). Klinkers = hun lange naam,
+// medeklinkers = de Nederlandse letternaam.
+const LETTERNAMEN = {
+  a: 'aa', b: 'bee', c: 'see', d: 'dee', e: 'ee', f: 'ef', g: 'gee', h: 'haa',
+  i: 'ie', j: 'jee', k: 'kaa', l: 'el', m: 'em', n: 'en', o: 'oo', p: 'pee',
+  q: 'kuu', r: 'er', s: 'es', t: 'tee', u: 'uu', v: 'vee', w: 'wee', x: 'iks',
+  y: 'ij', z: 'zet',
+};
+for (const [l, naam] of Object.entries(LETTERNAMEN)) CLIPS[`letter-${l}`] = [`letter-${l}`, naam];
 
 async function maakClip(tts, tekst, pad) {
   const opts = new ProsodyOptions();

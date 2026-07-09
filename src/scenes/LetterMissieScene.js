@@ -19,11 +19,12 @@ import { confettiBurst } from '../reward.js';
 import { tekenAlfaBlok, tekenPotloodLijf } from '../adventure/letterCast.js';
 import { MOVE_SPEED, JUMP_BASE, COYOTE_MS, BUFFER_MS } from '../adventure/constants.js';
 import { volgendeVak, woordAf, schud } from '../letterland/woordLogic.js';
-import { MISSIES, GROND, KRACHT_NAAM } from '../letterland/missies.js';
+import { MISSIES, GROND, KRACHT_NAAM, KRACHT_ICOON } from '../letterland/missies.js';
 
 const WORLDH = 800;
 const STRIP = 240;
-const BOTS_JUMP = 985; // super-sprong (Botsbal): apex ≈ 440px → hoge richels haalbaar
+const BOTS_JUMP = 985;   // super-sprong (Botsbal): apex ≈ 440px → hoge richels haalbaar
+const SPRINT_SPEED = 360; // Sssprint: ren-sprong ≈ 390px → brede ravijnen haalbaar (normaal ~230px)
 
 export default class LetterMissieScene extends Phaser.Scene {
   constructor() { super('LetterMissie'); }
@@ -37,7 +38,7 @@ export default class LetterMissieScene extends Phaser.Scene {
     this.powers = { ...(this.cfg.powers || {}) };
     this.obstakels = {};
     this.frozen = false; this.nearSpot = null; this.sterren = 0;
-    this.lastSafeX = this.cfg.startX; this.camPan = null; this.pitX0 = null; this.pitX1 = null;
+    this.lastSafeX = this.cfg.startX; this.camPan = null; this.pits = [];
 
     this.physics.world.setBounds(0, 0, this.worldW, WORLDH);
     this.cameras.main.setBounds(0, 0, this.worldW, WORLDH);
@@ -106,11 +107,39 @@ export default class LetterMissieScene extends Phaser.Scene {
     this.hindernisBodies = [];
     for (const h of (this.cfg.hindernissen || [])) {
       if (h.type === 'ijs') this.maakIjs(h);
-      else if (h.type === 'kloof') { this.pitX0 = h.x0; this.pitX1 = h.x1; this.obstakels[h.id] = { ...h }; }
+      else if (h.type === 'kloof') { this.pits.push([h.x0, h.x1]); this.obstakels[h.id] = { ...h }; }
+      else if (h.type === 'sprintkloof') this.maakSprintkloof(h);
+      else if (h.type === 'water') this.maakWater(h);
       else if (h.type === 'braam') this.maakBraam(h);
       else if (h.type === 'rots') this.maakRots(h);
       else if (h.type === 'kracht') this.maakKrachtVriend(h);
     }
+  }
+
+  // Sprint-ravijn: een breed, diep ravijn (te breed om te springen) — alleen met
+  // de Sssprint haal je 'm. Geen spell; het bordje moedigt aan om te rennen.
+  maakSprintkloof(h) {
+    this.pits.push([h.x0, h.x1]);
+    const w = h.x1 - h.x0;
+    const g = this.add.graphics().setDepth(-4);
+    g.fillStyle(0x2a3340, 1); g.fillRect(h.x0, GROND, w, 200);
+    g.fillStyle(0x1c242e, 1); g.fillRect(h.x0, GROND + 70, w, 130);
+    const bord = this.add.text((h.x0 + h.x1) / 2, GROND - 44, 'REN! 💨', {
+      fontFamily: 'Arial Black, Arial', fontSize: '16px', fontStyle: 'bold', color: '#ffffff', backgroundColor: '#16202bcc', padding: { x: 8, y: 4 },
+    }).setOrigin(0.5).setDepth(6);
+    this.tweens.add({ targets: bord, y: GROND - 56, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.inOut' });
+    this.obstakels[h.id] = { ...h, bord };
+  }
+
+  // Water-kloof: de vis maakt er een rug-brug overheen (spel 'vis').
+  maakWater(h) {
+    this.pits.push([h.x0, h.x1]);
+    const w = h.x1 - h.x0;
+    const g = this.add.graphics().setDepth(-4);
+    g.fillStyle(0x223041, 1); g.fillRect(h.x0, GROND + 44, w, 156);
+    g.fillStyle(0x3b82c4, 0.92); g.fillRect(h.x0, GROND + 10, w, 60);
+    g.fillStyle(0x6fb7e8, 0.7); g.fillRect(h.x0, GROND + 10, w, 10);
+    this.obstakels[h.id] = { ...h, art: g };
   }
 
   maakIjs(h) {
@@ -290,14 +319,17 @@ export default class LetterMissieScene extends Phaser.Scene {
   }
 
   blendEnPoef() {
-    const s = this.spell; const gap = 260;
-    // VISUEEL uitlezen: de vakjes lichten om de beurt op (geen losse letter-
-    // stemmen meer — de klank-clips klonken dubbel/vreemd, "zz o nn"). Daarna
-    // klinkt het HÉLE WOORD als één schone clip ("Zon!") → POEF.
-    [...s.woord].forEach((ch, i) => this.time.delayedCall(140 + i * gap, () => { const c = s.slotCont[i]; if (c) this.tweens.add({ targets: c, scale: { from: 1, to: 1.28 }, yoyo: true, duration: 200, ease: 'Quad.out' }); }));
-    const na = 140 + s.woord.length * gap;
+    const s = this.spell; const gap = 520;
+    // Spel het NETJES uit: elke letter APART uitgesproken met z'n schone
+    // letternaam ("zet · oo · en" — géén dubbele klanken), elk vakje licht mee
+    // op. Daarna klinkt het HÉLE WOORD als één clip ("Zon!") → POEF.
+    [...s.woord].forEach((ch, i) => this.time.delayedCall(160 + i * gap, () => {
+      Voice.cue('letter-' + ch);
+      const c = s.slotCont[i]; if (c) this.tweens.add({ targets: c, scale: { from: 1, to: 1.3 }, yoyo: true, duration: 240, ease: 'Quad.out' });
+    }));
+    const na = 160 + s.woord.length * gap;
     this.time.delayedCall(na, () => { Voice.cue('woord-' + s.woord); this.tweens.add({ targets: s.slotCont, scale: { from: 1, to: 1.18 }, yoyo: true, duration: 260, ease: 'Back.out' }); });
-    this.time.delayedCall(na + 560, () => this.poef());
+    this.time.delayedCall(na + 640, () => this.poef());
   }
 
   poef() {
@@ -315,7 +347,7 @@ export default class LetterMissieScene extends Phaser.Scene {
     if (spot.geheim) this.fxGeheim(spot);
     else {
       const obst = this.obstakels[spot.doel];
-      const fx = { ijs: () => this.fxIjs(obst), kloof: () => this.fxKloof(obst), braam: () => this.fxBraam(obst), rots: () => this.fxRots(obst), kracht: () => this.fxKracht(obst) };
+      const fx = { ijs: () => this.fxIjs(obst), kloof: () => this.fxKloof(obst), water: () => this.fxWater(obst), braam: () => this.fxBraam(obst), rots: () => this.fxRots(obst), kracht: () => this.fxKracht(obst) };
       (fx[obst && obst.type] || (() => {}))();
     }
     confettiBurst(this, 40); SFX.yay(); Voice.cue('cheer'); this.cameras.main.flash(200, 255, 255, 200);
@@ -342,6 +374,25 @@ export default class LetterMissieScene extends Phaser.Scene {
     const g = this.add.graphics().setDepth(4); g.fillStyle(0xd98a4e, 1); g.fillRoundedRect(obst.x0, GROND - 4, w, 16, 4); for (let i = 0; i < w; i += 26) { g.lineStyle(2, 0xa9663a, 1); g.strokeRect(obst.x0 + i, GROND - 4, 26, 16); }
     g.setScale(1, 0); this.tweens.add({ targets: g, scaleY: 1, duration: 500, ease: 'Back.out' });
     this.lichtOp(obst.x0 - 120, obst.x1 + 120);
+  }
+
+  fxWater(obst) {
+    this.panNaar((obst.x0 + obst.x1) / 2, GROND - 20, 1800);
+    const w = obst.x1 - obst.x0, cx = (obst.x0 + obst.x1) / 2;
+    // een grote vis rijst op en vormt met z'n rug een brug
+    const vis = this.add.container(cx, GROND + 70).setDepth(5).setScale(0);
+    const g = this.add.graphics();
+    g.fillStyle(0x4aa3d6, 1); g.fillEllipse(0, 0, w * 0.92, 62);
+    g.fillTriangle(-w * 0.44, 0, -w * 0.6, -24, -w * 0.6, 24);
+    g.fillStyle(0x8fd0f0, 0.85); g.fillEllipse(0, -10, w * 0.7, 26);
+    g.fillStyle(0xffffff, 1); g.fillCircle(w * 0.3, -8, 7); g.fillStyle(0x16202b, 1); g.fillCircle(w * 0.32, -8, 3.6);
+    vis.add(g);
+    this.tweens.add({ targets: vis, scale: 1, y: GROND - 2, duration: 700, ease: 'Back.out' });
+    this.tweens.add({ targets: vis, y: GROND - 8, yoyo: true, repeat: -1, duration: 1200, ease: 'Sine.inOut', delay: 700 });
+    // rug-brug (collider) over het water
+    const brug = this.add.rectangle(cx, GROND + 6, w, 16, 0x000000, 0);
+    this.physics.add.existing(brug, true); this.grond.add(brug); this.physics.add.collider(this.speler, brug);
+    this.lichtOp(obst.x0 - 140, obst.x1 + 140);
   }
 
   fxBraam(obst) {
@@ -403,12 +454,12 @@ export default class LetterMissieScene extends Phaser.Scene {
     const c = this.add.container(W / 2, H / 2 - 80).setScrollFactor(0).setDepth(115).setScale(0);
     const g = this.add.graphics(); g.fillStyle(0xffe16b, 0.35); for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; g.fillTriangle(0, 0, Math.cos(a - 0.09) * 180, Math.sin(a - 0.09) * 180, Math.cos(a + 0.09) * 180, Math.sin(a + 0.09) * 180); } c.add(g);
     c.add(this.add.circle(0, -6, 52, 0xffffff).setStrokeStyle(5, 0xf6a723));
-    c.add(this.add.text(0, -8, '🦘', { fontSize: '44px' }).setOrigin(0.5));
+    c.add(this.add.text(0, -8, KRACHT_ICOON[kracht] || '⭐', { fontSize: '44px' }).setOrigin(0.5));
     c.add(this.add.text(0, 66, 'NIEUWE KRACHT!', { fontFamily: 'Arial Black, Arial', fontSize: '22px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5).setStroke('#b45309', 7));
     c.add(this.add.text(0, 98, KRACHT_NAAM[kracht] || kracht, { fontFamily: 'Arial Black, Arial', fontSize: '13px', fontStyle: 'bold', color: '#ffe16b' }).setOrigin(0.5).setStroke('#1f2d3a', 5));
     this.tweens.add({ targets: c, scale: 1, duration: 420, ease: 'Back.out' }); this.tweens.add({ targets: g, angle: 40, duration: 2600 });
     SFX.yay(); Voice.cue('cheer');
-    this.zegPriet('Probeer maar — spring hoog! 🦘', 2400);
+    this.zegPriet(kracht === 'sprint' ? 'Ren maar — supersnel! 💨' : 'Probeer maar — spring hoog! 🦘', 2400);
     this.time.delayedCall(2200, () => this.tweens.add({ targets: c, scale: 0, alpha: 0, duration: 300, onComplete: () => c.destroy() }));
   }
 
@@ -428,7 +479,14 @@ export default class LetterMissieScene extends Phaser.Scene {
 
     let dir = this.moveDir;
     if (this.cursors.left.isDown) dir = -1; else if (this.cursors.right.isDown) dir = 1;
-    b.setVelocityX(dir * MOVE_SPEED); if (dir !== 0) p.art.scaleX = dir;
+    const spd = this.powers.sprint ? SPRINT_SPEED : MOVE_SPEED; // Sssprint = supersnel
+    b.setVelocityX(dir * spd); if (dir !== 0) p.art.scaleX = dir;
+    // sprint-streepjes achter je voeten (het voelt snel)
+    if (this.powers.sprint && dir !== 0 && onFloor && time > (this._streakAt || 0)) {
+      this._streakAt = time + 90;
+      const st = this.add.rectangle(p.x - dir * 16, p.y + 14, 14, 3, 0xffffff, 0.6).setDepth(9);
+      this.tweens.add({ targets: st, x: st.x - dir * 30, alpha: 0, duration: 260, onComplete: () => st.destroy() });
+    }
 
     if (Phaser.Input.Keyboard.JustDown(this.keySpace) || (this.cursors.up && Phaser.Input.Keyboard.JustDown(this.cursors.up))) this.jumpBufferedAt = time;
     const wantJump = (time - this.jumpBufferedAt) < BUFFER_MS; const coyoteOk = (time - this.lastGroundAt) < COYOTE_MS;
@@ -451,7 +509,7 @@ export default class LetterMissieScene extends Phaser.Scene {
     if (!this._klaar && p.x > this.vlagX - 20) { this._klaar = true; this.missieKlaar(); }
   }
 
-  overPit(x) { return this.pitX0 != null && x > this.pitX0 - 10 && x < this.pitX1 + 10; }
+  overPit(x) { return this.pits.some(([a, b]) => x > a - 10 && x < b + 10); }
 
   updateCamera(time) {
     const cam = this.cameras.main, W = this.scale.width, H = this.scale.height; let tx, ty;

@@ -63,11 +63,42 @@ export const MISSIES = {
       { woord: 'bok', x: 1560, y: G - 330, schim: '❔', geheim: true },
       { woord: 'zon', x: 1880, y: G - 30, schim: '☀', doel: 'ijs2' },
     ],
+    volgende: 'm3',
+  },
+
+  // ---- M3 "Het Sisser-ravijn": verdien de S = Sssprint (dash over het ravijn) ----
+  // Wek de S (bel) → je rent supersnel en haalt het brede ravijn (te breed voor
+  // een gewone sprong). Daarna: smelt het ijs (zon) en laat de vis je over het
+  // water dragen (vis). Geheim: sok, hoog op een richel.
+  m3: {
+    naam: 'Het Sisser-ravijn', worldW: 3200, startX: 90, vlagX: 3100,
+    intro: 'Wek de S — dan ren je supersnel over het ravijn!',
+    powers: {},
+    // grond met TWEE kloven: het sprint-ravijn (dash) en het water (vis-brug)
+    grond: [[0, 900], [1240, 930], [2470, 730]],
+    richels: [[560, G - 110, 150], [1440, G - 150, 170]],
+    hindernissen: [
+      { id: 'svriend', type: 'kracht', x: 620, ledgeY: G - 110, kracht: 'sprint', letter: 's' },
+      { id: 'ravijn', type: 'sprintkloof', x0: 900, x1: 1240 },   // 340px → alleen met Sssprint
+      { id: 'ijs3', type: 'ijs', x: 1850 },
+      { id: 'water', type: 'water', x0: 2170, x1: 2470 },          // vis maakt een vis-brug
+    ],
+    spots: [
+      { woord: 'bel', x: 430, y: G - 30, schim: '🔔', doel: 'svriend' },
+      { woord: 'sok', x: 1520, y: G - 150, schim: '❔', geheim: true },
+      { woord: 'zon', x: 1660, y: G - 30, schim: '☀', doel: 'ijs3' },
+      { woord: 'vis', x: 2030, y: G - 30, schim: '🐟', doel: 'water' },
+    ],
     volgende: null,
   },
 };
 
-// Namen van de klank-krachten (voor de "nieuwe kracht"-viering).
+// Namen + iconen van de klank-krachten (voor de "nieuwe kracht"-viering).
 export const KRACHT_NAAM = {
   bots: 'BOTSBAL — spring SUPER hoog! 🦘',
+  sprint: 'SSSPRINT — ren supersnel! 💨',
+};
+export const KRACHT_ICOON = {
+  bots: '🦘',
+  sprint: '💨',
 };
