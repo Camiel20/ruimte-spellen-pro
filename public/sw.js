@@ -10,7 +10,7 @@
 // van de letter-klanken moet de oude cache weg — anders hoor je op de iPad nog
 // de oude clips (stale-while-revalidate). Bij een volgende clip-wijziging: weer
 // ophogen (of /voice/ network-first maken).
-const CACHE = 'rsp-cache-v3';
+const CACHE = 'rsp-cache-v4';
 
 self.addEventListener('install', () => {
   self.skipWaiting();

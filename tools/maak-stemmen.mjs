@@ -142,10 +142,10 @@ for (const w of ['zon', 'mat', 'bel', 'sok', 'bal', 'bok', 'vis', 'pen', 'bus'])
 // (mmm/sss/zzz…); plof-letters = met een korte 'uh' (buh/tuh…); klinkers = kort.
 // (Spellingen zijn best-effort voor de neural stem; per letter bijstelbaar.)
 const LETTERKLANKEN = {
-  a: 'aa', b: 'buh', c: 'kuh', d: 'duh', e: 'eh', f: 'fff', g: 'ggg', h: 'huh',
-  i: 'ie', j: 'juh', k: 'kuh', l: 'lll', m: 'mmm', n: 'nnn', o: 'oh', p: 'puh',
-  q: 'kuh', r: 'rrr', s: 'sss', t: 'tuh', u: 'uh', v: 'vvv', w: 'wuh', x: 'ks',
-  y: 'ie', z: 'zzz',
+  a: 'aa', b: 'buh', c: 'kuh', d: 'duh', e: 'eh', f: 'fuh', g: 'guh', h: 'huh',
+  i: 'ie', j: 'juh', k: 'kuh', l: 'luh', m: 'muh', n: 'nuh', o: 'oh', p: 'puh',
+  q: 'kuh', r: 'ruh', s: 'suh', t: 'tuh', u: 'uh', v: 'vuh', w: 'wuh', x: 'ks',
+  y: 'ie', z: 'zuh',
 };
 for (const [l, klank] of Object.entries(LETTERKLANKEN)) CLIPS[`letter-${l}`] = [`letter-${l}`, klank];
 
