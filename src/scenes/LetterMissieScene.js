@@ -319,11 +319,12 @@ export default class LetterMissieScene extends Phaser.Scene {
   }
 
   blendEnPoef() {
-    const s = this.spell; const gap = 620;
-    // Spel het NETJES uit: elke letter APART uitgesproken met z'n KLANK, KORT
-    // (buh·aa·tuh → mat — ~0,4s per klank, één klank, geen dubbeling of lange
-    // uithaal), elk vakje licht mee op. Pauze 620ms > de langste klank (~0,42s)
-    // zodat ze niet overlappen. Daarna het HÉLE WOORD als één clip → POEF.
+    const s = this.spell; const gap = 1000;
+    // Spel het NETJES uit: elke letter APart uitgesproken met z'n KLANK, elk
+    // vakje licht mee op. Pauze ruim (1000ms) zodat ook INGESPROKEN klanken
+    // (jouw eigen stem, ~0,8-0,9s) elkaar niet overlappen. Daarna het HÉLE
+    // WOORD als één clip → POEF. (Computer-klankjes zijn korter; iets trager
+    // uitgespeld is prima voor het leren lezen.)
     [...s.woord].forEach((ch, i) => this.time.delayedCall(160 + i * gap, () => {
       Voice.cue('letter-' + ch);
       const c = s.slotCont[i]; if (c) this.tweens.add({ targets: c, scale: { from: 1, to: 1.3 }, yoyo: true, duration: 240, ease: 'Quad.out' });

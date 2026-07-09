@@ -119,8 +119,8 @@
   "letter-k": "letter-k.mp3",
   "letter-l": "letter-l.mp3",
   "letter-m": "letter-m.mp3",
-  "letter-n": "letter-n.mp3",
-  "letter-o": "letter-o.mp3",
+  "letter-n": "letter-n.wav",
+  "letter-o": "letter-o.wav",
   "letter-p": "letter-p.mp3",
   "letter-q": "letter-q.mp3",
   "letter-r": "letter-r.mp3",
@@ -131,5 +131,5 @@
   "letter-w": "letter-w.mp3",
   "letter-x": "letter-x.mp3",
   "letter-y": "letter-y.mp3",
-  "letter-z": "letter-z.mp3"
+  "letter-z": "letter-z.wav"
 }
