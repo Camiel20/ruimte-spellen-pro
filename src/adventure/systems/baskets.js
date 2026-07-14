@@ -158,7 +158,9 @@ export default {
 
       // de ballenbak (grote tik-knop) links van de paal
       const bakX = B0.x - 104, bakY = groundTop - 20;
-      const bak = s.add.container(bakX, bakY).setDepth(6);
+      // depth 13 = boven de speler (12): tikken op de bak/bel waar je vóór
+      // staat moet de BAK raken, niet jezelf splitsen (topOnly-regel)
+      const bak = s.add.container(bakX, bakY).setDepth(13);
       const bkg = s.add.graphics();
       bkg.fillStyle(0x000000, 0.14); bkg.fillEllipse(0, 22, 96, 12);
       bkg.fillStyle(0x8a6a45, 1); bkg.fillRoundedRect(-44, -18, 88, 38, 8);
@@ -169,18 +171,22 @@ export default {
         const mb = tekenBalletje(s, 10); mb.setPosition(bx, by); bak.add(mb);
       });
       bak.add(s.add.text(0, 34, '👆 GOOI!', { fontFamily: 'Arial Black, Arial', fontSize: '14px', fontStyle: 'bold', color: '#f07c1f' }).setOrigin(0.5).setStroke('#ffffff', 4));
-      bak.setSize(100, 78).setInteractive({ useHandCursor: true });
+      // gecentreerde hit-area (containers doen dat niet vanzelf!)
+      bak.setInteractive(new Phaser.Geom.Rectangle(-50, -34, 100, 82), Phaser.Geom.Rectangle.Contains);
+      bak.input.cursor = 'pointer';
       s.tweens.add({ targets: bak, y: bakY - 4, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
       // de gouden bel (klaar!) rechts van de paal
-      const bel = s.add.container(B0.x + 96, groundTop - 46).setDepth(6);
+      const bel = s.add.container(B0.x + 96, groundTop - 46).setDepth(13);
       const blg = s.add.graphics();
       blg.fillStyle(0xffd24d, 1); blg.fillRoundedRect(-26, -24, 52, 40, 12);
       blg.fillStyle(0xb98d12, 1); blg.fillRoundedRect(-26, 8, 52, 10, 5);
       bel.add(blg);
       bel.add(s.add.text(0, -6, '🔔', { fontSize: '22px' }).setOrigin(0.5));
       bel.add(s.add.text(0, 30, 'KLAAR!', { fontFamily: 'Arial Black, Arial', fontSize: '12px', fontStyle: 'bold', color: '#b98d12' }).setOrigin(0.5).setStroke('#ffffff', 3));
-      bel.setSize(64, 76).setInteractive({ useHandCursor: true });
+      // gecentreerde hit-area (containers doen dat niet vanzelf!)
+      bel.setInteractive(new Phaser.Geom.Rectangle(-32, -30, 64, 72), Phaser.Geom.Rectangle.Contains);
+      bel.input.cursor = 'pointer';
 
       // de slagboom (schermhoge blokkade)
       const muurX = B0.x + BASKET_MUUR;

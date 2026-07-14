@@ -218,13 +218,17 @@ export default {
       st.lineStyle(2, 0xb98d12, 0.6);
       st.beginPath(); st.moveTo(B0.x + 40, groundTop - 6); st.lineTo(B0.x + BAAN_VELD + 80, groundTop - 6); st.strokePath();
 
-      const bal = s.add.container(B0.x, groundTop - 44).setDepth(6);
+      // depth 13 = boven de speler (12): de bal staat op sta-hoogte — een tik
+      // moet de BAL raken, niet jezelf splitsen (topOnly-regel)
+      const bal = s.add.container(B0.x, groundTop - 44).setDepth(13);
       const bg = s.add.graphics();
       bg.fillStyle(0x2b4a8a, 1); bg.fillCircle(0, 0, 16);
       bg.fillStyle(0xffffff, 0.35); bg.fillEllipse(-5, -6, 9, 6);
       bg.fillStyle(0x16202b, 1); bg.fillCircle(-3, -2, 2); bg.fillCircle(3, -2, 2); bg.fillCircle(0, 4, 2);
       bal.add(bg);
-      bal.setSize(52, 52).setInteractive({ useHandCursor: true });
+      // gecentreerde hit-area (containers doen dat niet vanzelf!)
+      bal.setInteractive(new Phaser.Geom.Rectangle(-26, -26, 52, 52), Phaser.Geom.Rectangle.Contains);
+      bal.input.cursor = 'pointer';
       s.tweens.add({ targets: bal, y: bal.y - 5, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
       // de slagboom achter de kegels (schermhoge blokkade)

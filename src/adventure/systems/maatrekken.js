@@ -137,13 +137,18 @@ export default {
       }
       const R = { ...R0, aantal, railY, body, deurArt, truien: [], klaar: false, fouten: 0, cuePlayed: false };
       maten.forEach((maat, i) => {
-        const tx = R0.x - 210 + i * 62;
+        const tx = R0.x - 250 + i * 78; // ruim uit elkaar: hit-gebieden mogen niet overlappen
         const ty = groundTop - 20 * maat;
-        const trui = s.add.container(tx, ty).setDepth(6);
+        // depth 13 = BOVEN de speler (12): een tik op de trui waar je vóór
+        // staat moet de TRUI raken, niet jezelf splitsen (topOnly!)
+        const trui = s.add.container(tx, ty).setDepth(13);
         trui.add(tekenTrui(s, maat, TRUI_KLEUR[MAATJES.indexOf(maat)]));
         trui.maat = maat;
         trui.opgehangen = false;
-        trui.setSize(64 * maat + 20, 44 * maat + 16).setInteractive({ useHandCursor: true });
+        // gecentreerde hit-area, gecapt op de tussenafstand (anders tik je de buurman)
+        const hw = Math.min(64 * maat + 20, 74), hh = 44 * maat + 20;
+        trui.setInteractive(new Phaser.Geom.Rectangle(-hw / 2, -hh / 2, hw, hh), Phaser.Geom.Rectangle.Contains);
+        trui.input.cursor = 'pointer';
         trui.on('pointerdown', () => tik(s, R, trui));
         s.tweens.add({ targets: trui, y: ty - 4, duration: 900 + i * 120, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
         R.truien.push(trui);

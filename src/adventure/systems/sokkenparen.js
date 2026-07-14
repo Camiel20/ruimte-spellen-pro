@@ -12,7 +12,9 @@ import { Voice } from '../../voice.js';
 import { drawSok } from '../sokken.js';
 
 function maakSok(s, S0) {
-  const c = s.add.container(S0.x, S0.y).setDepth(6);
+  // depth 13 = boven de speler (12): tikken op een sok waar je vóór staat
+  // moet de SOK raken, niet jezelf splitsen (topOnly-regel)
+  const c = s.add.container(S0.x, S0.y).setDepth(13);
   const g = s.add.graphics();
   // knijper + touwtje waar de sok aan bungelt
   g.lineStyle(2, 0x9aa0a6, 0.8); g.beginPath(); g.moveTo(0, -38); g.lineTo(0, -26); g.strokePath();
@@ -25,7 +27,9 @@ function maakSok(s, S0) {
   c.ring = ring;
   c.patroon = S0.patroon;
   c.klaar = false;
-  c.setSize(56, 70).setInteractive({ useHandCursor: true });
+  // gecentreerde hit-area rond sok + knijper (containers doen dat niet vanzelf!)
+  c.setInteractive(new Phaser.Geom.Rectangle(-28, -42, 56, 76), Phaser.Geom.Rectangle.Contains);
+  c.input.cursor = 'pointer';
   s.tweens.add({ targets: c, angle: Phaser.Math.Between(0, 1) ? 4 : -4, duration: 1000 + Math.random() * 400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   return c;
 }

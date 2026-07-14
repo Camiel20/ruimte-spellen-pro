@@ -7,6 +7,7 @@
 // samenstellen met munten van 1/2/5 (geld-rekenen groep 3).
 // Veld: `knopenWinkels: [{ x, prijs }]` — prijs 3-15; deur op x + 160.
 
+import Phaser from 'phaser';
 import { SFX } from '../../sound.js';
 import { Voice } from '../../voice.js';
 import { confettiBurst } from '../../reward.js';
@@ -187,15 +188,20 @@ export default {
       };
       tekenStippen(s, W);
 
-      // de munten op de toonbank: 1, 2 en 5 (oneindig — tik zo vaak je wilt)
+      // de munten op de toonbank: 1, 2 en 5 (oneindig — tik zo vaak je wilt).
+      // Depth 13 = BOVEN de speler (12): als je figuurtje vóór de toonbank
+      // staat moet een tik de MUNT raken, niet jezelf splitsen (topOnly!).
       MUNTEN.forEach((waarde, i) => {
-        const munt = s.add.container(W0.x - 30 + i * 44, groundTop - 118).setDepth(6);
+        const munt = s.add.container(W0.x - 30 + i * 44, groundTop - 118).setDepth(13);
         munt.add(tekenKnoopMunt(s, waarde));
         munt.add(s.add.text(0, 0, `${waarde}`, {
           fontFamily: 'Arial Black, Arial', fontSize: '15px', fontStyle: 'bold', color: '#5d4426',
         }).setOrigin(0.5));
         munt.waarde = waarde;
-        munt.setSize(44, 44).setInteractive({ useHandCursor: true });
+        // LET OP: containers centreren hun hit-area NIET vanzelf — expliciet
+        // een gecentreerde rechthoek meegeven (anders tik je náást de munt).
+        munt.setInteractive(new Phaser.Geom.Rectangle(-20, -20, 40, 40), Phaser.Geom.Rectangle.Contains);
+        munt.input.cursor = 'pointer';
         munt.on('pointerdown', () => betaal(s, W, waarde, munt));
         s.tweens.add({ targets: munt, y: munt.y - 4, duration: 800 + i * 140, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
         W.munten.push(munt);
