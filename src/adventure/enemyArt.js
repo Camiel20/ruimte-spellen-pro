@@ -4,6 +4,7 @@
 
 import { sig, lighten, darker } from './palette.js';
 import { tekenSisser } from './letterCast.js';
+import { drawSok } from './sokken.js';
 
 // Het grijze Grommel-lijfje (tekent ín de art-container van makeGrommel).
 // type 'springer' = FELORANJE springveren + gele pet (onmiskenbaar: die gaat
@@ -1143,5 +1144,197 @@ export function drawBordKeuze(scene, x, y, waarde) {
   }).setOrigin(0.5));
   scene.tweens.add({ targets: c, y: y - 9, duration: 950 + (waarde % 3) * 160, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   c.waarde = waarde; c.spawnY = y; c.taken = false;
+  return c;
+}
+
+// ===== DE SOKKEN-DIEF (Wereld 13, de Kleren-Kast) =====
+// Een sluwe schurk met een sok als muts en een uitpuilende buit-zak vol
+// gestolen sokken. Stijl 'paar': hij toont een sok in zijn denk-wolkje —
+// raak de TWEELING tussen de zwevende sokken en hij laat een zak los.
+// Verslagen = hij geeft álle sokken terug (en houdt alleen zijn muts).
+export function drawSokDiefBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 64).setDepth(7);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 68, 120, 20);
+  // de buit-zak op zijn rug (uitpuilend, dichtgeknoopt met een koord)
+  g.fillStyle(0x8a6a45, 1); g.fillEllipse(38, -6, 66, 84);
+  g.fillStyle(0xa9855c, 0.7); g.fillEllipse(30, -18, 34, 40);
+  g.lineStyle(3.5, 0x6e5436, 1); g.strokeEllipse(38, -6, 66, 84);
+  g.lineStyle(3, 0x6e5436, 1); g.beginPath(); g.moveTo(24, -44); g.lineTo(50, -40); g.strokePath(); // het koord
+  c.add(g);
+  // sokken die uit de zak piepen
+  const piep1 = scene.add.graphics(); drawSok(piep1, 'stippen', 0.5); piep1.setPosition(46, -48).setAngle(30);
+  const piep2 = scene.add.graphics(); drawSok(piep2, 'sterren', 0.45); piep2.setPosition(26, -52).setAngle(-20);
+  c.add([piep1, piep2]);
+  // het lijf: een lange schurk in schemer-paars, op sluip-voetjes
+  const lijf = scene.add.graphics();
+  lijf.fillStyle(0x5d5470, 1); lijf.fillRoundedRect(-34, -46, 58, 108, 14);
+  lijf.fillStyle(0x6e6584, 1); lijf.fillRoundedRect(-34, -46, 58, 22, 12);
+  lijf.lineStyle(3.5, 0x423b52, 1); lijf.strokeRoundedRect(-34, -46, 58, 108, 14);
+  lijf.fillStyle(0x423b52, 1); lijf.fillEllipse(-20, 64, 26, 10); lijf.fillEllipse(4, 64, 26, 10);
+  // een sok als muts (rood-gestreept, met hangend puntje)
+  lijf.fillStyle(0xe8402c, 1);
+  lijf.fillRoundedRect(-30, -66, 50, 24, 10);
+  lijf.fillCircle(24, -50, 9);
+  lijf.fillStyle(0xffe16b, 1); lijf.fillRect(-30, -60, 50, 5);
+  lijf.fillStyle(0xffffff, 1); lijf.fillRoundedRect(-32, -48, 54, 8, 4); // de boord
+  c.add(lijf);
+  c.bodyG = lijf;
+  // sluwe oogjes + grijnsje
+  const eL = scene.add.circle(-18, -28, 8, 0xffffff).setStrokeStyle(2.5, 0x2b2f34);
+  const eR = scene.add.circle(4, -28, 8, 0xffffff).setStrokeStyle(2.5, 0x2b2f34);
+  const pL = scene.add.circle(-16, -27, 3.2, 0x222222), pR = scene.add.circle(6, -27, 3.2, 0x222222);
+  const br = scene.add.graphics(); br.lineStyle(3.5, 0x2b2f34, 1);
+  br.beginPath(); br.moveTo(-26, -40); br.lineTo(-10, -34); br.strokePath();
+  br.beginPath(); br.moveTo(12, -34); br.lineTo(-2, -37); br.strokePath();
+  const m = scene.add.graphics(); m.lineStyle(3, 0x2b2f34, 1);
+  m.beginPath(); m.arc(-7, -10, 9, 1.25 * Math.PI, 1.95 * Math.PI); m.strokePath();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.brow = br; c.mouth = m;
+
+  const bub = scene.add.container(0, -112);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-28, -24, 56, 44, 12); bg.strokeRoundedRect(-28, -24, 56, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Bekeerd: de dief wordt sokken-uitdeler — blos, brede lach, fris blauw pak.
+export function happySokDiefBoss(scene, c) {
+  c.bodyG.clear();
+  const lijf = c.bodyG;
+  lijf.fillStyle(0x7fb8e8, 1); lijf.fillRoundedRect(-34, -46, 58, 108, 14);
+  lijf.fillStyle(0x9fcbef, 1); lijf.fillRoundedRect(-34, -46, 58, 22, 12);
+  lijf.lineStyle(3.5, 0x3f6fa8, 1); lijf.strokeRoundedRect(-34, -46, 58, 108, 14);
+  lijf.fillStyle(0x3f6fa8, 1); lijf.fillEllipse(-20, 64, 26, 10); lijf.fillEllipse(4, 64, 26, 10);
+  // de muts blijft (die is van hemzelf), nu vrolijk
+  lijf.fillStyle(0xe8402c, 1);
+  lijf.fillRoundedRect(-30, -66, 50, 24, 10);
+  lijf.fillCircle(24, -50, 9);
+  lijf.fillStyle(0xffe16b, 1); lijf.fillRect(-30, -60, 50, 5);
+  lijf.fillStyle(0xffffff, 1); lijf.fillRoundedRect(-32, -48, 54, 8, 4);
+  // blosjes
+  lijf.fillStyle(0xf08a8a, 0.6); lijf.fillEllipse(-26, -14, 14, 9); lijf.fillEllipse(12, -14, 14, 9);
+  c.brow.clear();
+  c.mouth.clear(); c.mouth.lineStyle(3.5, 0x2b2f34, 1);
+  c.mouth.beginPath(); c.mouth.arc(-7, -16, 11, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+}
+
+// Natte sok (projectiel van de Sokken-Dief): een doorweekte sok met druppels.
+export function drawNatteSok(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const inner = scene.add.container(0, -16);
+  const g = scene.add.graphics();
+  drawSok(g, 'stippen', 0.75);
+  // druppels eraf
+  g.fillStyle(0x7fd0f0, 0.9);
+  g.fillEllipse(-12, 14, 5, 8); g.fillEllipse(10, 16, 4, 7); g.fillEllipse(0, 19, 4, 6);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: { from: -14, to: 14 }, duration: 220, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Keuze-sok (stijl 'paar'): een zwevende sok met patroon — zelfde contract
+// als tekenGetalBel, maar 'waarde' is hier de patroon-naam (string).
+export function drawSokKeuze(scene, x, y, waarde) {
+  const c = scene.add.container(x, y).setDepth(6);
+  const glow = scene.add.circle(2, 0, 30, 0xfff3b0, 0.25);
+  c.add(glow);
+  const g = scene.add.graphics();
+  drawSok(g, waarde, 1.05);
+  c.add(g);
+  scene.tweens.add({ targets: c, y: y - 10, duration: 950 + (waarde.length % 3) * 160, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  c.waarde = waarde; c.spawnY = y; c.taken = false;
+  return c;
+}
+
+// ===== DE KEGEL-KONING (Wereld 14, het Stuiter-Stadion) =====
+// Een reusachtige bowlingkegel met een kroon en een snor die rollende
+// bowlingballen op je afstuurt. Stijl 'kegel': hij stampt een stel kegels
+// om — reken uit hoeveel er nog staan en raak het goede antwoord-bord.
+export function drawKegelBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 78).setDepth(7);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 82, 110, 20);
+  // het kegel-lijf: wit met rode banden, glimmend
+  g.fillStyle(0xf5f9fc, 1);
+  g.fillEllipse(0, 74, 74, 22);             // voet
+  g.fillRoundedRect(-32, -38, 64, 116, 26); // lijf
+  g.fillCircle(0, -44, 26);                 // kop
+  g.fillStyle(0xe8402c, 1); g.fillRect(-32, -14, 64, 15); g.fillRect(-30, 8, 60, 10);
+  g.fillStyle(0xffffff, 0.55); g.fillEllipse(-13, -30, 14, 42); // glans
+  g.lineStyle(4, 0x9aa0a6, 1); g.strokeRoundedRect(-32, -38, 64, 116, 26);
+  // armpjes met witte handschoentjes
+  g.lineStyle(5, 0xd0d6dd, 1);
+  g.beginPath(); g.moveTo(-32, 10); g.lineTo(-52, -6); g.strokePath();
+  g.beginPath(); g.moveTo(32, 10); g.lineTo(52, 24); g.strokePath();
+  g.fillStyle(0xffffff, 1); g.fillCircle(-54, -9, 7); g.fillCircle(54, 27, 7);
+  c.add(g);
+  c.bodyG = g;
+  // de kroon
+  const kroon = scene.add.graphics();
+  kroon.fillStyle(0xf6c624, 1);
+  kroon.fillRect(-20, -78, 40, 10);
+  kroon.fillTriangle(-20, -78, -12, -78, -16, -94);
+  kroon.fillTriangle(-8, -78, 8, -78, 0, -98);
+  kroon.fillTriangle(12, -78, 20, -78, 16, -94);
+  kroon.fillStyle(0xe8402c, 1); kroon.fillCircle(0, -88, 3.4);
+  kroon.lineStyle(2, 0xb98d12, 1); kroon.strokeRect(-20, -78, 40, 10);
+  c.add(kroon);
+  // koninklijk gezicht: streng + een snor
+  const eL = scene.add.circle(-10, -48, 7, 0xffffff).setStrokeStyle(2.5, 0x2b2f34);
+  const eR = scene.add.circle(10, -48, 7, 0xffffff).setStrokeStyle(2.5, 0x2b2f34);
+  const pL = scene.add.circle(-9, -47, 3, 0x222222), pR = scene.add.circle(11, -47, 3, 0x222222);
+  const br = scene.add.graphics(); br.lineStyle(3.5, 0x2b2f34, 1);
+  br.beginPath(); br.moveTo(-17, -58); br.lineTo(-4, -55); br.strokePath();
+  br.beginPath(); br.moveTo(17, -58); br.lineTo(4, -55); br.strokePath();
+  const m = scene.add.graphics();
+  m.fillStyle(0x6e4a2c, 1); // de snor
+  m.fillEllipse(-7, -34, 13, 6); m.fillEllipse(7, -34, 13, 6);
+  m.lineStyle(3, 0x2b2f34, 1);
+  m.beginPath(); m.arc(0, -26, 6, 1.2 * Math.PI, 1.9 * Math.PI); m.strokePath();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.brow = br; c.mouth = m;
+
+  const bub = scene.add.container(0, -136);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-42, -24, 84, 44, 12); bg.strokeRoundedRect(-42, -24, 84, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Verslagen (= eindelijk omgekegeld): krullende snor, brede lach, blosjes.
+export function happyKegelBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear();
+  c.mouth.fillStyle(0x6e4a2c, 1); // de snor krult nu vrolijk omhoog
+  c.mouth.fillEllipse(-8, -36, 13, 5); c.mouth.fillEllipse(8, -36, 13, 5);
+  c.mouth.lineStyle(3.5, 0x2b2f34, 1);
+  c.mouth.beginPath(); c.mouth.arc(0, -32, 10, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+  // blosjes op het kegel-lijf
+  c.bodyG.fillStyle(0xf08a8a, 0.6);
+  c.bodyG.fillEllipse(-22, -40, 13, 8); c.bodyG.fillEllipse(22, -40, 13, 8);
+}
+
+// Bowlingbal (projectiel van de Kegel-Koning): rolt zwaar over de grond.
+export function drawBowlingBal(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const inner = scene.add.container(0, -16);
+  const g = scene.add.graphics();
+  g.fillStyle(0x2b4a8a, 1); g.fillCircle(0, 0, 15);
+  g.fillStyle(0x3f63a8, 1); g.fillCircle(-4, -4, 9);
+  g.fillStyle(0x16202b, 1); g.fillCircle(-3, -3, 2.2); g.fillCircle(4, -3, 2.2); g.fillCircle(0, 4, 2.2);
+  g.fillStyle(0xffffff, 0.3); g.fillEllipse(-6, -7, 7, 4);
+  g.lineStyle(2.5, 0x1c3260, 1); g.strokeCircle(0, 0, 15);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: -360, duration: 700, repeat: -1 });
   return c;
 }

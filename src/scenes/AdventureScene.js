@@ -16,6 +16,7 @@ import { tekenHoedje } from '../adventure/hoedjes.js';
 import { drawTopping } from '../adventure/systems/bakkerij.js';
 import { tekenPot } from '../adventure/systems/spoelpotten.js';
 import { tekenGetalBel } from '../adventure/systems/duikboot.js';
+import { drawSok } from '../adventure/sokken.js';
 // LET OP: het bestand heet 'maatje.js' en niet 'nul.js' — NUL is een
 // gereserveerde apparaatnaam op Windows (git kan zo'n bestand niet openen!).
 import { buildNul, updateNul } from '../adventure/maatje.js';
@@ -340,6 +341,17 @@ export default class AdventureScene extends Phaser.Scene {
     } else if (pz.stijl === 'splits') {
       const st0 = pz.stages[0];
       art.bubbleText.setText(`${st0.van}=${st0.weg}+?`).setFontSize(14);
+    } else if (pz.stijl === 'kegel') {
+      const st0 = pz.stages[0];
+      art.bubbleText.setText(`${st0.van}−${st0.weg}=?`).setFontSize(14);
+    } else if (pz.stijl === 'paar') {
+      // de Sokken-Dief: geen getal maar een SOK in het denk-wolkje
+      art.bubbleText.setText('');
+      const sokG = this.add.graphics();
+      sokG.setPosition(0, -2);
+      drawSok(sokG, pz.doel, 0.62);
+      art.bubble.add(sokG);
+      art.bubbleSok = sokG;
     } else {
       art.bubbleText.setText(pz.stijl === 'tien' ? `${pz.doel}+?` : pz.stijl === 'surf' ? '?' : `${pz.doel}`);
     }
@@ -349,7 +361,7 @@ export default class AdventureScene extends Phaser.Scene {
 
   bossStageReact(pz) {
     const c = pz.bossArt;
-    if (pz.stijl !== 'sisser') c.bubbleText.setText(`${pz.doel}`);
+    if (pz.stijl !== 'sisser' && pz.stijl !== 'paar') c.bubbleText.setText(`${pz.doel}`);
     if (pz.stijl === 'sisser') {
       // DE KRIMP: elke teruggeschreven letter maakt De Sisser kleiner. Het
       // woord in z'n wolkje kleurt een letter terug.
@@ -380,6 +392,8 @@ export default class AdventureScene extends Phaser.Scene {
       : pz.stijl === 'schud' ? `stamp en raap er ${pz.doel}`
       : pz.stijl === 'splits' ? 'splits het getal'
       : pz.stijl === 'stomp' ? 'spring op zijn kop'
+      : pz.stijl === 'paar' ? 'zoek de tweelingsok'
+      : pz.stijl === 'kegel' ? 'reken de kegels uit'
       : pz.stijl === 'sisser' ? `schrijf de "${pz.stages[pz.stageIndex].letter}"`
       : pz.stijl === 'finale' ? ({ vang: 'vang de kleur-orbs', muur: 'ram zijn schilden', bouw: `bouw de ${pz.doel}` })[pz.stages[pz.stageIndex].soort]
       : `bouw de ${pz.doel}`;
@@ -388,6 +402,15 @@ export default class AdventureScene extends Phaser.Scene {
     if (pz.stijl === 'splits') {
       const st = pz.stages[pz.stageIndex];
       c.bubbleText.setText(`${st.van}=${st.weg}+?`).setFontSize(14);
+    }
+    if (pz.stijl === 'kegel') {
+      const st = pz.stages[pz.stageIndex];
+      c.bubbleText.setText(`${st.van}−${st.weg}=?`).setFontSize(14);
+    }
+    if (pz.stijl === 'paar' && c.bubbleSok) {
+      // een nieuwe doel-sok in het denk-wolkje
+      c.bubbleSok.clear();
+      drawSok(c.bubbleSok, pz.doel, 0.62);
     }
     this.questText.setText(`De Baas wankelt! Nog ${left}× — ${actie}!`);
     this.vierMijlpaal(pz.bossArt.x);
@@ -437,11 +460,14 @@ export default class AdventureScene extends Phaser.Scene {
 
   startBossFase(pz) {
     pz.faseActief = true;
-    // bij 'surf'/'splits'/'sisser' is er geen getal-doel om voor te lezen
-    const stil = pz.stijl === 'surf' || pz.stijl === 'splits' || pz.stijl === 'sisser';
+    // bij 'surf'/'splits'/'sisser' is er geen getal-doel om voor te lezen;
+    // bij 'paar' is het doel een patroon (geen getal) en bij 'kegel' is het
+    // doel het ANTWOORD — voorlezen zou het verklappen
+    const stil = pz.stijl === 'surf' || pz.stijl === 'splits' || pz.stijl === 'sisser'
+      || pz.stijl === 'paar' || pz.stijl === 'kegel';
     if (!stil) Voice.number(pz.doel);
     // gesproken aanmoediging per stijl, netjes ná het getal
-    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud', splits: 'baas-splits', stomp: 'baas-stomp', sisser: 'baas-bouw' };
+    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud', splits: 'baas-splits', stomp: 'baas-stomp', sisser: 'baas-bouw', paar: 'baas-paar', kegel: 'baas-kegel' };
     const finaleClip = pz.stijl === 'finale'
       ? ({ vang: 'baas-vang', muur: 'hint-grauwmuur', bouw: 'baas-bouw' })[pz.stages[pz.stageIndex].soort] : null;
     Voice.hint(finaleClip || BAAS_CLIP[pz.stijl], stil ? 200 : 1100);
@@ -468,6 +494,18 @@ export default class AdventureScene extends Phaser.Scene {
       const st = pz.stages[pz.stageIndex];
       this.questText.setText(`${st.van} = ${st.weg} + ? — raak het goede kristal! 💎`);
       pz.bossArt.bubbleText.setText(`${st.van}=${st.weg}+?`).setFontSize(14);
+      this.toonBossBellen(pz);
+    } else if (pz.stijl === 'paar') {
+      // de Sokken-Dief toont een sok — raak de TWEELING tussen de opties
+      this.questText.setText('Kijk in zijn wolkje — raak de sok die HETZELFDE is! 🧦');
+      if (pz.bossArt.bubbleSok) { pz.bossArt.bubbleSok.clear(); drawSok(pz.bossArt.bubbleSok, pz.doel, 0.62); }
+      this.toonBossBellen(pz);
+    } else if (pz.stijl === 'kegel') {
+      // de Kegel-Koning kegelt zijn onderdanen om — hoeveel staan er nog?
+      const st = pz.stages[pz.stageIndex];
+      this.questText.setText(`${st.van} kegels, ${st.weg} vallen om — hoeveel staan er NOG? 🎳`);
+      pz.bossArt.bubbleText.setText(`${st.van}−${st.weg}=?`).setFontSize(14);
+      this.kegelStamp(pz, st);
       this.toonBossBellen(pz);
     } else if (pz.stijl === 'stomp') {
       this.questText.setText('Zweef omhoog en spring ÓP zijn kop! 🌙');
@@ -585,6 +623,35 @@ export default class AdventureScene extends Phaser.Scene {
     });
   }
 
+  // De Kegel-Koning stampt — zijn kegel-onderdanen tuimelen om (visuele
+  // steun bij de som: je ZIET hoeveel er omvallen; bij tientallen komt er
+  // een grote "−weg"-pop bij omdat 24 losse kegels niet meer telbaar zijn).
+  kegelStamp(pz, st) {
+    const groundTop = this.level.platforms[0][1];
+    this.tweens.add({ targets: pz.bossArt, angle: -8, duration: 160, yoyo: true, repeat: 2 });
+    this.cameraPunch(0.03, 5); SFX.stomp();
+    const n = Math.min(st.weg, 12);
+    for (let i = 0; i < n; i++) {
+      const pin = this.add.graphics().setDepth(8);
+      pin.fillStyle(0xf5f9fc, 1);
+      pin.fillRoundedRect(-4, -8, 8, 17, 3); pin.fillCircle(0, -9, 3.6);
+      pin.fillStyle(0xe8402c, 1); pin.fillRect(-4, -4, 8, 3);
+      pin.setPosition(pz.bossArt.x - 50, groundTop - 60);
+      const doelX = pz.bossArt.x - 130 - i * 34 - Phaser.Math.Between(0, 16);
+      this.tweens.add({
+        targets: pin, x: doelX, y: groundTop - 8, angle: i % 2 ? 100 : -100, alpha: 0.25,
+        duration: 500 + i * 60, ease: 'Quad.in',
+        onComplete: () => this.tweens.add({ targets: pin, alpha: 0, duration: 900, delay: 1400, onComplete: () => pin.destroy() }),
+      });
+    }
+    if (st.weg > 12) {
+      const pop = this.add.text(pz.bossArt.x - 180, groundTop - 190, `−${st.weg}!`, {
+        fontFamily: 'Arial Black, Arial', fontSize: '30px', fontStyle: 'bold', color: '#e8402c',
+      }).setOrigin(0.5).setDepth(9).setStroke('#ffffff', 6);
+      this.tweens.add({ targets: pop, y: pop.y - 40, alpha: 0, duration: 1600, ease: 'Quad.out', onComplete: () => pop.destroy() });
+    }
+  }
+
   // De Golf-Baas stuurt een TELBAAR setje golven (spring eroverheen en tel
   // mee!); daarna springen de antwoord-schelpen omhoog.
   surfBurst(pz) {
@@ -664,9 +731,10 @@ export default class AdventureScene extends Phaser.Scene {
             this.questText.setText('Zó ram je hem niet om — word eerst een REUS! 🍎');
           }
         }
-      } else if ((pz.stijl === 'tien' || pz.stijl === 'splits') && time > (pz.belCd || 0)) {
+      } else if ((pz.stijl === 'tien' || pz.stijl === 'splits' || pz.stijl === 'paar' || pz.stijl === 'kegel') && time > (pz.belCd || 0)) {
         // tien: raak het 10-maatje (goed = 10 − getoond getal)
-        // splits: raak het ontbrekende stuk (goed = van − weg = pz.doel)
+        // splits/kegel: raak het ontbrekende stuk / de rest (goed = pz.doel)
+        // paar: raak de sok met HETZELFDE patroon (goed = pz.doel, een naam)
         const goedWaarde = pz.stijl === 'tien' ? 10 - pz.doel : pz.doel;
         const st = pz.stages[pz.stageIndex];
         for (const bel of (pz.belSprites || [])) {
@@ -676,9 +744,11 @@ export default class AdventureScene extends Phaser.Scene {
           if (dxB * dxB + dyB * dyB > 50 * 50) continue;
           pz.belCd = time + 900;
           if (bel.waarde === goedWaarde) {
-            // HET MAATJE! Hartjes, en een tentakel laat los.
+            // HET MAATJE! Hartjes, en de baas wankelt.
             bel.taken = true;
-            SFX.correct(); Voice.number(bel.waarde);
+            SFX.correct();
+            if (pz.stijl === 'paar') Voice.cue('great'); // een patroon lees je niet voor
+            else Voice.number(bel.waarde);
             this.tweens.killTweensOf(bel);
             this.heart(bel.x, bel.y - 20); this.heart(bel.x - 20, bel.y); this.heart(bel.x + 20, bel.y);
             this.tweens.add({ targets: bel, scale: 0, y: bel.y - 26, duration: 260, ease: 'Back.in', onComplete: () => bel.destroy() });
@@ -692,13 +762,15 @@ export default class AdventureScene extends Phaser.Scene {
             this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 240, ease: 'Back.in' });
             this.questText.setText(pz.stijl === 'tien'
               ? `${pz.doel} + ${bel.waarde} is geen 10 — een andere bel! 💛`
+              : pz.stijl === 'paar' ? 'Die is nét anders — kijk goed naar het patroon! 🔍'
+              : pz.stijl === 'kegel' ? `${st.van} − ${st.weg} is geen ${bel.waarde} — tel de kegels die staan! 🎳`
               : `${st.weg} + ${bel.waarde} is geen ${st.van} — een ander kristal! 💎`);
             // anti-gok: na 2 fouten pulseert het juiste antwoord zachtjes
             pz.fouten = (pz.fouten || 0) + 1;
             if (pz.fouten >= 2) {
               const maatje = (pz.belSprites || []).find((b) => b.active && b.waarde === goedWaarde);
               if (maatje) this.pulsHulp(maatje);
-              Voice.hint(pz.stijl === 'tien' ? 'baas-tien' : 'baas-splits', 900);
+              Voice.hint({ tien: 'baas-tien', splits: 'baas-splits', paar: 'baas-paar', kegel: 'baas-kegel' }[pz.stijl], 900);
             }
             this.time.delayedCall(2200, () => {
               if (!bel.active || pz.solved) return;
@@ -938,6 +1010,17 @@ export default class AdventureScene extends Phaser.Scene {
       // inkt-klodder van een zee-werper
       g.fillStyle(0x2d2440, 0.95); g.fillCircle(0, 0, 8); g.fillCircle(-6, 3, 4); g.fillCircle(6, 2, 4);
       g.fillStyle(0x4a3a68, 0.9); g.fillCircle(-2, -2, 3);
+    } else if (t === 'kleren') {
+      // een natte opgepropte sok
+      g.fillStyle(0x7fb8e8, 0.95); g.fillEllipse(0, 1, 15, 10); g.fillCircle(6, -3, 5);
+      g.fillStyle(0xffffff, 0.9); g.fillRoundedRect(-9, -6, 8, 5, 2); // het boordje
+      g.fillStyle(0x7fd0f0, 0.85); g.fillEllipse(-4, 8, 3, 5); g.fillEllipse(5, 9, 2.5, 4); // druppels
+    } else if (t === 'ballen') {
+      // een klein voetballetje
+      g.fillStyle(0xffffff, 1); g.fillCircle(0, 0, 8);
+      g.lineStyle(1.6, 0xd0d6dd, 1); g.strokeCircle(0, 0, 8);
+      g.fillStyle(0x16202b, 1);
+      g.fillCircle(0, 0, 2.4); g.fillCircle(-5, -3, 1.6); g.fillCircle(5, -3, 1.6); g.fillCircle(0, 6, 1.6);
     } else {
       g.fillStyle(0x8a8f96, 1); g.fillCircle(0, 0, 7);
       g.fillStyle(0xb9bfc6, 0.8); g.fillCircle(-2, -2, 3);
@@ -1811,6 +1894,9 @@ export default class AdventureScene extends Phaser.Scene {
       + (L.grauwMuren || []).length + (L.reuzenBlokken || []).length
       + (L.parenBorden || []).length + (L.duikboten || []).length
       + (L.schrijfPoorten || []).length
+      + (L.maatRekken || []).length + (L.knopenWinkels || []).length
+      + (L.bowlingBanen || []).length + (L.baskets || []).length
+      + ((L.sokkenParen || []).length ? 1 : 0) // alle paren samen = één klus
       + (L.raket ? 1 : 0) + (L.boss ? L.boss.stages.length : 0);
   }
 

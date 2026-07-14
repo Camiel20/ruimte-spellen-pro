@@ -12,7 +12,7 @@
 // genereren met een gelicenseerde dienst (Azure TTS / ElevenLabs).
 
 import { MsEdgeTTS, OUTPUT_FORMAT, ProsodyOptions } from 'msedge-tts';
-import { createWriteStream, mkdirSync, writeFileSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { KLANKEN, WERELDEN } from '../src/alfaLogic.js';
@@ -84,6 +84,14 @@ const CLIPS = {
   'hint-reus': ['hint-reus', 'Hap de appel en word een reus!'],
   'hint-muis': ['hint-muis', 'Eet het besje en word klein!'],
   'hint-pot': ['hint-pot', 'Spring in de pot met de goede som!'],
+  // W13 de Kleren-Kast + W14 het Stuiter-Stadion
+  'hint-waslijn': ['hint-waslijn', 'Spring en grijp het hangertje!'],
+  'hint-sokken': ['hint-sokken', 'Zoek twee dezelfde sokken!'],
+  'hint-maatrek': ['hint-maatrek', 'Tik steeds de kleinste!'],
+  'hint-winkel': ['hint-winkel', 'Betaal precies genoeg knopen!'],
+  'hint-stuiterbal': ['hint-stuiterbal', 'Duw de bal, en spring erop!'],
+  'hint-bowling': ['hint-bowling', 'Hoeveel kegels staan er nog?'],
+  'hint-basket': ['hint-basket', 'Gooi er precies genoeg in!'],
   // krachten (bij het leren van een nieuwe kracht)
   'kracht-dubbelsprong': ['kracht-dubbelsprong', 'Dubbelsprong!'],
   'kracht-stamp': ['kracht-stamp', 'Stampen!'],
@@ -99,6 +107,8 @@ const CLIPS = {
   'baas-schud': ['baas-schud', 'Stamp, en raap de eikels!'],
   'baas-splits': ['baas-splits', 'Splits het getal!'],
   'baas-stomp': ['baas-stomp', 'Spring op zijn kop!'],
+  'baas-paar': ['baas-paar', 'Zoek de tweelingsok!'],
+  'baas-kegel': ['baas-kegel', 'Hoeveel staan er nog?'],
   // mijlpalen
   'naar-de-vlag': ['naar-de-vlag', 'Naar de vlag!'],
   'gouden-nul': ['gouden-nul', 'Een gouden nul!'],
@@ -164,6 +174,10 @@ async function maakClip(tts, tekst, pad) {
 }
 
 async function main() {
+  // --alleen-nieuw: sla clips over waarvan de mp3 al bestaat. BELANGRIJK bij
+  // bijgenereren: sommige clips zijn inmiddels ZELF INGESPROKEN (eigen stem,
+  // bv. klank-z/o/n) — die mogen nooit overschreven worden door de neural stem.
+  const alleenNieuw = process.argv.includes('--alleen-nieuw');
   mkdirSync(DOEL, { recursive: true });
   const tts = new MsEdgeTTS();
   await tts.setMetadata(STEM, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
@@ -173,6 +187,10 @@ async function main() {
   for (let i = 0; i < items.length; i++) {
     const [key, [bestand, tekst]] = items[i];
     const pad = join(DOEL, `${bestand}.mp3`);
+    if (alleenNieuw && existsSync(pad)) {
+      manifest[key] = `${bestand}.mp3`;
+      continue; // bestaat al — laten staan (eigen opnames blijven heilig)
+    }
     process.stdout.write(`[${i + 1}/${items.length}] ${key} → ${bestand}.mp3 ("${tekst}") … `);
     await maakClip(tts, tekst, pad);
     manifest[key] = `${bestand}.mp3`;

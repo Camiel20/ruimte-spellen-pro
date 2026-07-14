@@ -35,11 +35,11 @@ export default class FeestScene extends Phaser.Scene {
     zon.fillStyle(0xffe16b, 1); zon.fillCircle(W - 70, 90, 32);
 
     // Na 6-2 is het verhaal-deel gered (maar het spel nog lang niet uit —
-    // "EINDE!" was hier misleidend); na 12-5 is ALLES gered: het slotfeest.
+    // "EINDE!" was hier misleidend); na 14-5 is ALLES gered: het slotfeest.
     this.add.text(W / 2, 90, this.slot ? '👑 ALLES GERED! 👑' : 'HOERA!', {
       fontFamily: 'Arial Black, Arial', fontSize: this.slot ? '34px' : '52px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5).setStroke('#e8402c', 12);
-    this.add.text(W / 2, 148, this.slot ? 'Alle twaalf de landen dansen mee! 🎉' : 'Getallen-Land is gered! 🎉', {
+    this.add.text(W / 2, 148, this.slot ? 'Alle veertien landen dansen mee! 🎉' : 'Getallen-Land is gered! 🎉', {
       fontFamily: 'Arial Black, Arial', fontSize: '20px', fontStyle: 'bold', color: '#16202b',
     }).setOrigin(0.5).setStroke('#ffffff', 6);
 
@@ -81,13 +81,13 @@ export default class FeestScene extends Phaser.Scene {
     // hun happy-art bestaat al in het baas-register. (De vaste Grauw
     // hieronder wordt dan overgeslagen: hij staat mídden in de galerij.)
     if (this.slot) {
-      const gasten = ['golf', 'boom', 'kristal', 'meteoor', 'kaas', 'grauw', 'drol', 'reus', 'bil', 'octopus', 'pan'];
+      const gasten = ['golf', 'boom', 'kristal', 'meteoor', 'kaas', 'grauw', 'drol', 'reus', 'bil', 'octopus', 'pan', 'sokdief', 'kegel'];
       gasten.forEach((lookNaam, i) => {
         try {
           const look = bossLook(lookNaam);
-          const rij = i < 6 ? 0 : 1;
-          const kol = rij === 0 ? i : i - 6;
-          const bx = (rij === 0 ? 50 : 90) + kol * 76;
+          const rij = i < 7 ? 0 : 1;
+          const kol = rij === 0 ? i : i - 7;
+          const bx = (rij === 0 ? 42 : 78) + kol * 66;
           const by = rij === 0 ? 600 : 710;
           const c = look.draw(this, bx, by);
           look.happy(this, c, { stages: [{ doel: 5 }] }); // mock-pz voor looks die 'm lezen

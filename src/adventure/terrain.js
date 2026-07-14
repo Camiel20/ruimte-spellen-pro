@@ -441,6 +441,140 @@ export function buildBackground(scene, L) {
     return;
   }
 
+  if (L.terrain === 'kleren') {
+    // DE KLEREN-KAST (Wereld 13): we stappen een reuzen-kledingkast binnen!
+    // Houten planken-wanden, opgevouwen truien-stapels in de verte, een warme
+    // hanglamp i.p.v. de zon, en wapperend wasgoed drift voorbij als "wolken".
+    // de achterwand: zachte houten planken (heel subtiel, parallax)
+    const wand = scene.add.graphics().setDepth(-28).setScrollFactor(0.12);
+    wand.lineStyle(3, 0xc9a06a, 0.25);
+    for (let px = 40; px < scene.scale.width + 60; px += 90) {
+      wand.beginPath(); wand.moveTo(px, 0); wand.lineTo(px, scene.scale.height); wand.strokePath();
+    }
+    // warme hanglamp bovenin (het licht in de kast)
+    const lamp = scene.add.container(scene.scale.width - 90, 60).setDepth(-28).setScrollFactor(0.25);
+    const lg = scene.add.graphics();
+    lg.lineStyle(3, 0x8a6a45, 1); lg.beginPath(); lg.moveTo(0, -60); lg.lineTo(0, -18); lg.strokePath(); // snoer
+    lg.fillStyle(0xd9a04a, 1); lg.fillTriangle(-26, 0, 26, 0, 0, -22); // kap
+    const gloed = scene.add.circle(0, 14, 40, 0xffe9a8, 0.35);
+    lamp.add([gloed, lg, scene.add.circle(0, 8, 12, 0xffe16b)]);
+    scene.tweens.add({ targets: gloed, scale: 1.18, alpha: 0.5, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // de verte: reuzen-stapels opgevouwen truien + een hanger-rail
+    const verte = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    const vb = scene.scale.height - 140;
+    [[80, 5, 1.2], [260, 7, 1.0], [430, 4, 1.4], [560, 6, 0.9]].forEach(([tx, lagen, sc]) => {
+      const KLR = [0xe8829e, 0x7fb8e8, 0x9ad08a, 0xf0c060, 0xb99ae0];
+      for (let k = 0; k < lagen; k++) {
+        verte.fillStyle(KLR[(k + Math.floor(tx / 90)) % KLR.length], 0.85);
+        verte.fillRoundedRect(tx - 52 * sc, vb - (k + 1) * 20 * sc, 104 * sc, 18 * sc, 8 * sc);
+        verte.fillStyle(0xffffff, 0.18);
+        verte.fillRoundedRect(tx - 52 * sc, vb - (k + 1) * 20 * sc, 104 * sc, 6 * sc, 4 * sc);
+      }
+    });
+    // hanger-rail met een paar hangertjes bovenin de verte
+    verte.lineStyle(4, 0x8a6a45, 0.7);
+    verte.beginPath(); verte.moveTo(-20, 130); verte.lineTo(scene.scale.width + 20, 130); verte.strokePath();
+    [[70, 0x7fb8e8], [180, 0xe8829e], [330, 0x9ad08a], [470, 0xf0c060]].forEach(([hx, col]) => {
+      verte.lineStyle(2.5, 0x9aa0a6, 0.9);
+      verte.strokeCircle(hx, 136, 5);
+      verte.beginPath(); verte.moveTo(hx - 14, 152); verte.lineTo(hx, 140); verte.lineTo(hx + 14, 152); verte.strokePath();
+      verte.fillStyle(col, 0.75);
+      verte.fillRoundedRect(hx - 15, 150, 30, 42, 7); // hangend hemdje
+      verte.fillStyle(0xffffff, 0.15); verte.fillRoundedRect(hx - 15, 150, 30, 12, 6);
+    });
+
+    // wapperend wasgoed drift voorbij als "wolken": shirtjes en sokken aan een lijntje
+    scene.clouds = [];
+    const WASKLEUR = [0xe8829e, 0x7fb8e8, 0x9ad08a, 0xf0c060, 0xb99ae0, 0xf2a7b8];
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(70, 250);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5).setAlpha(0.8);
+      const g = scene.add.graphics();
+      const col = WASKLEUR[i % WASKLEUR.length];
+      // mini-waslijntje met knijpers
+      g.lineStyle(2, 0xffffff, 0.7);
+      g.beginPath(); g.moveTo(-34, -14); g.lineTo(34, -10); g.strokePath();
+      g.fillStyle(0xd9a04a, 1); g.fillRect(-16, -16, 4, 8); g.fillRect(12, -15, 4, 8);
+      if (i % 3 === 2) {
+        // een wapperende sok
+        g.fillStyle(col, 0.95);
+        g.fillRoundedRect(-10, -12, 16, 22, 6); g.fillCircle(4, 8, 8); g.fillRoundedRect(-10, 2, 18, 12, 6);
+        g.fillStyle(0xffffff, 0.9); g.fillRoundedRect(-11, -14, 18, 6, 3);
+      } else {
+        // een wapperend hemdje
+        g.fillStyle(col, 0.95); g.fillRoundedRect(-20, -12, 40, 30, 8);
+        g.fillStyle(col, 0.8); g.fillTriangle(-20, -8, -30, 2, -20, 6); g.fillTriangle(20, -8, 30, 2, 20, 6);
+        g.fillStyle(0xffffff, 0.2); g.fillRoundedRect(-20, -12, 40, 9, 6);
+      }
+      c.add(g);
+      scene.tweens.add({ targets: c, angle: i % 2 ? 4 : -4, duration: 900 + i * 90, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 10);
+      scene.clouds.push(c);
+    }
+    const heuvels = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    heuvels.fillStyle(darker(L.bg.bottom, 18), 0.7);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) heuvels.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
+  if (L.terrain === 'ballen') {
+    // HET STUITER-STADION (Wereld 14): een vrolijk sportstadion. Tribunes met
+    // stippen-publiek en vlaggetjes in de verte, zwevende ballonnen als
+    // "wolken", en een groot juich-bord. Zon erbij — sportdag-weer!
+    const zon = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
+    const zg = scene.add.circle(0, 0, 54, 0xfff3b0, 0.4);
+    zon.add([zg, scene.add.circle(0, 0, 32, 0xffe16b)]);
+    scene.tweens.add({ targets: zg, scale: 1.18, alpha: 0.55, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // de tribune: banden met stippen-publiek + een rij vlaggetjes erboven
+    const tribune = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    const vb = scene.scale.height - 140;
+    const TRIB = [0xd06a5a, 0x5a8ad0, 0x6ab06a];
+    for (let ring = 0; ring < 3; ring++) {
+      const ty = vb - 40 - ring * 46;
+      tribune.fillStyle(TRIB[ring % TRIB.length], 0.55);
+      tribune.fillRect(-20, ty, scene.scale.width + 40, 40);
+      // het publiek: vrolijke stippen-hoofdjes in feestkleuren
+      const PUB = [0xffe16b, 0xf2a7b8, 0x8fd3f2, 0xffffff, 0xf0c060];
+      for (let px = 10 + ring * 14; px < scene.scale.width + 20; px += 34) {
+        tribune.fillStyle(PUB[(Math.floor(px / 34) + ring) % PUB.length], 0.85);
+        tribune.fillCircle(px, ty + 14 + (px % 2) * 6, 6);
+      }
+    }
+    // vlaggetjes-lijn boven de tribune
+    const VLAG = [0xe8402c, 0xffe16b, 0x57b947, 0x3f8fe8, 0x9b6dd6];
+    tribune.lineStyle(2.5, 0xffffff, 0.9);
+    tribune.beginPath(); tribune.moveTo(-20, vb - 178); tribune.lineTo(scene.scale.width + 20, vb - 170); tribune.strokePath();
+    for (let fx = 0; fx < scene.scale.width + 20; fx += 44) {
+      tribune.fillStyle(VLAG[Math.floor(fx / 44) % VLAG.length], 0.95);
+      tribune.fillTriangle(fx, vb - 177, fx + 22, vb - 175, fx + 11, vb - 152);
+    }
+
+    // zwevende feest-ballonnen als "wolken"
+    scene.clouds = [];
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(70, 260);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5).setAlpha(0.85);
+      const g = scene.add.graphics();
+      const col = VLAG[i % VLAG.length];
+      g.lineStyle(2, 0x8a8f96, 0.7);
+      g.beginPath(); g.moveTo(0, 16); g.lineTo(2, 42); g.strokePath(); // touwtje
+      g.fillStyle(col, 0.95); g.fillEllipse(0, 0, 30, 36);
+      g.fillStyle(0xffffff, 0.5); g.fillEllipse(-7, -9, 9, 12);
+      g.fillTriangle(-5, 17, 5, 17, 0, 22);
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 10);
+      scene.clouds.push(c);
+    }
+    const heuvels = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    heuvels.fillStyle(darker(L.bg.bottom, 15), 0.6);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) heuvels.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
   // Zon (licht parallax)
   const sun = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
   const glow = scene.add.circle(0, 0, 54, 0xfff3b0, 0.35);
@@ -475,10 +609,14 @@ export function buildWater(scene, L) {
   const saus = L.terrain === 'pizza';
   const stroop = L.terrain === 'pannenkoek';
   const diepzee = L.terrain === 'zee'; // de donkere geul — dieper dan diep
+  const sop = L.terrain === 'kleren';  // een schuimend sop-bad in de Kleren-Kast
+  const ballenbak = L.terrain === 'ballen'; // een zee van kleurige balletjes
   const kleuren = saus
     ? [0xd0331f, 0xf07c5a, 0xffc14d]
     : stroop ? [0xb96a1e, 0xdca050, 0xffe16b]
-    : diepzee ? [0x123a52, 0x1f5f80, 0x7fd0f0] : [0x3fa9e0, 0x7fd0f0, 0xffffff];
+    : diepzee ? [0x123a52, 0x1f5f80, 0x7fd0f0]
+    : sop ? [0x9fd0e8, 0xd7f0fa, 0xffffff]
+    : ballenbak ? [0xe8a23f, 0xf0c060, 0xe8402c] : [0x3fa9e0, 0x7fd0f0, 0xffffff];
   (L.water || []).forEach(([x, y, w, h]) => {
     const g = scene.add.graphics().setDepth(-14);
     g.fillStyle(kleuren[0], 1); g.fillRect(x, y, w, h);
@@ -768,6 +906,77 @@ export function drawGround(scene, x, y, w, h) {
         g.fillStyle(0xf5efe2, 1); g.fillRoundedRect(fx - 4, y - 16, 8, 16, 3);
         g.fillStyle(0xe8402c, 1); g.slice(fx, y - 15, 12, Math.PI, 0, false); g.fillPath();
         g.fillStyle(0xffffff, 1); g.fillCircle(fx - 4, y - 18, 2); g.fillCircle(fx + 4, y - 19, 2); g.fillCircle(fx, y - 15, 1.8);
+      }
+    }
+  } else if (scene.level.terrain === 'kleren') {
+    // DE KLEREN-KAST (Wereld 13): de grond is een stapel opgevouwen truien —
+    // zachte stof-lagen met stiksel-streepjes, en om en om een grote knoop
+    // en een opgerold sokje als decoratie.
+    const LAAG = [0xe8829e, 0x7fb8e8, 0x9ad08a, 0xf0c060];
+    g.fillStyle(0xb99ae0, 1); g.fillRect(x, y + 12, w, h - 12);
+    for (let ry = y + 24, k = 0; ry < y + h - 6; ry += 20, k++) {
+      g.fillStyle(LAAG[k % LAAG.length], 0.55);
+      g.fillRoundedRect(x + 4, ry, w - 8, 16, 8);
+    }
+    g.fillStyle(0xf2a7b8, 1); g.fillRect(x, y, w, 16);  // bovenste trui-laag
+    g.fillStyle(0xf8c4d0, 1); g.fillRect(x, y, w, 6);
+    // stiksel-streepjes langs de rand
+    g.lineStyle(2, 0xd06a88, 0.9);
+    for (let bx = x + 8; bx < x + w - 8; bx += 14) {
+      g.beginPath(); g.moveTo(bx, y + 10); g.lineTo(bx + 7, y + 10); g.strokePath();
+    }
+    // om en om: een grote knoop en een opgerold sokje
+    let kle = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      kle = !kle;
+      if (kle) {
+        g.fillStyle(0xf0c060, 1); g.fillCircle(fx, y - 6, 8);
+        g.lineStyle(2, 0xb98d12, 1); g.strokeCircle(fx, y - 6, 8);
+        g.fillStyle(0xb98d12, 1);
+        g.fillCircle(fx - 2.6, y - 8, 1.3); g.fillCircle(fx + 2.6, y - 8, 1.3);
+        g.fillCircle(fx - 2.6, y - 3.6, 1.3); g.fillCircle(fx + 2.6, y - 3.6, 1.3);
+      } else {
+        g.fillStyle(0x7fb8e8, 1); g.fillCircle(fx, y - 7, 8);
+        g.lineStyle(2, 0x3f6fa8, 0.9);
+        g.beginPath(); g.arc(fx, y - 7, 5, 0, 1.6 * Math.PI); g.strokePath();
+        g.fillStyle(0xffffff, 0.9); g.fillRoundedRect(fx + 3, y - 10, 8, 5, 2); // het boordje piept eruit
+      }
+    }
+  } else if (scene.level.terrain === 'ballen') {
+    // HET STUITER-STADION (Wereld 14): een verzorgd grasveld met witte
+    // krijtlijnen, en om en om een voetbal en een mini-kegel als decoratie.
+    g.fillStyle(0xb07a45, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0x9c6b3f, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0x4fae4a, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(lighten(0x4fae4a, 22), 1); g.fillRect(x, y, w, 6);
+    // gemaaide banen: om en om een iets donkerder strook
+    g.fillStyle(0x429a3f, 0.4);
+    for (let bx = x; bx < x + w; bx += 128) g.fillRect(bx, y, Math.min(64, x + w - bx), 16);
+    // witte krijtlijnen op het veld
+    g.lineStyle(3, 0xffffff, 0.8);
+    for (let bx = x + 90; bx < x + w - 40; bx += 240) {
+      g.beginPath(); g.moveTo(bx, y + 2); g.lineTo(bx, y + 14); g.strokePath();
+    }
+    // om en om: een voetbal en een mini-kegel
+    let bal = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      bal = !bal;
+      if (bal) {
+        g.fillStyle(0xffffff, 1); g.fillCircle(fx, y - 8, 8);
+        g.lineStyle(1.8, 0xd0d6dd, 1); g.strokeCircle(fx, y - 8, 8);
+        g.fillStyle(0x16202b, 1);
+        for (let a = 0; a < 5; a++) {
+          const ang = -Math.PI / 2 + a * (2 * Math.PI / 5);
+          g.fillCircle(fx + Math.cos(ang) * 4.6, y - 8 + Math.sin(ang) * 4.6, 1.7);
+        }
+        g.fillCircle(fx, y - 8, 2);
+      } else {
+        g.fillStyle(0xf5f9fc, 1);
+        g.fillEllipse(fx, y - 3, 10, 5);
+        g.fillRoundedRect(fx - 4, y - 18, 8, 15, 3);
+        g.fillCircle(fx, y - 18, 3.4);
+        g.fillStyle(0xe8402c, 1); g.fillRect(fx - 4, y - 13, 8, 3.4); // rode band
       }
     }
   } else if (scene.level.terrain === 'bos') {

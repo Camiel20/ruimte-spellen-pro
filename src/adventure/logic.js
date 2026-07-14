@@ -2,6 +2,8 @@
 // Geen Phaser, geen DOM — alleen rekenwerk. Daardoor 1:1 unit-testbaar
 // (zie tests/) en herbruikbaar in de scene én in de validator.
 
+import { SOK_PATRONEN } from './sokken.js'; // puur (geen Phaser) — voor W13-validatie
+
 // Kan je 'doel' maken door een DEELVERZAMELING van 'values' samen te voegen
 // (zonder te splitsen)? Klassieke subset-som.
 export function canMakeTarget(values, doel) {
@@ -214,6 +216,26 @@ export function validateLevel(L) {
         }
       } else if (stijl === 'sisser') {
         if (!S.letter || !/^[a-z]$/.test(S.letter)) err(`baas-fase ${i + 1} (sisser): letter moet een kleine letter a-z zijn`);
+      } else if (stijl === 'paar') {
+        // de Sokken-Dief: doel = een sok-patroon; precies één optie is de tweeling
+        if (!SOK_PATRONEN.includes(S.doel)) err(`baas-fase ${i + 1} (paar): doel '${S.doel}' is geen bekend sok-patroon`);
+        if (!Array.isArray(S.opties) || S.opties.length < 2) err(`baas-fase ${i + 1} (paar): minstens 2 sokken nodig`);
+        else {
+          const onbekend = S.opties.filter((w) => !SOK_PATRONEN.includes(w));
+          if (onbekend.length) err(`baas-fase ${i + 1} (paar): onbekende patronen: ${onbekend.join(', ')}`);
+          const goed = S.opties.filter((w) => w === S.doel).length;
+          if (goed !== 1) err(`baas-fase ${i + 1} (paar): ${goed} sokken zijn de tweeling — er moet er precies één kloppen`);
+        }
+      } else if (stijl === 'kegel') {
+        // de Kegel-Koning: aftrek-som "van − weg = doel" (t/m 60, met tiental-visuals)
+        if (!S.van || S.van < 4 || S.van > 60) err(`baas-fase ${i + 1} (kegel): 'van' moet 4-60 zijn`);
+        if (S.weg == null || S.weg < 1 || S.weg >= S.van) err(`baas-fase ${i + 1} (kegel): 'weg' moet 1..van-1 zijn`);
+        if (S.doel !== S.van - S.weg) err(`baas-fase ${i + 1} (kegel): doel (${S.doel}) is niet van − weg (${S.van} − ${S.weg})`);
+        if (!Array.isArray(S.opties) || S.opties.length < 2) err(`baas-fase ${i + 1} (kegel): minstens 2 antwoord-borden nodig`);
+        else {
+          const goed = S.opties.filter((w) => w === S.doel).length;
+          if (goed !== 1) err(`baas-fase ${i + 1} (kegel): ${goed} borden tonen het antwoord — er moet er precies één kloppen`);
+        }
       } else err(`baas: onbekende stijl '${stijl}'`);
     });
     // Beuken kan alleen als reus: zonder reuzenhap is de baas onverslaanbaar.
@@ -464,6 +486,68 @@ export function validateLevel(L) {
     if (!support) err(`duikboot ${i + 1} staat niet op de grond`);
     const land = L.platforms.some(([px, py, pw]) => py === groundTop && px <= D.landX && px + pw >= D.landX + 80);
     if (!land) err(`duikboot ${i + 1}: de landingsplek (x=${D.landX}) heeft geen grond`);
+  });
+
+  // De Kleren-Kast (W13) — waslijn-tokkelbanen: de lijn loopt naar rechts,
+  // blijft binnen de wereld en er is grond onder het eindpunt om te landen.
+  (L.wasLijnen || []).forEach((W, i) => {
+    if (W.x1 == null || W.y1 == null || W.x2 == null || W.y2 == null) { err(`waslijn ${i + 1} mist x1/y1/x2/y2`); return; }
+    if (W.x1 < 0 || W.x2 > L.worldW) err(`waslijn ${i + 1} steekt buiten de wereld`);
+    if (W.x2 < W.x1 + 150) err(`waslijn ${i + 1}: te kort — het einde (x=${W.x2}) moet minstens 150px voorbij het begin liggen`);
+    const land = L.platforms.some(([px, py, pw]) => px <= W.x2 && px + pw >= W.x2 && py >= W.y2);
+    if (!land) err(`waslijn ${i + 1}: geen platform onder het eindpunt (x=${W.x2}) — je zoeft de leegte in`);
+  });
+  // Sokkenparen: elk patroon precies 2× (anders is er geen tweeling), en
+  // alle sokken binnen de wereld.
+  if ((L.sokkenParen || []).length) {
+    const telling = {};
+    L.sokkenParen.forEach((S, i) => {
+      if (!SOK_PATRONEN.includes(S.patroon)) err(`sok ${i + 1}: onbekend patroon '${S.patroon}'`);
+      telling[S.patroon] = (telling[S.patroon] || 0) + 1;
+      if (S.x < 0 || S.x > L.worldW || S.y < 0 || S.y > L.worldH) err(`sok ${i + 1} hangt buiten de wereld`);
+    });
+    Object.entries(telling).forEach(([patroon, n]) => {
+      if (n !== 2) err(`sokkenparen: patroon '${patroon}' komt ${n}× voor — elk patroon hoort precies 2× (een tweeling)`);
+    });
+  }
+  // Maten-rekken (ordenen klein→groot): 3-5 truien, en doorlopende grond
+  // van de truien (x−260) tot voorbij de kast-deur (x+170, zie maatrekken.js).
+  (L.maatRekken || []).forEach((R, i) => {
+    if (!R.aantal || R.aantal < 3 || R.aantal > 5) err(`maten-rek ${i + 1}: aantal moet 3-5 truien zijn`);
+    if (R.x < 0 || R.x > L.worldW) err(`maten-rek ${i + 1} staat buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= R.x - 260 && px + pw >= R.x + 190);
+    if (!support) err(`maten-rek ${i + 1}: geen doorlopende grond van de truien tot de kast-deur`);
+  });
+  // Knopen-winkels (betalen met munten van 1/2/5): prijs 3-15 (past op het
+  // stippen-bord), en grond van de kraam tot voorbij de deur (x+160).
+  (L.knopenWinkels || []).forEach((W, i) => {
+    if (!W.prijs || W.prijs < 3 || W.prijs > 15) err(`knopen-winkel ${i + 1}: prijs moet 3-15 knopen zijn`);
+    if (W.x < 0 || W.x > L.worldW) err(`knopen-winkel ${i + 1} staat buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= W.x - 130 && px + pw >= W.x + 180);
+    if (!support) err(`knopen-winkel ${i + 1}: geen doorlopende grond onder kraam + deur`);
+  });
+
+  // Het Stuiter-Stadion (W14) — reuzen-stuiterballen op doorlopende grond
+  // (anders rolt hij bij het duwen een kloof in).
+  (L.stuiterBallen || []).forEach((x, i) => {
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= x - 40 && px + pw >= x + 40);
+    if (!support) err(`stuiterbal ${i + 1} (x=${x}) ligt niet op doorlopende grond`);
+  });
+  // Bowling-banen (aftrekken): 6-10 kegels, of hele rekken van 10 (20-60);
+  // doorlopende grond van het station tot voorbij de slagboom (x+520).
+  (L.bowlingBanen || []).forEach((B, i) => {
+    const ok = (B.kegels >= 6 && B.kegels <= 10) || (B.kegels % 10 === 0 && B.kegels >= 20 && B.kegels <= 60);
+    if (!ok) err(`bowling-baan ${i + 1}: kegels moet 6-10 zijn, of een tiental 20-60 (rekken van 10)`);
+    if (B.x < 0 || B.x > L.worldW) err(`bowling-baan ${i + 1} staat buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= B.x - 150 && px + pw >= B.x + 560);
+    if (!support) err(`bowling-baan ${i + 1}: geen doorlopende grond van station tot slagboom`);
+  });
+  // Baskets (precies tellen + stoppen): doel 3-15, grond onder bak + bel + slagboom.
+  (L.baskets || []).forEach((B, i) => {
+    if (!B.doel || B.doel < 3 || B.doel > 15) err(`basket ${i + 1}: doel moet 3-15 ballen zijn`);
+    if (B.x < 0 || B.x > L.worldW) err(`basket ${i + 1} staat buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= B.x - 160 && px + pw >= B.x + 220);
+    if (!support) err(`basket ${i + 1}: geen doorlopende grond onder ballenbak, bel en slagboom`);
   });
 
   // Portaal-groepen: precies één som klopt, en doorlopende grond onder de

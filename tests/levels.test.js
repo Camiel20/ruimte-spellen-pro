@@ -232,6 +232,93 @@ describe('puzzellogica', () => {
     expect(validateLevel(kapot).some((e) => e.includes('precies één'))).toBe(true);
   });
 
+  it('validateLevel: vangt een paar-baas zonder (of met dubbele) tweelingsok', () => {
+    const basis = {
+      id: 'x-paar', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      boss: { x: 1200, look: 'sokdief', stijl: 'paar', stages: [{ doel: 'strepen', opties: ['strepen', 'stippen', 'zigzag'] }] },
+      goal: { x: 1800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const geenTweeling = { ...basis, boss: { ...basis.boss, stages: [{ doel: 'strepen', opties: ['stippen', 'zigzag', 'hartjes'] }] } };
+    expect(validateLevel(geenTweeling).some((e) => e.includes('precies één'))).toBe(true);
+    const raarPatroon = { ...basis, boss: { ...basis.boss, stages: [{ doel: 'ruitjes', opties: ['ruitjes', 'stippen'] }] } };
+    expect(validateLevel(raarPatroon).some((e) => e.includes('geen bekend sok-patroon'))).toBe(true);
+  });
+
+  it('validateLevel: vangt een kegel-baas met een som die niet klopt', () => {
+    const basis = {
+      id: 'x-kegel', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      boss: { x: 1200, look: 'kegel', stijl: 'kegel', stages: [{ van: 30, weg: 12, doel: 18, opties: [18, 8, 17] }] },
+      goal: { x: 1800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const fouteSom = { ...basis, boss: { ...basis.boss, stages: [{ van: 30, weg: 12, doel: 17, opties: [17, 8] }] } };
+    expect(validateLevel(fouteSom).some((e) => e.includes('van − weg'))).toBe(true);
+    const geenBord = { ...basis, boss: { ...basis.boss, stages: [{ van: 30, weg: 12, doel: 18, opties: [8, 17] }] } };
+    expect(validateLevel(geenBord).some((e) => e.includes('precies één'))).toBe(true);
+    const teGroot = { ...basis, boss: { ...basis.boss, stages: [{ van: 80, weg: 20, doel: 60, opties: [60, 50] }] } };
+    expect(validateLevel(teGroot).some((e) => e.includes('4-60'))).toBe(true);
+  });
+
+  it('validateLevel: vangt een sok zonder tweeling in het level', () => {
+    const basis = {
+      id: 'x-sokken', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      sokkenParen: [
+        { x: 400, y: 500, patroon: 'strepen' }, { x: 900, y: 500, patroon: 'strepen' },
+      ],
+      goal: { x: 1800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const wees = { ...basis, sokkenParen: [...basis.sokkenParen, { x: 1200, y: 500, patroon: 'stippen' }] };
+    expect(validateLevel(wees).some((e) => e.includes('precies 2×'))).toBe(true);
+  });
+
+  it('validateLevel: vangt een waslijn zonder landing en een zwevende stuiterbal', () => {
+    const basis = {
+      id: 'x-waslijn', worldW: 3000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 1200, 140], [1800, 660, 1200, 140]],
+      wasLijnen: [{ x1: 1050, y1: 400, x2: 1950, y2: 440 }],
+      stuiterBallen: [600],
+      goal: { x: 2800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    // eindpunt boven de kloof → je zoeft de leegte in
+    const leegte = { ...basis, wasLijnen: [{ x1: 1050, y1: 400, x2: 1500, y2: 440 }] };
+    expect(validateLevel(leegte).some((e) => e.includes('leegte'))).toBe(true);
+    // stuiterbal op de rand van een platform → rolt de kloof in bij het duwen
+    const zwevend = { ...basis, stuiterBallen: [1190] };
+    expect(validateLevel(zwevend).some((e) => e.includes('stuiterbal'))).toBe(true);
+  });
+
+  it('validateLevel: vangt kapotte maten-rekken, winkels, banen en baskets', () => {
+    const basis = {
+      id: 'x-w13w14', worldW: 4000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 4000, 140]],
+      maatRekken: [{ x: 700, aantal: 3 }],
+      knopenWinkels: [{ x: 1500, prijs: 7 }],
+      bowlingBanen: [{ x: 2100, kegels: 10 }],
+      baskets: [{ x: 3200, doel: 8 }],
+      goal: { x: 3900, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const teWeinigTruien = { ...basis, maatRekken: [{ x: 700, aantal: 2 }] };
+    expect(validateLevel(teWeinigTruien).some((e) => e.includes('3-5'))).toBe(true);
+    const teDuur = { ...basis, knopenWinkels: [{ x: 1500, prijs: 20 }] };
+    expect(validateLevel(teDuur).some((e) => e.includes('prijs'))).toBe(true);
+    const gekkeKegels = { ...basis, bowlingBanen: [{ x: 2100, kegels: 15 }] };
+    expect(validateLevel(gekkeKegels).some((e) => e.includes('tiental'))).toBe(true);
+    const teVeelBallen = { ...basis, baskets: [{ x: 3200, doel: 20 }] };
+    expect(validateLevel(teVeelBallen).some((e) => e.includes('3-15'))).toBe(true);
+  });
+
   it('validateLevel: vangt een onoplosbare brug (samen te weinig)', () => {
     const kapot = {
       id: 'x-1', worldW: 1000, worldH: 800, killY: 720,

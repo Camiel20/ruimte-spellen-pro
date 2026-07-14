@@ -82,6 +82,23 @@ export const HOEDJES = [
     g.fillStyle(0x8fd3f2, 0.9); g.fillEllipse(-7 * s, -7 * s, 11 * s, 9 * s); g.fillEllipse(7 * s, -7 * s, 11 * s, 9 * s);
     g.lineStyle(2 * s, 0x1f7a9e, 1); g.strokeEllipse(-7 * s, -7 * s, 11 * s, 9 * s); g.strokeEllipse(7 * s, -7 * s, 11 * s, 9 * s);
   } },
+  { id: 'muts', naam: 'Wollen Muts', medal: 'world13_done', teken: (g, s) => {
+    g.fillStyle(0xe8829e, 1); g.slice(0, -4 * s, 14 * s, Math.PI, 0, false); g.fillPath();
+    g.fillStyle(0xf2b8c8, 1); g.fillRect(-14 * s, -8 * s, 28 * s, 4 * s); // streep
+    g.fillStyle(0xffffff, 1); g.fillRoundedRect(-15 * s, -5 * s, 30 * s, 5 * s, 2.5 * s); // de boord
+    g.fillStyle(0xffffff, 1); g.fillCircle(0, -19 * s, 4.5 * s); // de pompon!
+    g.fillStyle(0xf2b8c8, 0.6); g.fillCircle(-1.5 * s, -20 * s, 2 * s);
+  } },
+  { id: 'beker', naam: 'Kampioens-Beker', medal: 'world14_done', teken: (g, s) => {
+    g.fillStyle(0xf6c624, 1);
+    g.fillRoundedRect(-8 * s, -18 * s, 16 * s, 12 * s, 4 * s);  // de kelk
+    g.fillRect(-2.5 * s, -7 * s, 5 * s, 4 * s);                 // het steeltje
+    g.fillRoundedRect(-7 * s, -3 * s, 14 * s, 3 * s, 1.5 * s);  // de voet
+    g.lineStyle(2.2 * s, 0xb98d12, 1);                          // de oortjes
+    g.beginPath(); g.arc(-10 * s, -13 * s, 4 * s, 0.4 * Math.PI, 1.6 * Math.PI); g.strokePath();
+    g.beginPath(); g.arc(10 * s, -13 * s, 4 * s, -0.6 * Math.PI, 0.6 * Math.PI); g.strokePath();
+    g.fillStyle(0xffe16b, 1); g.fillEllipse(-3 * s, -15 * s, 4 * s, 7 * s); // glans
+  } },
   { id: 'aureool', naam: 'Gouden Nul', gouden: true, teken: (g, s) => {
     g.lineStyle(4 * s, 0xf6c624, 1); g.strokeEllipse(0, -16 * s, 26 * s, 9 * s);
     g.lineStyle(1.5 * s, 0xffe16b, 0.8); g.strokeEllipse(0, -16 * s, 30 * s, 12 * s);

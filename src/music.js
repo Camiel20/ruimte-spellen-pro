@@ -32,6 +32,8 @@ export function muziekVoorTerrein(terrain) {
     billen: { pitch: 0.891, tempo: 1.15 }, // −2, hupsend: stuiter-giechel
     zee: { pitch: 1.059, tempo: 0.84 },    // +1, traag golvend: onderwater-dromen
     letters: { pitch: 1.091, tempo: 1.06 }, // +1.5, vlot & vrolijk: pratende weide
+    kleren: { pitch: 1.26, tempo: 1.06 },  // +4, opgeruimd: frisse-was-vrolijkheid
+    ballen: { pitch: 1.122, tempo: 1.18 }, // +2, snel: sportdag-marsje
   }[terrain] || { pitch: 1, tempo: 1 };
 }
 

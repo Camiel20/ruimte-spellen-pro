@@ -34,5 +34,12 @@ import parenBorden from './parenbord.js';
 import zwemZones from './zwemzones.js';
 import duikboten from './duikboot.js';
 import schrijf from './schrijf.js';
+import wasLijnen from './waslijnen.js';
+import sokkenParen from './sokkenparen.js';
+import maatRekken from './maatrekken.js';
+import knopenWinkels from './knopenwinkel.js';
+import stuiterBallen from './stuiterballen.js';
+import bowlingBanen from './bowling.js';
+import baskets from './baskets.js';
 
-export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon, spoelpotten, wcRollen, stinkZones, grootte, bilTrampolines, parenBorden, zwemZones, duikboten, schrijf];
+export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon, spoelpotten, wcRollen, stinkZones, grootte, bilTrampolines, parenBorden, zwemZones, duikboten, schrijf, wasLijnen, sokkenParen, maatRekken, knopenWinkels, stuiterBallen, bowlingBanen, baskets];

@@ -19,7 +19,10 @@ import {
   drawSchelpKeuze, drawEikeltje, drawKristalKeuze, drawKleurOrb,
   drawPanBoss, happyPanBoss, drawPannenkoekje, drawBordKeuze,
   drawSisserBoss, happySisserBoss, drawStilPuff,
+  drawSokDiefBoss, happySokDiefBoss, drawNatteSok, drawSokKeuze,
+  drawKegelBoss, happyKegelBoss, drawBowlingBal,
 } from './enemyArt.js';
+import { tekenKegelBord } from './systems/bowling.js';
 import { sig } from './palette.js';
 
 export const BOSS_LOOKS = {
@@ -137,6 +140,28 @@ export const BOSS_LOOKS = {
     vangArt: drawKleurOrb, // finale akte 1: vang de gestolen kleur terug
     vangIcoon: '🌈',
     vangTekst: 'Vang {n} kleur-orbs terug! 🌈',
+  },
+  // DE SOKKEN-DIEF (W13, de Kleren-Kast): gooit natte sokken. Verslaan met
+  // stijl 'paar': raak per fase de sok die HETZELFDE is als die in zijn
+  // denk-wolkje (patronen vergelijken) — dan laat hij een zak sokken los.
+  sokdief: {
+    draw: (s, x, groundTop) => drawSokDiefBoss(s, x, groundTop),
+    happy: (s, c) => happySokDiefBoss(s, c),
+    projectile: drawNatteSok,
+    speed: -205,
+    waarschuwing: 'Pas op — een natte sok! Spring! 🧦',
+    keuzeArt: drawSokKeuze, // stijl 'paar': zwevende patroon-sokken
+  },
+  // DE KEGEL-KONING (W14, het Stuiter-Stadion): rollende bowlingballen.
+  // Verslaan met stijl 'kegel': hij kegelt zijn eigen onderdanen om — reken
+  // uit hoeveel er nog staan (10−4 … 60−24) en raak het goede antwoord-bord.
+  kegel: {
+    draw: (s, x, groundTop) => drawKegelBoss(s, x, groundTop),
+    happy: (s, c) => happyKegelBoss(s, c),
+    projectile: drawBowlingBal,
+    speed: -220,
+    waarschuwing: 'Pas op — een bowlingbal! Spring! 🎳',
+    keuzeArt: tekenKegelBord, // stijl 'kegel': antwoord-borden in kegelvorm
   },
   // DE SISSER (Letter-Land, De Praatweide): stilte-wolkjes. Verslaan met stijl
   // 'sisser': ontwijk de wolkjes en SCHRIJF per fase een letter van zijn

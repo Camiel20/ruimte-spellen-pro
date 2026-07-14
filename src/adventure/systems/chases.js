@@ -23,6 +23,19 @@ function start(s, ch) {
     g.fillStyle(0xffe16b, 1); g.fillCircle(6, -5, 10);
     g.lineStyle(3, 0xb93227, 1); g.strokeCircle(0, 0, 26);
     c.add(g);
+  } else if (ch.skin === 'bal') {
+    // rollende reuzen-voetbal (het Stuiter-Stadion): wit met zwarte vlakken
+    g.fillStyle(0xffffff, 1); g.fillCircle(0, 0, 27);
+    g.fillStyle(0x16202b, 1);
+    g.fillCircle(0, 0, 8);
+    for (let a = 0; a < 5; a++) {
+      const ang = (a / 5) * Math.PI * 2;
+      g.fillCircle(Math.cos(ang) * 17, Math.sin(ang) * 17, 5.5);
+    }
+    g.fillStyle(0xffffff, 0.5); g.fillEllipse(-9, -11, 12, 7);
+    g.lineStyle(3, 0x9aa0a6, 1); g.strokeCircle(0, 0, 27);
+    c.add(g);
+    s.tweens.add({ targets: g, angle: 360, duration: 600, repeat: -1 });
   } else {
     g.fillStyle(0x6a7078, 1); g.fillCircle(0, 0, 28);
     g.fillStyle(0x7d838c, 1); g.fillCircle(-6, -6, 20);
@@ -38,7 +51,8 @@ function start(s, ch) {
   c.body.setVelocityX(ch.speed || 185);
   ch.rots = c;
   SFX.stomp(); s.cameraPunch(0.02, 6); Voice.cue('oops');
-  s.questText.setText(ch.skin === 'komeet' ? 'RENNEN! De komeet komt! ☄️' : 'RENNEN! 🪨');
+  s.questText.setText(ch.skin === 'komeet' ? 'RENNEN! De komeet komt! ☄️'
+    : ch.skin === 'bal' ? 'RENNEN! De reuzen-voetbal rolt! ⚽' : 'RENNEN! 🪨');
   Voice.hint('hint-rennen'); // direct, geen delay — urgentie!
 }
 
