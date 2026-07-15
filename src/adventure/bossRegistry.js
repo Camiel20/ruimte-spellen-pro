@@ -21,6 +21,9 @@ import {
   drawSisserBoss, happySisserBoss, drawStilPuff,
   drawSokDiefBoss, happySokDiefBoss, drawNatteSok, drawSokKeuze,
   drawKegelBoss, happyKegelBoss, drawBowlingBal,
+  drawRexBoss, happyRexBoss, drawDinoEi, drawBotBord,
+  drawTikTakBoss, happyTikTakBoss, drawWijzertje, drawKlokKeuze,
+  drawSterkeManBoss, happySterkeManBoss, drawKettlebell,
 } from './enemyArt.js';
 import { tekenKegelBord } from './systems/bowling.js';
 import { sig } from './palette.js';
@@ -162,6 +165,36 @@ export const BOSS_LOOKS = {
     speed: -220,
     waarschuwing: 'Pas op — een bowlingbal! Spring! 🎳',
     keuzeArt: tekenKegelBord, // stijl 'kegel': antwoord-borden in kegelvorm
+  },
+  // REKEN-REX (W15, Dino-Dal): rollende dino-eieren. Verslaan met stijl
+  // 'sprong': tel zijn getallenlijn-sprongen mee (start + sprong × keer)
+  // en raak het bot-bord met de landing.
+  rex: {
+    draw: (s, x, groundTop) => drawRexBoss(s, x, groundTop),
+    happy: (s, c) => happyRexBoss(s, c),
+    projectile: drawDinoEi,
+    speed: -210,
+    waarschuwing: 'Pas op — een rollend dino-ei! Spring! 🥚',
+    keuzeArt: drawBotBord, // stijl 'sprong': antwoord-botten
+  },
+  // BARON TIK-TAK (W16, de Klokken-Toren): zoevende wijzertjes. Verslaan
+  // met stijl 'klok': raak de klok die de gevraagde tijd toont.
+  tiktak: {
+    draw: (s, x, groundTop) => drawTikTakBoss(s, x, groundTop),
+    happy: (s, c) => happyTikTakBoss(s, c),
+    projectile: drawWijzertje,
+    speed: -230,
+    waarschuwing: 'Pas op — een zoevend wijzertje! Spring! 🕐',
+    keuzeArt: drawKlokKeuze, // stijl 'klok': antwoord-klokken
+  },
+  // DE STERKE MAN (W17, het Circus-Kanon): stuiterende kettlebells.
+  // Verslaan met stijl 'balans': maak zijn halter precies even zwaar.
+  sterkeman: {
+    draw: (s, x, groundTop) => drawSterkeManBoss(s, x, groundTop),
+    happy: (s, c) => happySterkeManBoss(s, c),
+    projectile: drawKettlebell,
+    speed: -220,
+    waarschuwing: 'Pas op — een kettlebell! Spring! 💪',
   },
   // DE SISSER (Letter-Land, De Praatweide): stilte-wolkjes. Verslaan met stijl
   // 'sisser': ontwijk de wolkjes en SCHRIJF per fase een letter van zijn

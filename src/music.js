@@ -34,6 +34,9 @@ export function muziekVoorTerrein(terrain) {
     letters: { pitch: 1.091, tempo: 1.06 }, // +1.5, vlot & vrolijk: pratende weide
     kleren: { pitch: 1.26, tempo: 1.06 },  // +4, opgeruimd: frisse-was-vrolijkheid
     ballen: { pitch: 1.122, tempo: 1.18 }, // +2, snel: sportdag-marsje
+    dino: { pitch: 0.841, tempo: 0.94 },   // −3, log & groots: oer-stappen
+    klok: { pitch: 0.944, tempo: 1.0 },    // −1, strak op de maat: tik-tak
+    circus: { pitch: 1.189, tempo: 1.14 }, // +3, uitbundig: piste-parade
   }[terrain] || { pitch: 1, tempo: 1 };
 }
 

@@ -575,6 +575,231 @@ export function buildBackground(scene, L) {
     return;
   }
 
+  if (L.terrain === 'dino') {
+    // DINO-DAL (Wereld 15): een prehistorische vallei — warme oerzon, een
+    // rokende vulkaan in de verte, reuzen-varens, dino-silhouetten en hier
+    // en daar een rib-botje. Vriendelijk oerwoud, geen eng moeras.
+    const zon = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
+    const zg = scene.add.circle(0, 0, 56, 0xffd9a0, 0.42);
+    zon.add([zg, scene.add.circle(0, 0, 33, 0xf6a723)]);
+    scene.tweens.add({ targets: zg, scale: 1.18, alpha: 0.55, duration: 1900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // de vulkaan in de verte (met rook-pufjes, zoals de Pizza-Vulkaan)
+    const verte = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    const vb = scene.scale.height - 140;
+    const vx = 120;
+    verte.fillStyle(0x8a6a5a, 0.95);
+    verte.fillTriangle(vx - 130, vb, vx - 24, vb - 240, vx + 24, vb - 240);
+    verte.fillTriangle(vx - 24, vb - 240, vx + 24, vb - 240, vx + 130, vb);
+    verte.fillRect(vx - 130, vb - 2, 260, 4);
+    verte.fillStyle(0xa8857a, 0.9);
+    verte.fillTriangle(vx - 90, vb, vx - 22, vb - 226, vx - 4, vb - 226);
+    verte.fillStyle(0xe8402c, 0.95); verte.fillEllipse(vx, vb - 240, 46, 12);
+    scene.time.addEvent({
+      delay: 1500, loop: true, callback: () => {
+        if (!scene.scene.isActive()) return;
+        const r = scene.add.circle(vx + Phaser.Math.Between(-10, 10), vb - 258, Phaser.Math.Between(7, 12), 0xb9a89a, 0.45).setDepth(-27).setScrollFactor(0.3);
+        scene.tweens.add({ targets: r, y: r.y - 80, scale: 2, alpha: 0, duration: 3000, onComplete: () => r.destroy() });
+      },
+    });
+    // dino-silhouetten die in de verte grazen
+    verte.fillStyle(0x5d7a4a, 0.55);
+    [[300, 1.0], [470, 0.7]].forEach(([dx, sc]) => {
+      verte.fillEllipse(dx, vb - 26 * sc, 74 * sc, 34 * sc);                    // lijf
+      verte.fillRoundedRect(dx + 28 * sc, vb - 66 * sc, 12 * sc, 46 * sc, 6);  // nek
+      verte.fillEllipse(dx + 36 * sc, vb - 68 * sc, 22 * sc, 13 * sc);         // kop
+      verte.fillTriangle(dx - 36 * sc, vb - 24 * sc, dx - 78 * sc, vb - 8 * sc, dx - 34 * sc, vb - 8 * sc); // staart
+      verte.fillRect(dx - 20 * sc, vb - 14 * sc, 9 * sc, 16 * sc); verte.fillRect(dx + 12 * sc, vb - 14 * sc, 9 * sc, 16 * sc);
+    });
+    // reuzen-varens
+    [[60, 1.2], [230, 0.9], [420, 1.1], [560, 0.8]].forEach(([fx, sc]) => {
+      verte.lineStyle(4 * sc, 0x4a7a3f, 0.8);
+      for (let a = -2; a <= 2; a++) {
+        verte.beginPath(); verte.moveTo(fx, vb);
+        verte.lineTo(fx + a * 22 * sc, vb - 70 * sc);
+        verte.strokePath();
+        verte.fillStyle(0x57944a, 0.7);
+        verte.fillEllipse(fx + a * 22 * sc, vb - 74 * sc, 16 * sc, 8 * sc);
+      }
+    });
+
+    scene.clouds = [];
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(60, 240);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5).setAlpha(0.9);
+      const g = scene.add.graphics();
+      g.fillStyle(0xfff3dc, 0.95);
+      [[-26, 4, 17], [-6, -8, 23], [16, 0, 20], [34, 7, 14]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 10);
+      scene.clouds.push(c);
+    }
+    const heuvels = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    heuvels.fillStyle(darker(L.bg.bottom, 18), 0.7);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) heuvels.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
+  if (L.terrain === 'klok') {
+    // DE KLOKKEN-TOREN (Wereld 16): we zijn BINNEN in een reuzenklok —
+    // koperen wanden, draaiende tandwielen in de verte, hangende slingers
+    // en kleine koekoeksklokjes. Warm lamplicht i.p.v. een zon.
+    const lamp = scene.add.container(scene.scale.width - 90, 64).setDepth(-28).setScrollFactor(0.25);
+    const gloed = scene.add.circle(0, 10, 42, 0xffe9a8, 0.35);
+    const lg = scene.add.graphics();
+    lg.lineStyle(3, 0x6e5436, 1); lg.beginPath(); lg.moveTo(0, -64); lg.lineTo(0, -14); lg.strokePath();
+    lg.fillStyle(0xb98d3a, 1); lg.fillTriangle(-24, 0, 24, 0, 0, -20);
+    lamp.add([gloed, lg, scene.add.circle(0, 6, 11, 0xffe16b)]);
+    scene.tweens.add({ targets: gloed, scale: 1.2, alpha: 0.5, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // verre wand: groot tandwiel-silhouet dat heel traag draait + kozijnen
+    const wand = scene.add.graphics().setDepth(-28).setScrollFactor(0.12);
+    wand.lineStyle(3, 0x8a6a45, 0.22);
+    for (let px = 40; px < scene.scale.width + 60; px += 110) {
+      wand.strokeRoundedRect(px, 60, 70, scene.scale.height - 140, 8);
+    }
+    const groot = scene.add.container(90, 200).setDepth(-27).setScrollFactor(0.25).setAlpha(0.5);
+    const tg = scene.add.graphics();
+    tg.fillStyle(0xb98d3a, 0.8);
+    for (let a = 0; a < 10; a++) {
+      const ang = (a / 10) * Math.PI * 2;
+      tg.fillRoundedRect(Math.cos(ang) * 66 - 8, Math.sin(ang) * 66 - 12, 16, 24, 4);
+    }
+    tg.fillCircle(0, 0, 62);
+    tg.fillStyle(0x8a6a45, 0.9); tg.fillCircle(0, 0, 16);
+    for (let a = 0; a < 5; a++) {
+      const ang = (a / 5) * Math.PI * 2;
+      tg.fillStyle(0xa8813f, 0.5);
+      tg.fillEllipse(Math.cos(ang) * 36, Math.sin(ang) * 36, 18, 18);
+    }
+    groot.add(tg);
+    scene.tweens.add({ targets: groot, angle: 360, duration: 60000, repeat: -1 });
+    // een tweede, kleiner tandwiel dat andersom draait
+    const klein = scene.add.container(240, 320).setDepth(-27).setScrollFactor(0.25).setAlpha(0.4);
+    const kg = scene.add.graphics();
+    kg.fillStyle(0x9a7a4a, 0.8);
+    for (let a = 0; a < 8; a++) {
+      const ang = (a / 8) * Math.PI * 2;
+      kg.fillRoundedRect(Math.cos(ang) * 38 - 6, Math.sin(ang) * 38 - 9, 12, 18, 3);
+    }
+    kg.fillCircle(0, 0, 36); kg.fillStyle(0x7a5c36, 0.9); kg.fillCircle(0, 0, 10);
+    klein.add(kg);
+    scene.tweens.add({ targets: klein, angle: -360, duration: 42000, repeat: -1 });
+    // verre koekoeksklokjes aan de wand
+    const kk = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    [[400, 160, 0.9], [520, 260, 1.1]].forEach(([hx, hy, sc]) => {
+      kk.fillStyle(0x8a6a45, 0.85);
+      kk.fillTriangle(hx - 26 * sc, hy, hx + 26 * sc, hy, hx, hy - 26 * sc);
+      kk.fillRoundedRect(hx - 20 * sc, hy, 40 * sc, 34 * sc, 5 * sc);
+      kk.fillStyle(0xf3e8d0, 0.9); kk.fillCircle(hx, hy + 14 * sc, 11 * sc);
+      kk.lineStyle(2 * sc, 0x4a3a26, 1);
+      kk.beginPath(); kk.moveTo(hx, hy + 14 * sc); kk.lineTo(hx, hy + 7 * sc); kk.strokePath();
+      kk.beginPath(); kk.moveTo(hx, hy + 14 * sc); kk.lineTo(hx + 5 * sc, hy + 14 * sc); kk.strokePath();
+      kk.fillStyle(0xb98d3a, 0.9); kk.fillRect(hx - 2 * sc, hy + 34 * sc, 4 * sc, 16 * sc);
+      kk.fillEllipse(hx, hy + 52 * sc, 10 * sc, 6 * sc);
+    });
+
+    // zwevende radertjes en veertjes drijven voorbij als "wolken"
+    scene.clouds = [];
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(70, 260);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5).setAlpha(0.55);
+      const g = scene.add.graphics();
+      g.fillStyle(0xc9a05a, 0.9);
+      for (let a = 0; a < 8; a++) {
+        const ang = (a / 8) * Math.PI * 2;
+        g.fillRoundedRect(Math.cos(ang) * 16 - 3.5, Math.sin(ang) * 16 - 5.5, 7, 11, 2);
+      }
+      g.fillCircle(0, 0, 15);
+      g.fillStyle(0x8a6a45, 1); g.fillCircle(0, 0, 5);
+      c.add(g);
+      scene.tweens.add({ targets: c, angle: i % 2 ? 360 : -360, duration: 9000 + i * 800, repeat: -1 });
+      c.driftSpeed = Phaser.Math.FloatBetween(3, 8);
+      scene.clouds.push(c);
+    }
+    const heuvels = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    heuvels.fillStyle(darker(L.bg.bottom, 16), 0.7);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) heuvels.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
+  if (L.terrain === 'circus') {
+    // HET CIRCUS-KANON (Wereld 17): binnen in de grote circustent —
+    // gestreept tentdoek, lichtjes-slingers, stippen-publiek op de
+    // tribunes (het W14-recept) en spotlights op de piste.
+    const doek = scene.add.graphics().setDepth(-29).setScrollFactor(0.1);
+    const BAAN = [0xd94f3f, 0xf3e8d0];
+    const topX = scene.scale.width / 2;
+    for (let i = 0; i < 10; i++) {
+      doek.fillStyle(BAAN[i % 2], 0.35);
+      const x0 = -80 + i * (scene.scale.width + 160) / 10;
+      const x1 = x0 + (scene.scale.width + 160) / 10;
+      doek.fillTriangle(topX, -40, x0, 240, x1, 240);
+    }
+    // spotlights die de piste in schijnen
+    const spots = scene.add.graphics().setDepth(-28).setScrollFactor(0.15);
+    spots.fillStyle(0xfff3b0, 0.13);
+    spots.fillTriangle(80, 40, 30, 40, 240, scene.scale.height);
+    spots.fillTriangle(400, 40, 450, 40, 260, scene.scale.height);
+    scene.tweens.add({ targets: spots, alpha: 0.6, duration: 2100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+    // tribunes met stippen-publiek + lichtjes-slinger
+    const tribune = scene.add.graphics().setDepth(-27).setScrollFactor(0.3);
+    const vb = scene.scale.height - 140;
+    const TRIB = [0x8a4a6a, 0x5a6a9a];
+    for (let ring = 0; ring < 2; ring++) {
+      const ty = vb - 30 - ring * 44;
+      tribune.fillStyle(TRIB[ring % TRIB.length], 0.55);
+      tribune.fillRect(-20, ty, scene.scale.width + 40, 38);
+      const PUB = [0xffe16b, 0xf2a7b8, 0x8fd3f2, 0xffffff, 0xf0c060];
+      for (let px = 12 + ring * 15; px < scene.scale.width + 20; px += 32) {
+        tribune.fillStyle(PUB[(Math.floor(px / 32) + ring) % PUB.length], 0.85);
+        tribune.fillCircle(px, ty + 13 + (px % 2) * 6, 6);
+      }
+    }
+    // lichtjes-slinger boven de piste
+    const LICHT = [0xffe16b, 0xe8402c, 0x57b947, 0x3f8fe8, 0xf2a7b8];
+    tribune.lineStyle(2, 0x8a6a45, 0.8);
+    tribune.beginPath(); tribune.moveTo(-20, 200); tribune.lineTo(scene.scale.width / 2, 240); tribune.lineTo(scene.scale.width + 20, 200); tribune.strokePath();
+    for (let i = 0; i < 12; i++) {
+      const t = i / 11;
+      const lx = -20 + t * (scene.scale.width + 40);
+      const ly = 200 + Math.sin(t * Math.PI) * 40 + 8;
+      tribune.fillStyle(LICHT[i % LICHT.length], 0.95);
+      tribune.fillCircle(lx, ly, 5);
+    }
+
+    // zwevende confetti-plukjes en ballonnen als "wolken"
+    scene.clouds = [];
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(80, 280);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5).setAlpha(0.8);
+      const g = scene.add.graphics();
+      if (i % 2) {
+        const col = LICHT[i % LICHT.length];
+        g.lineStyle(2, 0x8a8f96, 0.7);
+        g.beginPath(); g.moveTo(0, 15); g.lineTo(2, 40); g.strokePath();
+        g.fillStyle(col, 0.95); g.fillEllipse(0, 0, 26, 32);
+        g.fillStyle(0xffffff, 0.5); g.fillEllipse(-6, -8, 8, 10);
+      } else {
+        for (let k = 0; k < 6; k++) {
+          g.fillStyle(LICHT[k % LICHT.length], 0.85);
+          g.fillRect(Phaser.Math.Between(-24, 20), Phaser.Math.Between(-18, 14), 7, 4);
+        }
+      }
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 9);
+      scene.clouds.push(c);
+    }
+    const heuvels = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    heuvels.fillStyle(darker(L.bg.bottom, 15), 0.6);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) heuvels.fillCircle(x, scene.scale.height, 150);
+    return;
+  }
+
   // Zon (licht parallax)
   const sun = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
   const glow = scene.add.circle(0, 0, 54, 0xfff3b0, 0.35);
@@ -611,12 +836,14 @@ export function buildWater(scene, L) {
   const diepzee = L.terrain === 'zee'; // de donkere geul — dieper dan diep
   const sop = L.terrain === 'kleren';  // een schuimend sop-bad in de Kleren-Kast
   const ballenbak = L.terrain === 'ballen'; // een zee van kleurige balletjes
+  const lava = L.terrain === 'dino';   // borrelende oer-lava in het Dino-Dal
   const kleuren = saus
     ? [0xd0331f, 0xf07c5a, 0xffc14d]
     : stroop ? [0xb96a1e, 0xdca050, 0xffe16b]
     : diepzee ? [0x123a52, 0x1f5f80, 0x7fd0f0]
     : sop ? [0x9fd0e8, 0xd7f0fa, 0xffffff]
-    : ballenbak ? [0xe8a23f, 0xf0c060, 0xe8402c] : [0x3fa9e0, 0x7fd0f0, 0xffffff];
+    : ballenbak ? [0xe8a23f, 0xf0c060, 0xe8402c]
+    : lava ? [0xd0331f, 0xf07c1f, 0xffe16b] : [0x3fa9e0, 0x7fd0f0, 0xffffff];
   (L.water || []).forEach(([x, y, w, h]) => {
     const g = scene.add.graphics().setDepth(-14);
     g.fillStyle(kleuren[0], 1); g.fillRect(x, y, w, h);
@@ -977,6 +1204,95 @@ export function drawGround(scene, x, y, w, h) {
         g.fillRoundedRect(fx - 4, y - 18, 8, 15, 3);
         g.fillCircle(fx, y - 18, 3.4);
         g.fillStyle(0xe8402c, 1); g.fillRect(fx - 4, y - 13, 8, 3.4); // rode band
+      }
+    }
+  } else if (scene.level.terrain === 'dino') {
+    // DINO-DAL (Wereld 15): oer-aarde met een mos-groene toplaag, en om en
+    // om een rib-botje dat uit de grond steekt en een klein varentje.
+    g.fillStyle(0x8a6a4a, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0x7a5a3c, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0x6faa4f, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(lighten(0x6faa4f, 20), 1); g.fillRect(x, y, w, 6);
+    g.fillStyle(0x578a3f, 1);
+    for (let bx = x + 6; bx < x + w; bx += 15) g.fillTriangle(bx, y, bx + 6, y, bx + 3, y - 8);
+    // om en om: een rib-botje en een varentje
+    let dino = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      dino = !dino;
+      if (dino) {
+        g.lineStyle(4, 0xf3ead2, 1);
+        g.beginPath(); g.arc(fx, y + 4, 12, Math.PI, 2 * Math.PI); g.strokePath();
+        g.fillStyle(0xf3ead2, 1); g.fillCircle(fx - 12, y + 2, 3); g.fillCircle(fx + 12, y + 2, 3);
+      } else {
+        g.lineStyle(2.5, 0x3f7a33, 1);
+        for (const a of [-1, 0, 1]) {
+          g.beginPath(); g.moveTo(fx, y); g.lineTo(fx + a * 8, y - 15); g.strokePath();
+        }
+        g.fillStyle(0x57944a, 1);
+        for (const a of [-1, 0, 1]) g.fillEllipse(fx + a * 8, y - 17, 8, 4.5);
+      }
+    }
+  } else if (scene.level.terrain === 'klok') {
+    // DE KLOKKEN-TOREN (Wereld 16): een koperen vloer met klinknagels en
+    // paneel-voegen, en om en om een liggend radertje en een sleuteltje.
+    g.fillStyle(0x6e5436, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.lineStyle(2, 0x5a442c, 0.8);
+    for (let ry = y + 30; ry < y + h - 6; ry += 26) { g.beginPath(); g.moveTo(x, ry); g.lineTo(x + w, ry); g.strokePath(); }
+    g.fillStyle(0xb98d3a, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(0xd9ad55, 1); g.fillRect(x, y, w, 6);
+    // klinknagels langs de rand
+    g.fillStyle(0x8a6a2e, 1);
+    for (let bx = x + 14; bx < x + w - 8; bx += 34) g.fillCircle(bx, y + 11, 2.6);
+    // om en om: een liggend radertje en een opwind-sleuteltje
+    let klok = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      klok = !klok;
+      if (klok) {
+        g.fillStyle(0xc9a05a, 1);
+        for (let a = 0; a < 8; a++) {
+          const ang = (a / 8) * Math.PI * 2;
+          g.fillRect(fx + Math.cos(ang) * 9 - 2, y - 9 + Math.sin(ang) * 9 - 3, 4, 6);
+        }
+        g.fillCircle(fx, y - 9, 8);
+        g.fillStyle(0x6e5436, 1); g.fillCircle(fx, y - 9, 3);
+      } else {
+        g.lineStyle(2.5, 0x9a7a3a, 1);
+        g.strokeCircle(fx - 5, y - 14, 4.5);
+        g.beginPath(); g.moveTo(fx - 1, y - 12); g.lineTo(fx + 9, y - 4); g.strokePath();
+        g.beginPath(); g.moveTo(fx + 5, y - 8); g.lineTo(fx + 8, y - 11); g.strokePath();
+      }
+    }
+  } else if (scene.level.terrain === 'circus') {
+    // HET CIRCUS-KANON (Wereld 17): zaagsel-vloer met een rood-witte
+    // piste-rand, en om en om een ster-confettiplek en een pauze-balletje.
+    g.fillStyle(0xc9a05a, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0xb98d4a, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0xe8d9a8, 1); g.fillRect(x, y, w, 16); // licht zaagsel bovenop
+    g.fillStyle(0xf3e8c0, 1); g.fillRect(x, y, w, 6);
+    // de piste-rand: rood-witte blokjes
+    for (let bx = x; bx < x + w; bx += 36) {
+      g.fillStyle(Math.floor(bx / 36) % 2 ? 0xd94f3f : 0xf3e8d0, 1);
+      g.fillRect(bx, y + 12, Math.min(36, x + w - bx), 7);
+    }
+    // om en om: een gouden ster en een gestreept balletje
+    let cir = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      cir = !cir;
+      if (cir) {
+        g.fillStyle(0xf6c624, 1);
+        for (let a = 0; a < 5; a++) {
+          const ang = -Math.PI / 2 + a * (2 * Math.PI / 5);
+          g.fillCircle(fx + Math.cos(ang) * 5, y - 8 + Math.sin(ang) * 5, 2.6);
+        }
+        g.fillCircle(fx, y - 8, 3);
+      } else {
+        g.fillStyle(0xf3e8d0, 1); g.fillCircle(fx, y - 7, 7);
+        g.fillStyle(0xe8402c, 1);
+        g.slice(fx, y - 7, 7, -0.5 * Math.PI, 0.5 * Math.PI, false); g.fillPath();
+        g.fillStyle(0xffffff, 0.5); g.fillEllipse(fx - 2, y - 10, 4, 3);
+        g.lineStyle(1.6, 0xb93227, 1); g.strokeCircle(fx, y - 7, 7);
       }
     }
   } else if (scene.level.terrain === 'bos') {

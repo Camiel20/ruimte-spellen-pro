@@ -99,6 +99,34 @@ export const HOEDJES = [
     g.beginPath(); g.arc(10 * s, -13 * s, 4 * s, -0.6 * Math.PI, 0.6 * Math.PI); g.strokePath();
     g.fillStyle(0xffe16b, 1); g.fillEllipse(-3 * s, -15 * s, 4 * s, 7 * s); // glans
   } },
+  { id: 'dinokam', naam: 'Dino-Kam', medal: 'world15_done', teken: (g, s) => {
+    g.fillStyle(0x57944a, 1); g.slice(0, -2 * s, 14 * s, Math.PI, 0, false); g.fillPath();
+    g.fillStyle(0x2f6a33, 1); // de rugplaatjes-kam
+    g.fillTriangle(-10 * s, -8 * s, -2 * s, -8 * s, -6 * s, -20 * s);
+    g.fillTriangle(-2 * s, -10 * s, 6 * s, -10 * s, 2 * s, -24 * s);
+    g.fillTriangle(6 * s, -8 * s, 13 * s, -8 * s, 9.5 * s, -18 * s);
+    g.fillStyle(0xd9e8a8, 0.8); g.fillEllipse(-6 * s, -4 * s, 8 * s, 4 * s);
+  } },
+  { id: 'klokhoed', naam: 'Koekoeksklok-Hoedje', medal: 'world16_done', teken: (g, s) => {
+    g.fillStyle(0x6e5436, 1); g.fillTriangle(-15 * s, -4 * s, 15 * s, -4 * s, 0, -24 * s);
+    g.fillStyle(0x8a6a45, 1); g.fillRect(-13 * s, -6 * s, 26 * s, 4 * s);
+    g.fillStyle(0xf3e8d0, 1); g.fillCircle(0, -11 * s, 5.5 * s); // de wijzerplaat
+    g.lineStyle(1.4 * s, 0x2b2f34, 1);
+    g.beginPath(); g.moveTo(0, -11 * s); g.lineTo(0, -15 * s); g.strokePath();
+    g.beginPath(); g.moveTo(0, -11 * s); g.lineTo(3 * s, -11 * s); g.strokePath();
+    g.fillStyle(0xf6c624, 1); g.fillCircle(0, -22 * s, 2.4 * s); // het koekoek-gaatje
+  } },
+  { id: 'directeur', naam: 'Directeurs-Hoed', medal: 'world17_done', teken: (g, s) => {
+    g.fillStyle(0xd94f3f, 1);
+    g.fillRect(-16 * s, -4 * s, 32 * s, 4 * s);
+    g.fillRoundedRect(-10 * s, -24 * s, 20 * s, 21 * s, 3 * s);
+    g.fillStyle(0xf6c624, 1); g.fillRect(-10 * s, -9 * s, 20 * s, 4 * s); // gouden lint
+    g.fillStyle(0xffe16b, 1); // een ster op de hoed
+    for (let a = 0; a < 5; a++) {
+      const ang = -Math.PI / 2 + a * (2 * Math.PI / 5);
+      g.fillCircle(Math.cos(ang) * 3.4 * s, -16 * s + Math.sin(ang) * 3.4 * s, 1.7 * s);
+    }
+  } },
   { id: 'aureool', naam: 'Gouden Nul', gouden: true, teken: (g, s) => {
     g.lineStyle(4 * s, 0xf6c624, 1); g.strokeEllipse(0, -16 * s, 26 * s, 9 * s);
     g.lineStyle(1.5 * s, 0xffe16b, 0.8); g.strokeEllipse(0, -16 * s, 30 * s, 12 * s);

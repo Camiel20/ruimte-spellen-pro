@@ -319,6 +319,106 @@ describe('puzzellogica', () => {
     expect(validateLevel(teVeelBallen).some((e) => e.includes('3-15'))).toBe(true);
   });
 
+  it('validateLevel: vangt een dino-rit waar niet precies één dino kan landen', () => {
+    const basis = {
+      id: 'x-dino', worldW: 3000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 3000, 140]],
+      dinoRitten: [{ x: 700, start: 0, doel: 40 }], // alleen de Reuzen-Dino (4×10)
+      goal: { x: 2800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    // 20 halen zowel de Springer (4×5) als de Reuzen-Dino (2×10) → niet uniek
+    const tweeDinos = { ...basis, dinoRitten: [{ x: 700, start: 0, doel: 20 }] };
+    expect(validateLevel(tweeDinos).some((e) => e.includes('precies één'))).toBe(true);
+    // 7 haalt niemand (7 deelt niet door 2, 5 of 10)
+    const niemand = { ...basis, dinoRitten: [{ x: 700, start: 0, doel: 7 }] };
+    expect(validateLevel(niemand).some((e) => e.includes('precies één'))).toBe(true);
+  });
+
+  it('validateLevel: vangt een sprong-baas met een kapotte som', () => {
+    const basis = {
+      id: 'x-sprong', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      boss: { x: 1200, look: 'rex', stijl: 'sprong', stages: [{ start: 20, sprong: 10, keer: 3, doel: 50, opties: [50, 40, 53] }] },
+      goal: { x: 1800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const fouteSom = { ...basis, boss: { ...basis.boss, stages: [{ start: 20, sprong: 10, keer: 3, doel: 40, opties: [40, 50] }] } };
+    expect(validateLevel(fouteSom).some((e) => e.includes('start + sprong'))).toBe(true);
+    const gekkeSprong = { ...basis, boss: { ...basis.boss, stages: [{ start: 20, sprong: 3, keer: 3, doel: 29, opties: [29, 26] }] } };
+    expect(validateLevel(gekkeSprong).some((e) => e.includes('2, 5 of 10'))).toBe(true);
+  });
+
+  it('validateLevel: vangt een klok-baas met een tijd die niet bestaat', () => {
+    const basis = {
+      id: 'x-klok', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      boss: { x: 1200, look: 'tiktak', stijl: 'klok', stages: [{ doel: 7.5, opties: [7.5, 6.5, 4] }] },
+      goal: { x: 1800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const kwartier = { ...basis, boss: { ...basis.boss, stages: [{ doel: 7.25, opties: [7.25, 6] }] } };
+    expect(validateLevel(kwartier).some((e) => e.includes('halve stappen'))).toBe(true);
+    const dubbel = { ...basis, boss: { ...basis.boss, stages: [{ doel: 4, opties: [4, 4, 9] }] } };
+    expect(validateLevel(dubbel).some((e) => e.includes('precies één'))).toBe(true);
+  });
+
+  it('validateLevel: vangt een balans-baas die niet zwaarder wordt', () => {
+    const basis = {
+      id: 'x-balans', worldW: 2000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140]],
+      boss: { x: 1200, look: 'sterkeman', stijl: 'balans', stages: [{ doel: 10 }, { doel: 15 }, { doel: 20 }] },
+      goal: { x: 1800, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const lichter = { ...basis, boss: { ...basis.boss, stages: [{ doel: 15 }, { doel: 10 }] } };
+    expect(validateLevel(lichter).some((e) => e.includes('zwaarder'))).toBe(true);
+    const teZwaar = { ...basis, boss: { ...basis.boss, stages: [{ doel: 25 }] } };
+    expect(validateLevel(teZwaar).some((e) => e.includes('5-20'))).toBe(true);
+  });
+
+  it('validateLevel: vangt kapotte koekoeken, slingers, tandwielen en koorden', () => {
+    const basis = {
+      id: 'x-w16w17', worldW: 4000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 4000, 140]],
+      koekoeken: [{ x: 700, uur: 3 }],
+      slingers: [{ x: 1500, y: 240, lengte: 260 }],
+      tandwielen: [{ x: 2200, y: 400 }],
+      koorden: [[2800, 3300, 480]],
+      goal: { x: 3900, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const dertienUur = { ...basis, koekoeken: [{ x: 700, uur: 13 }] };
+    expect(validateLevel(dertienUur).some((e) => e.includes('1-12'))).toBe(true);
+    const sleept = { ...basis, slingers: [{ x: 1500, y: 500, lengte: 260 }] }; // 760 > grond
+    expect(validateLevel(sleept).some((e) => e.includes('grond'))).toBe(true);
+    const laagKoord = { ...basis, koorden: [[2800, 3300, 640]] };
+    expect(validateLevel(laagKoord).some((e) => e.includes('koorddansen'))).toBe(true);
+  });
+
+  it('validateLevel: vangt kapotte weegwippen en kanonnen', () => {
+    const basis = {
+      id: 'x-circus', worldW: 4000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140], [2400, 660, 1600, 140]],
+      weegWippen: [{ x: 800, doel: 7 }],
+      kanonnen: [{ x: 1800, vaatjes: 2, landX: 2500 }],
+      goal: { x: 3900, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const teDuur = { ...basis, weegWippen: [{ x: 800, doel: 20 }] };
+    expect(validateLevel(teDuur).some((e) => e.includes('3-15'))).toBe(true);
+    const teDichtbij = { ...basis, kanonnen: [{ x: 1800, vaatjes: 2, landX: 1950 }] };
+    expect(validateLevel(teDichtbij).some((e) => e.includes('300px'))).toBe(true);
+    const geenLanding = { ...basis, kanonnen: [{ x: 1800, vaatjes: 2, landX: 2340 }] }; // in de kloof
+    expect(validateLevel(geenLanding).some((e) => e.includes('geen grond'))).toBe(true);
+  });
+
   it('validateLevel: vangt een onoplosbare brug (samen te weinig)', () => {
     const kapot = {
       id: 'x-1', worldW: 1000, worldH: 800, killY: 720,

@@ -1338,3 +1338,308 @@ export function drawBowlingBal(scene, x, y) {
   scene.tweens.add({ targets: inner, angle: -360, duration: 700, repeat: -1 });
   return c;
 }
+
+// ===== REKEN-REX (Wereld 15, Dino-Dal) =====
+// Een grote groene T-rex met piepkleine armpjes die rollende dino-eieren
+// op je afstuurt. Stijl 'sprong': hij doet sprongen over de getallenlijn —
+// reken uit waar hij landt en raak het goede bot-bord.
+export function drawRexBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 78).setDepth(7);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 82, 130, 20);
+  // staart
+  g.fillStyle(0x57944a, 1);
+  g.fillTriangle(-38, 26, -104, 52, -34, 56);
+  // lijf + poten
+  g.fillEllipse(0, 26, 84, 88);
+  g.fillStyle(0x477a3c, 1);
+  g.fillRoundedRect(-30, 56, 22, 24, 8); g.fillRoundedRect(8, 56, 22, 24, 8);
+  // buik
+  g.fillStyle(0xd9e8a8, 0.85); g.fillEllipse(4, 34, 46, 56);
+  // kop met grote kaak
+  g.fillStyle(0x57944a, 1);
+  g.fillEllipse(18, -44, 74, 46);
+  g.fillRoundedRect(22, -34, 44, 20, 8); // onderkaak
+  // tandjes (vriendelijk stomp)
+  g.fillStyle(0xffffff, 1);
+  for (let i = 0; i < 4; i++) g.fillTriangle(30 + i * 9, -24, 38 + i * 9, -24, 34 + i * 9, -17);
+  // piepkleine armpjes
+  g.lineStyle(6, 0x477a3c, 1);
+  g.beginPath(); g.moveTo(28, 6); g.lineTo(42, 12); g.strokePath();
+  g.beginPath(); g.moveTo(24, 16); g.lineTo(36, 24); g.strokePath();
+  // rug-plaatjes
+  g.fillStyle(0x2f6a33, 1);
+  for (let i = 0; i < 4; i++) g.fillTriangle(-30 + i * 16, -12 - i * 4, -16 + i * 16, -14 - i * 4, -23 + i * 16, -28 - i * 4);
+  c.add(g);
+  c.bodyG = g;
+  // boze oogjes + wenkbrauwen
+  const eL = scene.add.circle(2, -52, 8, 0xffffff).setStrokeStyle(2.5, 0x2b2f34);
+  const eR = scene.add.circle(24, -54, 8, 0xffffff).setStrokeStyle(2.5, 0x2b2f34);
+  const pL = scene.add.circle(4, -51, 3.2, 0x222222), pR = scene.add.circle(26, -53, 3.2, 0x222222);
+  const br = scene.add.graphics(); br.lineStyle(3.5, 0x2f4a26, 1);
+  br.beginPath(); br.moveTo(-6, -63); br.lineTo(9, -58); br.strokePath();
+  br.beginPath(); br.moveTo(33, -64); br.lineTo(19, -60); br.strokePath();
+  const m = scene.add.graphics();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.brow = br; c.mouth = m;
+
+  const bub = scene.add.container(0, -136);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-42, -24, 84, 44, 12); bg.strokeRoundedRect(-42, -24, 84, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '24px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Getemd: blije rex met blosjes en een bloemetje in zijn bek.
+export function happyRexBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear();
+  c.mouth.fillStyle(0xf08a8a, 0.6);
+  c.mouth.fillEllipse(-8, -40, 14, 9); c.mouth.fillEllipse(40, -42, 12, 8);
+  // een bloemetje in de bek
+  c.mouth.fillStyle(0x4fae4a, 1); c.mouth.fillRect(52, -30, 3, 12);
+  c.mouth.fillStyle(0xff6b9d, 1);
+  for (let a = 0; a < 5; a++) {
+    const ang = -Math.PI / 2 + a * (2 * Math.PI / 5);
+    c.mouth.fillCircle(53 + Math.cos(ang) * 5, -34 + Math.sin(ang) * 5, 3);
+  }
+  c.mouth.fillStyle(0xffe16b, 1); c.mouth.fillCircle(53, -34, 2.6);
+}
+
+// Dino-ei (projectiel van Reken-Rex): een gespikkeld ei dat voorbij rolt.
+export function drawDinoEi(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const inner = scene.add.container(0, -16);
+  const g = scene.add.graphics();
+  g.fillStyle(0xf3ead2, 1); g.fillEllipse(0, 0, 26, 32);
+  g.fillStyle(0x9ab86a, 0.8);
+  g.fillCircle(-5, -6, 4); g.fillCircle(6, 2, 3.4); g.fillCircle(-2, 9, 2.8);
+  g.lineStyle(2, 0xc9b88a, 1); g.strokeEllipse(0, 0, 26, 32);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: -360, duration: 800, repeat: -1 });
+  return c;
+}
+
+// Bot-bord (keuze-art voor stijl 'sprong'): een bot met het getal erop.
+export function drawBotBord(scene, x, y, waarde) {
+  const c = scene.add.container(x, y).setDepth(6);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.12); g.fillEllipse(0, 26, 46, 8);
+  g.fillStyle(0xf3ead2, 1);
+  g.fillRoundedRect(-20, -9, 40, 18, 9);
+  [[-20, -9], [-20, 9], [20, -9], [20, 9]].forEach(([bx, by]) => g.fillCircle(bx, by, 8));
+  g.lineStyle(2, 0xc9b88a, 1); g.strokeRoundedRect(-20, -9, 40, 18, 9);
+  c.add(g);
+  c.add(scene.add.text(0, 0, `${waarde}`, {
+    fontFamily: 'Arial Black, Arial', fontSize: '17px', fontStyle: 'bold', color: '#5d4426',
+  }).setOrigin(0.5));
+  scene.tweens.add({ targets: c, y: y - 9, duration: 900 + (waarde % 3) * 160, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  c.waarde = waarde; c.spawnY = y; c.taken = false;
+  return c;
+}
+
+// ===== BARON TIK-TAK (Wereld 16, de Klokken-Toren) =====
+// Een norse staande klok met een snor die de tijd heeft stilgezet en
+// zoevende wijzertjes gooit. Stijl 'klok': raak de klok die de gevraagde
+// tijd toont ("4 uur", "half 8") — dan tikt hij weer een fase verder.
+export function drawTikTakBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 84).setDepth(7);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 88, 110, 20);
+  // de staande-klok-kast
+  g.fillStyle(0x6e5436, 1); g.fillRoundedRect(-36, -66, 72, 150, 12);
+  g.fillStyle(0x8a6a45, 1); g.fillRoundedRect(-36, -66, 72, 18, 10);
+  g.fillRoundedRect(-42, 74, 84, 12, 5); // voet
+  g.lineStyle(3.5, 0x4a3a26, 1); g.strokeRoundedRect(-36, -66, 72, 150, 12);
+  // het slinger-raam in zijn buik (de slinger-tween hangt eronder)
+  g.fillStyle(0x3a2c1c, 1); g.fillRoundedRect(-20, 10, 40, 58, 8);
+  c.add(g);
+  c.bodyG = g;
+  const slinger = scene.add.container(0, 14);
+  const sg = scene.add.graphics();
+  sg.lineStyle(3, 0xd9ad55, 1); sg.beginPath(); sg.moveTo(0, 0); sg.lineTo(0, 40); sg.strokePath();
+  sg.fillStyle(0xf6c624, 1); sg.fillCircle(0, 44, 9);
+  slinger.add(sg);
+  c.add(slinger);
+  scene.tweens.add({ targets: slinger, angle: { from: -16, to: 16 }, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  // de wijzerplaat als GEZICHT
+  const plaat = scene.add.graphics();
+  plaat.fillStyle(0xf3e8d0, 1); plaat.fillCircle(0, -34, 30);
+  plaat.lineStyle(3, 0xb98d3a, 1); plaat.strokeCircle(0, -34, 30);
+  for (let a = 0; a < 12; a++) {
+    const ang = (a / 12) * Math.PI * 2;
+    plaat.fillStyle(0x6e5436, 1);
+    plaat.fillCircle(Math.cos(ang) * 24, -34 + Math.sin(ang) * 24, 1.8);
+  }
+  c.add(plaat);
+  const eL = scene.add.circle(-11, -40, 6.5, 0xffffff).setStrokeStyle(2.2, 0x2b2f34);
+  const eR = scene.add.circle(11, -40, 6.5, 0xffffff).setStrokeStyle(2.2, 0x2b2f34);
+  const pL = scene.add.circle(-10, -39, 2.6, 0x222222), pR = scene.add.circle(12, -39, 2.6, 0x222222);
+  const br = scene.add.graphics(); br.lineStyle(3, 0x2b2f34, 1);
+  br.beginPath(); br.moveTo(-18, -50); br.lineTo(-5, -46); br.strokePath();
+  br.beginPath(); br.moveTo(18, -50); br.lineTo(5, -46); br.strokePath();
+  const m = scene.add.graphics();
+  m.fillStyle(0x4a3a26, 1); // de wijzer-snor (staat stil op tien voor twee)
+  m.fillEllipse(-9, -25, 15, 5); m.fillEllipse(9, -25, 15, 5);
+  m.lineStyle(2.6, 0x2b2f34, 1);
+  m.beginPath(); m.arc(0, -19, 5, 1.2 * Math.PI, 1.9 * Math.PI); m.strokePath();
+  c.add([eL, eR, pL, pR, br, m]);
+  c.brow = br; c.mouth = m;
+
+  const bub = scene.add.container(0, -132);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-46, -24, 92, 44, 12); bg.strokeRoundedRect(-46, -24, 92, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '20px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// De tijd tikt weer: krul-snor, lach en een koekoeksvogeltje bovenop.
+export function happyTikTakBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear();
+  c.mouth.fillStyle(0x4a3a26, 1);
+  c.mouth.fillEllipse(-10, -27, 15, 4.5); c.mouth.fillEllipse(10, -27, 15, 4.5);
+  c.mouth.lineStyle(3, 0x2b2f34, 1);
+  c.mouth.beginPath(); c.mouth.arc(0, -24, 8, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+  // het koekoeksvogeltje wipt tevoorschijn
+  c.mouth.fillStyle(0xf6c624, 1); c.mouth.fillEllipse(0, -76, 16, 12);
+  c.mouth.fillCircle(7, -80, 6);
+  c.mouth.fillStyle(0xf07c1f, 1); c.mouth.fillTriangle(12, -80, 18, -79, 12, -77);
+  c.mouth.fillStyle(0x16202b, 1); c.mouth.fillCircle(8, -81, 1.4);
+  // blosjes op de wijzerplaat
+  c.mouth.fillStyle(0xf08a8a, 0.6);
+  c.mouth.fillEllipse(-20, -30, 10, 6); c.mouth.fillEllipse(20, -30, 10, 6);
+}
+
+// Zoevend wijzertje (projectiel van Baron Tik-Tak).
+export function drawWijzertje(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const inner = scene.add.container(0, -16);
+  const g = scene.add.graphics();
+  g.fillStyle(0x2b2f34, 1);
+  g.fillTriangle(-16, 4, -16, -4, 18, 0);
+  g.fillCircle(-14, 0, 6);
+  g.fillStyle(0xf6c624, 1); g.fillCircle(-14, 0, 3);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: -360, duration: 500, repeat: -1 });
+  return c;
+}
+
+// Klok-bord (keuze-art voor stijl 'klok'): een analoge klok die 'waarde'
+// toont — hele uren (4) of halve (7.5 = half 8). De grote wijzer wijst
+// omhoog (heel uur) of omlaag (half), de kleine staat (tussen de) uren.
+export function drawKlokKeuze(scene, x, y, waarde) {
+  const c = scene.add.container(x, y).setDepth(6);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.12); g.fillEllipse(0, 30, 46, 8);
+  g.fillStyle(0x8a6a45, 1); g.fillCircle(0, 0, 27);
+  g.fillStyle(0xf3e8d0, 1); g.fillCircle(0, 0, 23);
+  for (let a = 0; a < 12; a++) {
+    const ang = (a / 12) * Math.PI * 2 - Math.PI / 2;
+    const groot = a % 3 === 0;
+    g.fillStyle(0x6e5436, 1);
+    g.fillCircle(Math.cos(ang) * 18.5, Math.sin(ang) * 18.5, groot ? 2.2 : 1.3);
+  }
+  c.add(g);
+  // 12 bovenaan als anker voor beginnende klok-kijkers
+  c.add(scene.add.text(0, -13, '12', { fontFamily: 'Arial', fontSize: '8px', fontStyle: 'bold', color: '#6e5436' }).setOrigin(0.5));
+  const wijzers = scene.add.graphics();
+  const half = waarde % 1 !== 0;
+  const uurAng = ((waarde % 12) / 12) * Math.PI * 2 - Math.PI / 2;
+  wijzers.lineStyle(3.5, 0x2b2f34, 1); // kleine wijzer (uur)
+  wijzers.beginPath(); wijzers.moveTo(0, 0); wijzers.lineTo(Math.cos(uurAng) * 10, Math.sin(uurAng) * 10); wijzers.strokePath();
+  wijzers.lineStyle(2.4, 0xd94f3f, 1); // grote wijzer: omhoog (heel) of omlaag (half)
+  wijzers.beginPath(); wijzers.moveTo(0, 0); wijzers.lineTo(0, half ? 17 : -17); wijzers.strokePath();
+  wijzers.fillStyle(0x2b2f34, 1); wijzers.fillCircle(0, 0, 2.6);
+  c.add(wijzers);
+  scene.tweens.add({ targets: c, y: y - 9, duration: 900 + (Math.round(waarde) % 3) * 160, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  c.waarde = waarde; c.spawnY = y; c.taken = false;
+  return c;
+}
+
+// ===== DE STERKE MAN (Wereld 17, het Circus-Kanon) =====
+// Een goedmoedige krachtpatser in een gestreept hemd met een reuzen-halter.
+// Stijl 'balans': maak zijn halter aan jouw kant PRECIES even zwaar met
+// schijven van 1/2/5 — dan tilt hij hem, wankelt, en verliest een fase.
+export function drawSterkeManBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 72).setDepth(7);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 76, 120, 20);
+  // benen in een stevige spreidstand
+  g.fillStyle(0x3a5a8a, 1);
+  g.fillRoundedRect(-30, 34, 22, 40, 8); g.fillRoundedRect(8, 34, 22, 40, 8);
+  g.fillStyle(0x2b2f34, 1); g.fillEllipse(-19, 74, 30, 10); g.fillEllipse(19, 74, 30, 10);
+  // het gestreepte krachtpatser-hemd
+  g.fillStyle(0xf3e8d0, 1); g.fillRoundedRect(-34, -26, 68, 64, 16);
+  g.fillStyle(0xd94f3f, 1);
+  for (let ry = -18; ry < 34; ry += 16) g.fillRect(-34, ry, 68, 8);
+  // dikke armen omhoog (klaar om te tillen)
+  g.lineStyle(13, 0xe8b88a, 1);
+  g.beginPath(); g.moveTo(-30, -14); g.lineTo(-52, -48); g.strokePath();
+  g.beginPath(); g.moveTo(30, -14); g.lineTo(52, -48); g.strokePath();
+  g.fillStyle(0xe8b88a, 1); g.fillCircle(-53, -52, 8); g.fillCircle(53, -52, 8);
+  // hoofd met kaal kruintje en één plukje
+  g.fillCircle(0, -46, 22);
+  g.fillStyle(0x6e4a2c, 1); g.fillEllipse(0, -66, 10, 5);
+  c.add(g);
+  c.bodyG = g;
+  // vastberaden gezicht + krul-snor
+  const eL = scene.add.circle(-8, -50, 6, 0xffffff).setStrokeStyle(2.2, 0x2b2f34);
+  const eR = scene.add.circle(8, -50, 6, 0xffffff).setStrokeStyle(2.2, 0x2b2f34);
+  const pL = scene.add.circle(-7, -49, 2.4, 0x222222), pR = scene.add.circle(9, -49, 2.4, 0x222222);
+  const br = scene.add.graphics(); br.lineStyle(3, 0x6e4a2c, 1);
+  br.beginPath(); br.moveTo(-14, -59); br.lineTo(-3, -56); br.strokePath();
+  br.beginPath(); br.moveTo(14, -59); br.lineTo(3, -56); br.strokePath();
+  const m = scene.add.graphics();
+  m.fillStyle(0x6e4a2c, 1); // de krul-snor
+  m.fillEllipse(-8, -38, 13, 5); m.fillEllipse(8, -38, 13, 5);
+  m.fillCircle(-15, -40, 3); m.fillCircle(15, -40, 3);
+  c.add([eL, eR, pL, pR, br, m]);
+  c.brow = br; c.mouth = m;
+
+  const bub = scene.add.container(0, -124);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-38, -24, 76, 44, 12); bg.strokeRoundedRect(-38, -24, 76, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '24px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 6, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Hij buigt als een echte artiest: krul-snor omhoog, brede lach, blosjes.
+export function happySterkeManBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear();
+  c.mouth.fillStyle(0x6e4a2c, 1);
+  c.mouth.fillEllipse(-8, -40, 13, 5); c.mouth.fillEllipse(8, -40, 13, 5);
+  c.mouth.fillCircle(-15, -44, 3); c.mouth.fillCircle(15, -44, 3); // de snor krult omhoog
+  c.mouth.lineStyle(3, 0x2b2f34, 1);
+  c.mouth.beginPath(); c.mouth.arc(0, -36, 8, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+  c.mouth.fillStyle(0xf08a8a, 0.6);
+  c.mouth.fillEllipse(-17, -44, 10, 6); c.mouth.fillEllipse(17, -44, 10, 6);
+}
+
+// Stuiterende kettlebell (projectiel van De Sterke Man).
+export function drawKettlebell(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const inner = scene.add.container(0, -16);
+  const g = scene.add.graphics();
+  g.fillStyle(0x4a4f55, 1); g.fillCircle(0, 3, 13);
+  g.lineStyle(4.5, 0x4a4f55, 1);
+  g.beginPath(); g.arc(0, -8, 8, Math.PI, 2 * Math.PI); g.strokePath();
+  g.fillStyle(0x6a7078, 1); g.fillEllipse(-4, -1, 7, 9);
+  inner.add(g);
+  inner.add(scene.add.text(0, 3, '5', { fontFamily: 'Arial Black, Arial', fontSize: '11px', fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5));
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: { from: -20, to: 20 }, duration: 300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}

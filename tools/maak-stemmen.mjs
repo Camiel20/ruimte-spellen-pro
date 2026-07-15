@@ -92,6 +92,14 @@ const CLIPS = {
   'hint-stuiterbal': ['hint-stuiterbal', 'Duw de bal, en spring erop!'],
   'hint-bowling': ['hint-bowling', 'Hoeveel kegels staan er nog?'],
   'hint-basket': ['hint-basket', 'Gooi er precies genoeg in!'],
+  // W15 Dino-Dal + W16 Klokken-Toren + W17 Circus-Kanon
+  'hint-dino': ['hint-dino', 'Welke dino landt er precies?'],
+  'hint-fossiel': ['hint-fossiel', 'Veeg het zand maar weg!'],
+  'hint-koekoek': ['hint-koekoek', 'Tik de klok naar het goede uur!'],
+  'hint-slinger': ['hint-slinger', 'Tik om los te laten!'],
+  'hint-tandwiel': ['hint-tandwiel', 'Teken rondjes op het tandwiel!'],
+  'hint-weegwip': ['hint-weegwip', 'Maak de twee kanten gelijk!'],
+  'hint-kanon': ['hint-kanon', 'Laad de vaatjes, en tik de lont!'],
   // krachten (bij het leren van een nieuwe kracht)
   'kracht-dubbelsprong': ['kracht-dubbelsprong', 'Dubbelsprong!'],
   'kracht-stamp': ['kracht-stamp', 'Stampen!'],
@@ -109,6 +117,9 @@ const CLIPS = {
   'baas-stomp': ['baas-stomp', 'Spring op zijn kop!'],
   'baas-paar': ['baas-paar', 'Zoek de tweelingsok!'],
   'baas-kegel': ['baas-kegel', 'Hoeveel staan er nog?'],
+  'baas-sprong': ['baas-sprong', 'Tel de sprongen mee!'],
+  'baas-klok': ['baas-klok', 'Zoek de goede klok!'],
+  'baas-balans': ['baas-balans', 'Maak de halter gelijk!'],
   // mijlpalen
   'naar-de-vlag': ['naar-de-vlag', 'Naar de vlag!'],
   'gouden-nul': ['gouden-nul', 'Een gouden nul!'],

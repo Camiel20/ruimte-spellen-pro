@@ -41,5 +41,13 @@ import knopenWinkels from './knopenwinkel.js';
 import stuiterBallen from './stuiterballen.js';
 import bowlingBanen from './bowling.js';
 import baskets from './baskets.js';
+import dinoRitten from './dinorit.js';
+import fossielen from './fossielen.js';
+import koekoeken from './koekoek.js';
+import slingers from './slingers.js';
+import tandwielen from './tandwielen.js';
+import weegWippen from './weegwip.js';
+import kanonnen from './kanonnen.js';
+import koorden from './koorden.js';
 
-export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon, spoelpotten, wcRollen, stinkZones, grootte, bilTrampolines, parenBorden, zwemZones, duikboten, schrijf, wasLijnen, sokkenParen, maatRekken, knopenWinkels, stuiterBallen, bowlingBanen, baskets];
+export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon, spoelpotten, wcRollen, stinkZones, grootte, bilTrampolines, parenBorden, zwemZones, duikboten, schrijf, wasLijnen, sokkenParen, maatRekken, knopenWinkels, stuiterBallen, bowlingBanen, baskets, dinoRitten, fossielen, koekoeken, slingers, tandwielen, weegWippen, kanonnen, koorden];

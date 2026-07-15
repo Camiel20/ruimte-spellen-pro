@@ -344,6 +344,10 @@ export default class AdventureScene extends Phaser.Scene {
     } else if (pz.stijl === 'kegel') {
       const st0 = pz.stages[0];
       art.bubbleText.setText(`${st0.van}−${st0.weg}=?`).setFontSize(14);
+    } else if (pz.stijl === 'sprong') {
+      art.bubbleText.setText(`${pz.stages[0].start} ▸ ?`).setFontSize(18);
+    } else if (pz.stijl === 'klok') {
+      art.bubbleText.setText(this.tijdTekst(pz.doel)).setFontSize(16);
     } else if (pz.stijl === 'paar') {
       // de Sokken-Dief: geen getal maar een SOK in het denk-wolkje
       art.bubbleText.setText('');
@@ -357,6 +361,14 @@ export default class AdventureScene extends Phaser.Scene {
     }
     pz.onSolve = () => this.defeatBoss(pz);
     this.puzzles.push(pz);
+  }
+
+  // "4 uur" of "half 8" — de kindvriendelijke naam van een klok-waarde
+  // (halve uren zijn opgeslagen als .5: 7.5 = half 8).
+  tijdTekst(waarde) {
+    if (waarde % 1 === 0) return `${waarde} uur`;
+    const volgend = (Math.floor(waarde) % 12) + 1;
+    return `half ${volgend}`;
   }
 
   bossStageReact(pz) {
@@ -394,6 +406,9 @@ export default class AdventureScene extends Phaser.Scene {
       : pz.stijl === 'stomp' ? 'spring op zijn kop'
       : pz.stijl === 'paar' ? 'zoek de tweelingsok'
       : pz.stijl === 'kegel' ? 'reken de kegels uit'
+      : pz.stijl === 'sprong' ? 'tel de sprongen mee'
+      : pz.stijl === 'klok' ? 'zoek de goede klok'
+      : pz.stijl === 'balans' ? 'maak de halter gelijk'
       : pz.stijl === 'sisser' ? `schrijf de "${pz.stages[pz.stageIndex].letter}"`
       : pz.stijl === 'finale' ? ({ vang: 'vang de kleur-orbs', muur: 'ram zijn schilden', bouw: `bouw de ${pz.doel}` })[pz.stages[pz.stageIndex].soort]
       : `bouw de ${pz.doel}`;
@@ -407,6 +422,8 @@ export default class AdventureScene extends Phaser.Scene {
       const st = pz.stages[pz.stageIndex];
       c.bubbleText.setText(`${st.van}−${st.weg}=?`).setFontSize(14);
     }
+    if (pz.stijl === 'sprong') c.bubbleText.setText(`${pz.stages[pz.stageIndex].start} ▸ ?`).setFontSize(18);
+    if (pz.stijl === 'klok') c.bubbleText.setText(this.tijdTekst(pz.doel)).setFontSize(16);
     if (pz.stijl === 'paar' && c.bubbleSok) {
       // een nieuwe doel-sok in het denk-wolkje
       c.bubbleSok.clear();
@@ -461,13 +478,13 @@ export default class AdventureScene extends Phaser.Scene {
   startBossFase(pz) {
     pz.faseActief = true;
     // bij 'surf'/'splits'/'sisser' is er geen getal-doel om voor te lezen;
-    // bij 'paar' is het doel een patroon (geen getal) en bij 'kegel' is het
-    // doel het ANTWOORD — voorlezen zou het verklappen
+    // bij 'paar' is het doel een patroon (geen getal) en bij 'kegel'/
+    // 'sprong'/'klok' is het doel het ANTWOORD — voorlezen zou het verklappen
     const stil = pz.stijl === 'surf' || pz.stijl === 'splits' || pz.stijl === 'sisser'
-      || pz.stijl === 'paar' || pz.stijl === 'kegel';
+      || pz.stijl === 'paar' || pz.stijl === 'kegel' || pz.stijl === 'sprong' || pz.stijl === 'klok';
     if (!stil) Voice.number(pz.doel);
     // gesproken aanmoediging per stijl, netjes ná het getal
-    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud', splits: 'baas-splits', stomp: 'baas-stomp', sisser: 'baas-bouw', paar: 'baas-paar', kegel: 'baas-kegel' };
+    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud', splits: 'baas-splits', stomp: 'baas-stomp', sisser: 'baas-bouw', paar: 'baas-paar', kegel: 'baas-kegel', sprong: 'baas-sprong', klok: 'baas-klok', balans: 'baas-balans' };
     const finaleClip = pz.stijl === 'finale'
       ? ({ vang: 'baas-vang', muur: 'hint-grauwmuur', bouw: 'baas-bouw' })[pz.stages[pz.stageIndex].soort] : null;
     Voice.hint(finaleClip || BAAS_CLIP[pz.stijl], stil ? 200 : 1100);
@@ -507,6 +524,22 @@ export default class AdventureScene extends Phaser.Scene {
       pz.bossArt.bubbleText.setText(`${st.van}−${st.weg}=?`).setFontSize(14);
       this.kegelStamp(pz, st);
       this.toonBossBellen(pz);
+    } else if (pz.stijl === 'sprong') {
+      // Reken-Rex springt over de getallenlijn — tel mee en raak de landing
+      const st = pz.stages[pz.stageIndex];
+      this.questText.setText(`Start op ${st.start}: ${st.keer} sprongen van ${st.sprong} — waar landt hij? 🦖`);
+      pz.bossArt.bubbleText.setText(`${st.start} ▸ ?`).setFontSize(18);
+      this.sprongVisual(pz, st);
+      this.toonBossBellen(pz);
+    } else if (pz.stijl === 'klok') {
+      // Baron Tik-Tak: raak de klok die de gevraagde tijd toont
+      this.questText.setText(`Zet de tijd op ${this.tijdTekst(pz.doel)} — raak de goede klok! 🕐`);
+      pz.bossArt.bubbleText.setText(this.tijdTekst(pz.doel)).setFontSize(16);
+      this.toonBossBellen(pz);
+    } else if (pz.stijl === 'balans') {
+      // De Sterke Man: maak zijn halter aan jouw kant precies even zwaar
+      this.questText.setText(`Zijn kant weegt ${pz.doel} — maak jouw kant GELIJK! 💪`);
+      this.toonBalans(pz);
     } else if (pz.stijl === 'stomp') {
       this.questText.setText('Zweef omhoog en spring ÓP zijn kop! 🌙');
     } else if (pz.stijl === 'sisser') {
@@ -652,6 +685,164 @@ export default class AdventureScene extends Phaser.Scene {
     }
   }
 
+  // Reken-Rex: een mini-getallenlijn boven de arena met sprong-bogen — het
+  // start-getal staat erbij, de landing is een '?'. Tel de bogen mee!
+  sprongVisual(pz, st) {
+    const groundTop = this.level.platforms[0][1];
+    if (pz.sprongArt) { pz.sprongArt.destroy(); pz.sprongArt = null; }
+    const c = this.add.container(0, 0).setDepth(8);
+    const x0 = pz.bossArt.x - 620, x1 = pz.bossArt.x - 140;
+    const y = groundTop - 270;
+    const g = this.add.graphics();
+    g.lineStyle(4, 0x8a6a4a, 1);
+    g.beginPath(); g.moveTo(x0 - 10, y); g.lineTo(x1 + 20, y); g.strokePath();
+    c.add(g);
+    c.add(this.add.text(x0, y + 16, `${st.start}`, {
+      fontFamily: 'Arial Black, Arial', fontSize: '18px', fontStyle: 'bold', color: '#5d4426',
+    }).setOrigin(0.5, 0).setStroke('#ffffff', 4));
+    c.add(this.add.text(x1, y + 16, '?', {
+      fontFamily: 'Arial Black, Arial', fontSize: '20px', fontStyle: 'bold', color: '#b93227',
+    }).setOrigin(0.5, 0).setStroke('#ffffff', 4));
+    // de sprong-bogen verschijnen één voor één (Rex stampt mee)
+    const stap = (x1 - x0) / st.keer;
+    for (let i = 0; i < st.keer; i++) {
+      this.time.delayedCall(400 + i * 420, () => {
+        if (pz.solved || !c.active) return;
+        const boog = this.add.graphics();
+        boog.lineStyle(3.5, 0x57944a, 1);
+        boog.beginPath(); boog.arc(x0 + (i + 0.5) * stap, y, stap / 2, Math.PI, 2 * Math.PI); boog.strokePath();
+        // sprong-getal op de boog: zó groot is elke sprong
+        c.add(boog);
+        const lbl = this.add.text(x0 + (i + 0.5) * stap, y - stap / 2 - 12, `+${st.sprong}`, {
+          fontFamily: 'Arial Black, Arial', fontSize: '13px', fontStyle: 'bold', color: '#2f6a33',
+        }).setOrigin(0.5).setStroke('#ffffff', 3);
+        c.add(lbl);
+        this.tweens.add({ targets: pz.bossArt, angle: -5, duration: 120, yoyo: true });
+        SFX.step();
+      });
+    }
+    pz.sprongArt = c;
+  }
+
+  // De Sterke Man: zijn halter hangt scheef — links zit al 'doel', rechts
+  // leg jij schijven van 5/2/1 tot het PRECIES gelijk is. De halter kantelt
+  // live mee (wegen die je ziet). Te zwaar? Alles klettert eraf, opnieuw.
+  toonBalans(pz) {
+    const groundTop = this.level.platforms[0][1];
+    const ui = this.add.container(0, 0).setDepth(8);
+    const hx = pz.bossArt.x - 260, hy = groundTop - 210;
+    // de halter: staander + kantelende balk met twee schalen
+    const voet = this.add.graphics();
+    voet.fillStyle(0x4a4f55, 1); voet.fillRoundedRect(hx - 7, hy, 14, groundTop - hy - 4, 5);
+    voet.fillEllipse(hx, groundTop - 6, 70, 10);
+    ui.add(voet);
+    const balk = this.add.container(hx, hy);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x6a7078, 1); bg.fillRoundedRect(-160, -7, 320, 14, 7);
+    bg.fillStyle(0x4a4f55, 1); bg.fillCircle(0, 0, 10);
+    // linker schaal: het vaste gewicht met het doel-getal
+    bg.fillStyle(0x4a4f55, 1); bg.fillRoundedRect(-176, -34, 52, 34, 8);
+    balk.add(bg);
+    const doelTxt = this.add.text(-150, -17, `${pz.doel}`, {
+      fontFamily: 'Arial Black, Arial', fontSize: '19px', fontStyle: 'bold', color: '#ffffff',
+    }).setOrigin(0.5);
+    balk.add(doelTxt);
+    // rechter schaal: jouw kant (start leeg)
+    const schaalR = this.add.graphics();
+    schaalR.fillStyle(0x8a97a2, 1); schaalR.fillRoundedRect(124, -10, 52, 10, 5);
+    balk.add(schaalR);
+    const jouwTxt = this.add.text(150, -26, '0', {
+      fontFamily: 'Arial Black, Arial', fontSize: '19px', fontStyle: 'bold', color: '#ffe16b',
+    }).setOrigin(0.5).setStroke('#16202b', 4);
+    balk.add(jouwTxt);
+    balk.setAngle(14); // links zwaar → hangt scheef
+    ui.add(balk);
+
+    pz.balansUI = ui;
+    pz.balansRechts = 0;
+    const kantel = () => {
+      const hoek = Phaser.Math.Clamp((pz.doel - pz.balansRechts) * 2.4, -16, 16);
+      this.tweens.add({ targets: balk, angle: hoek, duration: 320, ease: 'Sine.out' });
+      jouwTxt.setText(`${pz.balansRechts}`);
+    };
+
+    // de schijven-stapels (5/2/1, GESCHUD): tikken = opleggen
+    const waarden = [5, 2, 1];
+    for (let k = waarden.length - 1; k > 0; k--) {
+      const j = Math.floor(Math.random() * (k + 1));
+      [waarden[k], waarden[j]] = [waarden[j], waarden[k]];
+    }
+    pz.balansSchijven = waarden.map((w, i) => {
+      const sx = pz.bossArt.x - 640 + i * 110;
+      const c = this.add.container(sx, groundTop - 26).setDepth(13);
+      const r = 14 + w * 2.4;
+      const sg = this.add.graphics();
+      sg.fillStyle(0x000000, 0.14); sg.fillEllipse(0, r + 4, r * 2, 8);
+      sg.fillStyle(w === 5 ? 0xd94f3f : w === 2 ? 0x3f8fe8 : 0xf6c624, 1); sg.fillCircle(0, 0, r);
+      sg.lineStyle(3, 0x16202b, 0.4); sg.strokeCircle(0, 0, r);
+      sg.fillStyle(0xffffff, 0.35); sg.fillEllipse(-r * 0.3, -r * 0.35, r * 0.5, r * 0.3);
+      c.add(sg);
+      c.add(this.add.text(0, 0, `${w}`, {
+        fontFamily: 'Arial Black, Arial', fontSize: '16px', fontStyle: 'bold', color: '#ffffff',
+      }).setOrigin(0.5).setStroke('#16202b', 4));
+      c.waarde = w;
+      c.setInteractive(new Phaser.Geom.Rectangle(-r - 6, -r - 6, r * 2 + 12, r * 2 + 12), Phaser.Geom.Rectangle.Contains);
+      c.input.cursor = 'pointer';
+      c.on('pointerdown', () => {
+        if (pz.solved || !pz.faseActief || pz.balansBlokkade) return;
+        pz.balansRechts += w;
+        SFX.coin();
+        const vlieg = this.add.circle(sx, groundTop - 40, r * 0.7, w === 5 ? 0xd94f3f : w === 2 ? 0x3f8fe8 : 0xf6c624).setDepth(14);
+        const doelPunt = balk.getWorldTransformMatrix().transformPoint(150, -14);
+        this.tweens.add({
+          targets: vlieg, x: doelPunt.x, y: doelPunt.y, duration: 340, ease: 'Sine.inOut',
+          onComplete: () => {
+            vlieg.destroy();
+            Voice.number(Math.min(pz.balansRechts, 20));
+            kantel();
+            if (pz.balansRechts === pz.doel) {
+              // IN BALANS! De Sterke Man tilt — en wankelt.
+              pz.balansBlokkade = true;
+              SFX.fanfare();
+              this.time.delayedCall(500, () => {
+                this.tweens.add({ targets: ui, y: '-=18', duration: 200, yoyo: true, repeat: 1 });
+                this.tweens.add({ targets: pz.bossArt, angle: { from: -6, to: 6 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => pz.bossArt.setAngle(0) });
+                this.advanceBossStage(pz);
+              });
+            } else if (pz.balansRechts > pz.doel) {
+              // te zwaar — alles klettert eraf!
+              pz.balansBlokkade = true;
+              this.rekenFouten += 1;
+              pz.fouten = (pz.fouten || 0) + 1;
+              SFX.oops(); Voice.cue('oops'); SFX.giggle();
+              this.questText.setText(`Oei — ${pz.balansRechts} is te zwaar! Alles klettert eraf… 😅`);
+              this.tweens.add({ targets: balk, angle: -22, duration: 260, ease: 'Quad.out' });
+              for (let i = 0; i < 5; i++) {
+                const brok = this.add.circle(doelPunt.x, doelPunt.y, 7, 0x8a97a2).setDepth(14);
+                this.tweens.add({ targets: brok, x: brok.x + 30 + Math.random() * 90, y: groundTop - 4, alpha: 0.2, duration: 480 + i * 60, ease: 'Quad.in', onComplete: () => brok.destroy() });
+              }
+              this.time.delayedCall(1300, () => {
+                pz.balansRechts = 0;
+                kantel();
+                pz.balansBlokkade = false;
+                this.questText.setText(`Opnieuw — maak er PRECIES ${pz.doel} van! 💪`);
+                if (pz.fouten >= 2) {
+                  const past = pz.balansSchijven.find((s2) => s2.active && s2.waarde <= pz.doel);
+                  if (past) this.pulsHulp(past);
+                  Voice.hint('baas-balans', 700);
+                }
+              });
+            } else {
+              this.questText.setText(`${pz.balansRechts} van de ${pz.doel} — nog wat erbij! 💪`);
+            }
+          },
+        });
+        this.tweens.add({ targets: c, scale: 0.86, duration: 90, yoyo: true });
+      });
+      return c;
+    });
+  }
+
   // De Golf-Baas stuurt een TELBAAR setje golven (spring eroverheen en tel
   // mee!); daarna springen de antwoord-schelpen omhoog.
   surfBurst(pz) {
@@ -731,9 +922,9 @@ export default class AdventureScene extends Phaser.Scene {
             this.questText.setText('Zó ram je hem niet om — word eerst een REUS! 🍎');
           }
         }
-      } else if ((pz.stijl === 'tien' || pz.stijl === 'splits' || pz.stijl === 'paar' || pz.stijl === 'kegel') && time > (pz.belCd || 0)) {
+      } else if ((pz.stijl === 'tien' || pz.stijl === 'splits' || pz.stijl === 'paar' || pz.stijl === 'kegel' || pz.stijl === 'sprong' || pz.stijl === 'klok') && time > (pz.belCd || 0)) {
         // tien: raak het 10-maatje (goed = 10 − getoond getal)
-        // splits/kegel: raak het ontbrekende stuk / de rest (goed = pz.doel)
+        // splits/kegel/sprong/klok: raak het antwoord (goed = pz.doel)
         // paar: raak de sok met HETZELFDE patroon (goed = pz.doel, een naam)
         const goedWaarde = pz.stijl === 'tien' ? 10 - pz.doel : pz.doel;
         const st = pz.stages[pz.stageIndex];
@@ -748,6 +939,7 @@ export default class AdventureScene extends Phaser.Scene {
             bel.taken = true;
             SFX.correct();
             if (pz.stijl === 'paar') Voice.cue('great'); // een patroon lees je niet voor
+            else if (pz.stijl === 'klok') Voice.cue('cheer'); // "7,5" voorlezen slaat nergens op
             else Voice.number(bel.waarde);
             this.tweens.killTweensOf(bel);
             this.heart(bel.x, bel.y - 20); this.heart(bel.x - 20, bel.y); this.heart(bel.x + 20, bel.y);
@@ -764,13 +956,15 @@ export default class AdventureScene extends Phaser.Scene {
               ? `${pz.doel} + ${bel.waarde} is geen 10 — een andere bel! 💛`
               : pz.stijl === 'paar' ? 'Die is nét anders — kijk goed naar het patroon! 🔍'
               : pz.stijl === 'kegel' ? `${st.van} − ${st.weg} is geen ${bel.waarde} — tel de kegels die staan! 🎳`
+              : pz.stijl === 'sprong' ? `Niet ${bel.waarde} — tel de sprongen: steeds ${st.sprong} erbij! 🦖`
+              : pz.stijl === 'klok' ? `Die klok staat niet op ${this.tijdTekst(pz.doel)} — kijk nog eens! 🕐`
               : `${st.weg} + ${bel.waarde} is geen ${st.van} — een ander kristal! 💎`);
             // anti-gok: na 2 fouten pulseert het juiste antwoord zachtjes
             pz.fouten = (pz.fouten || 0) + 1;
             if (pz.fouten >= 2) {
               const maatje = (pz.belSprites || []).find((b) => b.active && b.waarde === goedWaarde);
               if (maatje) this.pulsHulp(maatje);
-              Voice.hint({ tien: 'baas-tien', splits: 'baas-splits', paar: 'baas-paar', kegel: 'baas-kegel' }[pz.stijl], 900);
+              Voice.hint({ tien: 'baas-tien', splits: 'baas-splits', paar: 'baas-paar', kegel: 'baas-kegel', sprong: 'baas-sprong', klok: 'baas-klok' }[pz.stijl], 900);
             }
             this.time.delayedCall(2200, () => {
               if (!bel.active || pz.solved) return;
@@ -944,6 +1138,12 @@ export default class AdventureScene extends Phaser.Scene {
     pz.fouten = 0; // anti-gok-teller per fase opnieuw
     (pz.potten || []).forEach((pot) => this.tweens.add({ targets: pot, scale: 0, alpha: 0, duration: 280, onComplete: () => pot.destroy() }));
     pz.potten = [];
+    // de sprong-getallenlijn en de balans-halter ruimen per fase op
+    if (pz.sprongArt) { const a = pz.sprongArt; pz.sprongArt = null; this.tweens.add({ targets: a, alpha: 0, duration: 300, onComplete: () => a.destroy() }); }
+    if (pz.balansUI) { const u = pz.balansUI; pz.balansUI = null; this.tweens.add({ targets: u, alpha: 0, duration: 300, onComplete: () => u.destroy() }); }
+    (pz.balansSchijven || []).forEach((s2) => { if (s2.active) this.tweens.add({ targets: s2, scale: 0, alpha: 0, duration: 280, onComplete: () => s2.destroy() }); });
+    pz.balansSchijven = [];
+    pz.balansBlokkade = false;
     (pz.belSprites || []).forEach((bel) => { if (bel.active) this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 280, onComplete: () => bel.destroy() }); });
     pz.belSprites = [];
     if (pz.teller) pz.teller.setVisible(false);
@@ -1021,6 +1221,27 @@ export default class AdventureScene extends Phaser.Scene {
       g.lineStyle(1.6, 0xd0d6dd, 1); g.strokeCircle(0, 0, 8);
       g.fillStyle(0x16202b, 1);
       g.fillCircle(0, 0, 2.4); g.fillCircle(-5, -3, 1.6); g.fillCircle(5, -3, 1.6); g.fillCircle(0, 6, 1.6);
+    } else if (t === 'dino') {
+      // een gespikkeld mini-eitje
+      g.fillStyle(0xf3ead2, 1); g.fillEllipse(0, 0, 13, 16);
+      g.fillStyle(0x9ab86a, 0.8); g.fillCircle(-2, -3, 2); g.fillCircle(3, 2, 1.7);
+      g.lineStyle(1.5, 0xc9b88a, 1); g.strokeEllipse(0, 0, 13, 16);
+    } else if (t === 'klok') {
+      // een rondtollend radertje
+      g.fillStyle(0xc9a05a, 1);
+      for (let a = 0; a < 6; a++) {
+        const ang = (a / 6) * Math.PI * 2;
+        g.fillRect(Math.cos(ang) * 7 - 2, Math.sin(ang) * 7 - 2.5, 4, 5);
+      }
+      g.fillCircle(0, 0, 6.5);
+      g.fillStyle(0x6e5436, 1); g.fillCircle(0, 0, 2.4);
+    } else if (t === 'circus') {
+      // een gestreept jongleer-balletje
+      g.fillStyle(0xf3e8d0, 1); g.fillCircle(0, 0, 8);
+      g.fillStyle(0xd94f3f, 1);
+      g.slice(0, 0, 8, -0.5 * Math.PI, 0.5 * Math.PI, false); g.fillPath();
+      g.fillStyle(0xffffff, 0.45); g.fillEllipse(-2.5, -3.5, 4, 3);
+      g.lineStyle(1.5, 0xb93227, 1); g.strokeCircle(0, 0, 8);
     } else {
       g.fillStyle(0x8a8f96, 1); g.fillCircle(0, 0, 7);
       g.fillStyle(0xb9bfc6, 0.8); g.fillCircle(-2, -2, 3);
@@ -1897,6 +2118,9 @@ export default class AdventureScene extends Phaser.Scene {
       + (L.maatRekken || []).length + (L.knopenWinkels || []).length
       + (L.bowlingBanen || []).length + (L.baskets || []).length
       + ((L.sokkenParen || []).length ? 1 : 0) // alle paren samen = één klus
+      + (L.dinoRitten || []).length + (L.koekoeken || []).length
+      + (L.tandwielen || []).length + (L.weegWippen || []).length
+      + (L.kanonnen || []).length
       + (L.raket ? 1 : 0) + (L.boss ? L.boss.stages.length : 0);
   }
 

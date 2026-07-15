@@ -45,6 +45,15 @@ export function portaalMuurX(P) {
   return P.x + (P.opties.length - 1) * PORTAL_AFSTAND + 150;
 }
 
+// Dino-rit (W15): de getallenlijn begint LIJN_START px voorbij de dino's en
+// telt DINO_PPU px per eenheid; de slagboom staat 90px voorbij het doel.
+// Eén formule voor scene én validator (zelfde afspraak als portaalMuurX).
+export const DINO_PPU = 14;
+export const DINO_LIJN_START = 130;
+export function dinoritMuurX(D) {
+  return D.x + DINO_LIJN_START + (D.doel - D.start) * DINO_PPU + 90;
+}
+
 // Controleer een level-object op ontwerpfouten die je anders pas al spelend
 // ontdekt. Geeft een lijst foutmeldingen (leeg = level is in orde).
 export function validateLevel(L) {
@@ -236,6 +245,33 @@ export function validateLevel(L) {
           const goed = S.opties.filter((w) => w === S.doel).length;
           if (goed !== 1) err(`baas-fase ${i + 1} (kegel): ${goed} borden tonen het antwoord — er moet er precies één kloppen`);
         }
+      } else if (stijl === 'sprong') {
+        // Reken-Rex: getallenlijn-sprongen "start + sprong × keer = doel"
+        if (![2, 5, 10].includes(S.sprong)) err(`baas-fase ${i + 1} (sprong): sprong moet 2, 5 of 10 zijn`);
+        if (S.keer == null || S.keer < 2 || S.keer > 6) err(`baas-fase ${i + 1} (sprong): keer moet 2-6 sprongen zijn`);
+        if (S.start == null || S.start < 0 || S.start > 40) err(`baas-fase ${i + 1} (sprong): start moet 0-40 zijn`);
+        if (S.doel !== S.start + S.sprong * S.keer) err(`baas-fase ${i + 1} (sprong): doel (${S.doel}) is niet start + sprong × keer`);
+        if (S.doel > 100) err(`baas-fase ${i + 1} (sprong): de landing (${S.doel}) schiet voorbij de 100`);
+        if (!Array.isArray(S.opties) || S.opties.length < 2) err(`baas-fase ${i + 1} (sprong): minstens 2 bot-borden nodig`);
+        else {
+          const goed = S.opties.filter((w) => w === S.doel).length;
+          if (goed !== 1) err(`baas-fase ${i + 1} (sprong): ${goed} borden tonen de landing — er moet er precies één kloppen`);
+        }
+      } else if (stijl === 'klok') {
+        // Baron Tik-Tak: kies de klok die de tijd toont (halve uren als .5)
+        const geldig = (w) => w >= 1 && w < 13 && (w * 2) % 1 === 0;
+        if (!geldig(S.doel)) err(`baas-fase ${i + 1} (klok): doel moet 1-12(.5) zijn, in halve stappen`);
+        if (!Array.isArray(S.opties) || S.opties.length < 2) err(`baas-fase ${i + 1} (klok): minstens 2 klokken nodig`);
+        else {
+          const raar = S.opties.filter((w) => !geldig(w));
+          if (raar.length) err(`baas-fase ${i + 1} (klok): ongeldige klok-waarden: ${raar.join(', ')}`);
+          const goed = S.opties.filter((w) => w === S.doel).length;
+          if (goed !== 1) err(`baas-fase ${i + 1} (klok): ${goed} klokken tonen de tijd — er moet er precies één kloppen`);
+        }
+      } else if (stijl === 'balans') {
+        // De Sterke Man: maak de halter gelijk met schijven van 1/2/5
+        if (!S.doel || S.doel < 5 || S.doel > 20) err(`baas-fase ${i + 1} (balans): doel moet 5-20 zijn`);
+        if (i > 0 && S.doel <= B.stages[i - 1].doel) err(`baas-fase ${i + 1} (balans): de halters horen zwaarder te worden`);
       } else err(`baas: onbekende stijl '${stijl}'`);
     });
     // Beuken kan alleen als reus: zonder reuzenhap is de baas onverslaanbaar.
@@ -548,6 +584,73 @@ export function validateLevel(L) {
     if (B.x < 0 || B.x > L.worldW) err(`basket ${i + 1} staat buiten de wereld`);
     const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= B.x - 160 && px + pw >= B.x + 220);
     if (!support) err(`basket ${i + 1}: geen doorlopende grond onder ballenbak, bel en slagboom`);
+  });
+
+  // Dino-Dal (W15) — dino-ritten: precies één dino (sprong uit {2,5,10})
+  // landt exact op het doel, en er is doorlopende grond van de dino's tot
+  // voorbij de slagboom (dinoritMuurX — zelfde formule als de scene).
+  (L.dinoRitten || []).forEach((D, i) => {
+    if (D.start == null || D.start < 0 || D.start > 40) err(`dino-rit ${i + 1}: start moet 0-40 zijn`);
+    if (D.doel == null || D.doel <= D.start) { err(`dino-rit ${i + 1}: doel moet voorbij start liggen`); return; }
+    const afstand = D.doel - D.start;
+    if (afstand > 60) err(`dino-rit ${i + 1}: ${afstand} eenheden is te ver — de getallenlijn wordt langer dan het scherm leuk vindt (max 60)`);
+    // de MOE-REGEL (zie dinorit.js): een dino doet max 6 sprongen — zo kan
+    // óók de Reuzen-Dino de enige juiste zijn (40 = 4×10; 2 en 5 worden moe)
+    const passend = [2, 5, 10].filter((sp) => afstand % sp === 0 && afstand / sp <= 6);
+    if (passend.length !== 1) err(`dino-rit ${i + 1}: ${passend.length} dino's halen precies ${D.doel} (afstand ${afstand}, max 6 sprongen) — er moet er precies één kloppen`);
+    const muurX = dinoritMuurX(D);
+    if (muurX > L.worldW) err(`dino-rit ${i + 1}: de slagboom (x=${Math.round(muurX)}) valt buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= D.x - 150 && px + pw >= muurX + 20);
+    if (!support) err(`dino-rit ${i + 1}: geen doorlopende grond van de dino's tot de slagboom`);
+  });
+  // Fossielen: op de grond (anders valt er niets te vegen).
+  (L.fossielen || []).forEach(([x], i) => {
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= x - 50 && px + pw >= x + 50);
+    if (!support) err(`fossiel ${i + 1} (x=${x}) ligt niet op de grond`);
+  });
+
+  // De Klokken-Toren (W16) — koekoeksklokken: geldig uur + grond tot de poort.
+  (L.koekoeken || []).forEach((K, i) => {
+    if (!K.uur || K.uur < 1 || K.uur > 12) err(`koekoek ${i + 1}: uur moet 1-12 zijn`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= K.x - 80 && px + pw >= K.x + 170);
+    if (!support) err(`koekoek ${i + 1}: geen doorlopende grond onder klok + poort`);
+  });
+  // Slingers: binnen de wereld, en het gewicht sleept niet door de grond.
+  (L.slingers || []).forEach((S, i) => {
+    if (S.x < 0 || S.x > L.worldW) err(`slinger ${i + 1} hangt buiten de wereld`);
+    if (!S.lengte || S.lengte < 80 || S.lengte > 280) err(`slinger ${i + 1}: lengte moet 80-280 zijn`);
+    if (S.y + S.lengte > groundTop - 30) err(`slinger ${i + 1}: het gewicht (y=${S.y + S.lengte}) hangt te dicht op de grond (${groundTop})`);
+  });
+  // Tandwielen: hangen vrij (het wiel is 62px groot) + grond tot de poort.
+  (L.tandwielen || []).forEach((T, i) => {
+    if (T.x < 0 || T.x > L.worldW) err(`tandwiel ${i + 1} hangt buiten de wereld`);
+    if (T.y < 110 || T.y > groundTop - 70) err(`tandwiel ${i + 1}: y (${T.y}) moet vrij hangen (110..grond−70)`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= T.x - 60 && px + pw >= T.x + 170);
+    if (!support) err(`tandwiel ${i + 1}: geen doorlopende grond onder wiel + poort`);
+  });
+
+  // Het Circus-Kanon (W17) — weegwippen: haalbaar doel + grond tot de poort.
+  (L.weegWippen || []).forEach((W, i) => {
+    if (!W.doel || W.doel < 3 || W.doel > 15) err(`weegwip ${i + 1}: doel moet 3-15 zijn`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= W.x - 240 && px + pw >= W.x + 210);
+    if (!support) err(`weegwip ${i + 1}: geen doorlopende grond onder rek, wip en poort`);
+  });
+  // Kanonnen: 1-3 vaatjes, en grond onder het kanon én de landingsplek
+  // (de boog mag over een kloof — dat is juist het punt).
+  (L.kanonnen || []).forEach((K, i) => {
+    if (!K.vaatjes || K.vaatjes < 1 || K.vaatjes > 3) err(`kanon ${i + 1}: vaatjes moet 1-3 zijn`);
+    if (K.landX <= K.x + 300) err(`kanon ${i + 1}: de landing (x=${K.landX}) moet minstens 300px verder liggen — anders is het geen knal`);
+    if (K.landX > L.worldW) err(`kanon ${i + 1}: de landing valt buiten de wereld`);
+    const kanonGrond = L.platforms.some(([px, py, pw]) => py === groundTop && px <= K.x - 150 && px + pw >= K.x + 60);
+    if (!kanonGrond) err(`kanon ${i + 1}: geen grond onder kanon + vaatjes`);
+    const landGrond = L.platforms.some(([px, py, pw]) => py === groundTop && px <= K.landX && px + pw >= K.landX + 80);
+    if (!landGrond) err(`kanon ${i + 1}: de landingsplek (x=${K.landX}) heeft geen grond`);
+  });
+  // Koorden: gespannen tussen twee punten, ruim boven de grond.
+  (L.koorden || []).forEach(([x1, x2, y], i) => {
+    if (x1 < 0 || x2 > L.worldW) err(`koord ${i + 1} steekt buiten de wereld`);
+    if (x2 < x1 + 100) err(`koord ${i + 1}: te kort (minstens 100px)`);
+    if (y > groundTop - 40) err(`koord ${i + 1}: hangt te laag (y=${y}) — dan is het geen koorddansen`);
   });
 
   // Portaal-groepen: precies één som klopt, en doorlopende grond onder de

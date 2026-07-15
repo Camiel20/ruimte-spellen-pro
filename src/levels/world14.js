@@ -266,7 +266,7 @@ export const LEVEL_14_5 = {
   startDuw: true,
   startMega: true,
   intro: 'De Kegel-Koning daagt je uit — reken zijn kegels uit! 👑',
-  finale: 'slot', // het állerlaatste level: hierna het Grote Slotfeest!
+  // (finale 'slot' is verhuisd naar 17-5 — het Circus-Kanon is nu het einde)
 
   // De finale: een aanloop met alle stadion-werkwoorden (stuiterbal, basket,
   // tiental-bowling) en dan de Kegel-Koning: hij kegelt zijn eigen
@@ -318,7 +318,7 @@ export const LEVEL_14_5 = {
 
   reward: {
     title: 'HET STUITER-STADION UITGESPEELD! 🏆⚽',
-    subtitle: 'De Kegel-Koning buigt voor jou — op naar het Grote Slotfeest!',
+    subtitle: 'De Kegel-Koning buigt voor jou — en er wachten alweer nieuwe landen!',
     stars: 5, medal: 'world14_done', medalLabel: 'Stadion-Kampioen',
   },
 };
