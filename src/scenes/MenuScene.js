@@ -157,25 +157,25 @@ export default class MenuScene extends Phaser.Scene {
 
   buildGrid(width) {
     const GAMES = [
-      { icon: '🛸', name: 'Reken-Raket',     color: 0x3b82f6, go: () => this.scene.start('Math') },
+      { icon: '🛸', name: 'Reken-Raket',     color: 0x3b82f6, go: () => this.launchLazy('Math', () => import('./MathScene.js')) },
       { icon: '✏️', name: 'Schrijven',        color: 0xf97316, go: () => this.scene.start('TraceMenu') },
-      { icon: '🎈', name: 'Ballon-Feest',     color: 0xa855f7, go: () => this.scene.start('Balloon') },
-      { icon: '🪐', name: 'Planeet Tikker',   color: 0xeab308, go: () => this.scene.start('Clicker') },
+      { icon: '🎈', name: 'Ballon-Feest',     color: 0xa855f7, go: () => this.launchLazy('Balloon', () => import('./BalloonScene.js')) },
+      { icon: '🪐', name: 'Planeet Tikker',   color: 0xeab308, go: () => this.launchLazy('Clicker', () => import('./ClickerScene.js')) },
       // eerste keer: eerst het (woordeloze) verhaal van Baron Grauw
       { icon: '🦸', name: 'Getallen-Land',     color: 0xe8402c, go: () => this.scene.start(getSetting('introGezien') ? 'WorldMap' : 'Intro') },
-      { icon: '🎹', name: 'Regenboog Piano',  color: 0xec4899, go: () => this.scene.start('Piano') },
-      { icon: '🚚', name: 'Bezorg-Baas',      color: 0x22c55e, go: () => this.scene.start('Bezorg') },
-      { icon: '🧱', name: 'Getallen Toren',   color: 0x14b8a6, go: () => this.scene.start('NumberTower') },
-      { icon: '🚀', name: 'Nul-Raket',        color: 0x6366f1, go: () => this.scene.start('ZeroRocket') },
+      { icon: '🎹', name: 'Regenboog Piano',  color: 0xec4899, go: () => this.launchLazy('Piano', () => import('./PianoScene.js')) },
+      { icon: '🚚', name: 'Bezorg-Baas',      color: 0x22c55e, go: () => this.launchLazy('Bezorg', () => import('./BezorgScene.js')) },
+      { icon: '🧱', name: 'Getallen Toren',   color: 0x14b8a6, go: () => this.launchLazy('NumberTower', () => import('./NumberTowerScene.js')) },
+      { icon: '🚀', name: 'Nul-Raket',        color: 0x6366f1, go: () => this.launchLazy('ZeroRocket', () => import('./ZeroRocketScene.js')) },
       { icon: '🐍', name: 'Tel-Slang',        color: 0x06b6d4, go: () => this.launchSnake() },
-      { icon: '📖', name: 'Plakboek',         color: 0xf59e0b, go: () => this.scene.start('Sticker') },
+      { icon: '📖', name: 'Plakboek',         color: 0xf59e0b, go: () => this.launchLazy('Sticker', () => import('./StickerScene.js')) },
       // Letter-Land — NIEUWE KERN: de woord-magie-slice (M1 "De Grijze Ochtend",
       // PraatweideScene). Spel een woord → het gebeurt. test: true = nog achter
       // Ouder-modus tot de speeltest met Adrian slaagt.
       { icon: '🔤', name: 'Letter-Land', test: true, color: 0xf43f5e, go: () => this.scene.start('LetterMissie', { missie: 'm1' }) },
       // test: true = nog niet klaar voor Adrian — alleen zichtbaar in de
       // Ouder-modus (testversie). De Toverwinkel wacht op de speelgoed-pass.
-      { icon: '🧪', name: 'Toverwinkel', test: true, color: 0x7c3aed, go: () => this.scene.start('Toverwinkel') },
+      { icon: '🧪', name: 'Toverwinkel', test: true, color: 0x7c3aed, go: () => this.launchLazy('Toverwinkel', () => import('./TovenScene.js')) },
     ].filter((g) => !g.test || getSetting('ouderModus'));
 
     // Compact rooster zodat álles (ook de laatste rij) op 800px hoogte past.
@@ -320,6 +320,23 @@ export default class MenuScene extends Phaser.Scene {
         this.scene.restart();
       });
     });
+  }
+
+  // Lazy-load een LOSSE spel-scene (tegel → scene → terug naar menu). Zo zit hij
+  // niet in de start-bundel maar wordt hij pas bij de eerste tik geladen — dat
+  // maakt de eerste laadtijd van de app kleiner. Alleen veilig voor "blad"-
+  // scenes die nergens anders vandaan gestart worden (alleen terug naar Menu).
+  launchLazy(key, importer, data) {
+    if (this.scene.manager.getScene(key)) { this.scene.start(key, data); return; }
+    const loading = this.add.text(this.scale.width / 2, this.scale.height / 2, 'Laden… ⏳', {
+      fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffffff',
+      backgroundColor: '#00000088', padding: { x: 16, y: 9 },
+    }).setOrigin(0.5).setDepth(200);
+    importer().then((mod) => {
+      loading.destroy();
+      if (!this.scene.manager.getScene(key)) this.game.scene.add(key, mod.default);
+      this.scene.start(key, data);
+    }).catch(() => loading.setText('Oeps — laden mislukt 😅'));
   }
 
 }

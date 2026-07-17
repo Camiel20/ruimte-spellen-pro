@@ -1,17 +1,10 @@
 import Phaser from 'phaser';
 import BootScene from './scenes/BootScene.js';
 import MenuScene from './scenes/MenuScene.js';
-import BalloonScene from './scenes/BalloonScene.js';
-import MathScene from './scenes/MathScene.js';
 import TraceScene from './scenes/TraceScene.js';
 import TraceMenuScene from './scenes/TraceMenuScene.js';
-import ClickerScene from './scenes/ClickerScene.js';
-import PianoScene from './scenes/PianoScene.js';
 import AwardsScene from './scenes/AwardsScene.js';
 import SettingsScene from './scenes/SettingsScene.js';
-import BezorgScene from './scenes/BezorgScene.js';
-import NumberTowerScene from './scenes/NumberTowerScene.js';
-import ZeroRocketScene from './scenes/ZeroRocketScene.js';
 import AdventureScene from './scenes/AdventureScene.js';
 import IntroScene from './scenes/IntroScene.js';
 import ReisScene from './scenes/ReisScene.js';
@@ -19,8 +12,6 @@ import FeestScene from './scenes/FeestScene.js';
 import WorldMapScene from './scenes/WorldMapScene.js';
 import VillageScene from './scenes/VillageScene.js';
 import StatsScene from './scenes/StatsScene.js';
-import StickerScene from './scenes/StickerScene.js';
-import TovenScene from './scenes/TovenScene.js';
 import LetterIntroScene from './scenes/LetterIntroScene.js';
 import LetterMapScene from './scenes/LetterMapScene.js';
 import LetterFeestScene from './scenes/LetterFeestScene.js';
@@ -50,12 +41,15 @@ const config = {
     },
   },
   scene: [
+    // Kern-scenes (eager). De LOSSE spellen (Reken-Raket, Ballon-Feest, Planeet
+    // Tikker, Piano, Bezorg-Baas, Getallen-Toren, Nul-Raket, Plakboek,
+    // Toverwinkel) worden LAZY geladen via MenuScene.launchLazy — die zitten dus
+    // niet in de start-bundel. Getallen-Land + Letter-Land inter-transitioneren
+    // (level → kaart → feest) en blijven daarom eager geregistreerd.
     BootScene, MenuScene,
-    BalloonScene, MathScene,
-    TraceScene, TraceMenuScene, ClickerScene, PianoScene,
-    AwardsScene, SettingsScene, BezorgScene, NumberTowerScene, ZeroRocketScene,
+    TraceScene, TraceMenuScene,
+    AwardsScene, SettingsScene,
     AdventureScene, IntroScene, ReisScene, FeestScene, WorldMapScene, VillageScene, StatsScene,
-    StickerScene, TovenScene,
     LetterIntroScene, LetterMapScene, LetterFeestScene, LetterMissieScene,
   ],
 };
