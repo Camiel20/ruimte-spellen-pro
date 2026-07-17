@@ -11,6 +11,7 @@ import Phaser from 'phaser';
 import { SFX } from '../../sound.js';
 import { Voice } from '../../voice.js';
 import { confettiBurst } from '../../reward.js';
+import { reducedMotion } from '../../motion.js';
 
 export const FLITS_DEUR = 170; // afstand lantaarn → poort (ook voor de validator)
 
@@ -64,9 +65,11 @@ function maakOpties(aantal) {
 function flits(s, F) {
   if (F.klaar || F.bezig) return;
   F.bezig = true;
+  // rustige modus: zachte, tragere in/uit-fade (geen strobo), iets langer zichtbaar
+  const rustig = reducedMotion();
   SFX.sparkle(); Voice.cue('star');
-  s.tweens.add({ targets: F.lantaarnGloed, alpha: 0.9, scale: 1.4, duration: 160, yoyo: true });
-  // toon de spookjes verspreid boven de nis, ~1s, dan weg
+  s.tweens.add({ targets: F.lantaarnGloed, alpha: 0.9, scale: rustig ? 1.15 : 1.4, duration: rustig ? 300 : 160, yoyo: true });
+  // toon de spookjes verspreid boven de nis, ~1s (rustig: ~2s), dan weg
   const spookjes = [];
   const plekken = [];
   for (let i = 0; i < F.aantal; i++) {
@@ -75,13 +78,13 @@ function flits(s, F) {
     while (tries < 12 && plekken.some((p) => Math.abs(p.x - sx) < 46 && Math.abs(p.y - sy) < 46));
     plekken.push({ x: sx, y: sy });
     const sp = tekenSpookje(s, sx, sy);
-    sp.setAlpha(0).setScale(0.6);
-    s.tweens.add({ targets: sp, alpha: 1, scale: 1, duration: 150, ease: 'Back.out' });
-    s.tweens.add({ targets: sp, alpha: 0, scale: 0.7, duration: 240, delay: 1000, onComplete: () => sp.destroy() });
+    sp.setAlpha(0).setScale(rustig ? 0.9 : 0.6);
+    s.tweens.add({ targets: sp, alpha: 1, scale: 1, duration: rustig ? 420 : 150, ease: rustig ? 'Sine.out' : 'Back.out' });
+    s.tweens.add({ targets: sp, alpha: 0, scale: rustig ? 0.9 : 0.7, duration: rustig ? 500 : 240, delay: rustig ? 1500 : 1000, onComplete: () => sp.destroy() });
     spookjes.push(sp);
   }
   // na de flits: de antwoord-zerkjes verschijnen (of ze zijn er al)
-  s.time.delayedCall(1360, () => {
+  s.time.delayedCall(rustig ? 2100 : 1360, () => {
     if (F.klaar) return;
     F.bezig = false;
     s.questText.setText('En… weg! Hoeveel spookjes waren het? 👻');

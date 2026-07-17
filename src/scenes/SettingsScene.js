@@ -37,8 +37,11 @@ export default class SettingsScene extends Phaser.Scene {
     // Muziek aan/uit
     this.toggleRow(width / 2, 180, '🎵 Achtergrondmuziek', 'music');
 
+    // Rustige animaties (toegankelijkheid: geen flits/strobo, minder confetti)
+    this.toggleRow(width / 2, 224, '🎬 Rustige animaties', 'reducedMotion');
+
     // Zichtbare uit-knop zolang de ouder-modus aanstaat
-    if (getSetting('ouderModus')) this.toggleRow(width / 2, 232, '🔧 Ouder-modus', 'ouderModus');
+    if (getSetting('ouderModus')) this.toggleRow(width / 2, 268, '🔧 Ouder-modus', 'ouderModus');
 
     // Naam van het kind. (De oude globale moeilijkheids-knop is verwijderd:
     // de spellen regelen hun moeilijkheid nu zelf, adaptief per spel.)

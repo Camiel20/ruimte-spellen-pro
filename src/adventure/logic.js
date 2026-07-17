@@ -742,3 +742,39 @@ export function validateLevel(L) {
 
   return errors;
 }
+
+// ===== ANTI-HERHALING-RUBRIEK =====
+// Los van validateLevel (dat over SPEELBAARHEID gaat) bewaakt dit de ONTWERP-
+// rubriek uit GAME-DESIGN.md: het tegengif tegen de "poort-muur-gang" waar elke
+// wereld hetzelfde voelt. Zie [[getallen-land-status]] / het rework-plan.
+//
+// 'Zware poort-stations' = systems die een schermhoge doorGroup-poort bouwen
+// die pas opengaat bij een goed antwoord (het "stoppen-antwoorden-door"-ritme).
+// vraagMuren tellen NIET mee: dat is een lichte spring-tegen-het-blok-accentbeat.
+export const ZWARE_POORTEN = [
+  'baskets', 'bowlingBanen', 'dinoRitten', 'flitsSpoken', 'knopenWinkels',
+  'koekoeken', 'maatRekken', 'parenBorden', 'patroon', 'plates', 'portalen',
+  'sneeuwballen', 'tandwielen', 'thermometers', 'weegWippen',
+];
+
+// Welke zware poort-stations gebruikt dit level? (meerdere instanties van
+// hetzelfde type tellen als één — 2 thermometers is nog steeds één 'ritme'.)
+export function zwarePoortenIn(L) {
+  return ZWARE_POORTEN.filter((veld) => {
+    const x = L[veld];
+    return Array.isArray(x) ? x.length > 0 : !!x; // patroon is één object
+  });
+}
+
+// Geeft een lijst rubriek-overtredingen (leeg = in orde). Nu: max één zwaar
+// poort-station-TYPE per level — de reken-truc hoort een hoogtepunt te zijn,
+// niet de hele ruggengraat. (Wordt tijdens de rework-golven per wereld
+// aangezet; zie tests/rubriek.test.js.)
+export function rubriekViolations(L) {
+  const v = [];
+  const poorten = zwarePoortenIn(L);
+  if (poorten.length > 1) {
+    v.push(`[${L.id}] ${poorten.length} zware poort-stations (${poorten.join(', ')}) — max 1 per level; de reken-truc is een hoogtepunt, niet de ruggengraat`);
+  }
+  return v;
+}

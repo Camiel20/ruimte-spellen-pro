@@ -24,6 +24,7 @@ const DEFAULT = {
   settings: {
     music: true,            // achtergrondmuziek aan/uit
     childName: 'Adrian',    // naam van het kind (menu + naam-schrijven)
+    reducedMotion: false,   // rustige animaties: geen flits/strobo, minder confetti
   },
 };
 

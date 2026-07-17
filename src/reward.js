@@ -3,15 +3,20 @@
 // confetti. Roep aan met showReward(scene, { titel, sterren, medaille }).
 
 import { addStars, giveMedal } from './progress.js';
+import { reducedMotion } from './motion.js';
 
 export function confettiBurst(scene, depth = 300) {
   const { width } = scene.scale;
+  const rustig = reducedMotion();
+  // rustige modus: minder deeltjes, trager, geen ADD-flikker
   const p = scene.add.particles(width / 2, 80, 'star', {
     x: { min: 0, max: width }, y: -10,
-    speedY: { min: 120, max: 320 }, speedX: { min: -60, max: 60 },
-    scale: { start: 1.6, end: 0 }, lifespan: 2200, quantity: 3,
+    speedY: rustig ? { min: 60, max: 140 } : { min: 120, max: 320 },
+    speedX: rustig ? { min: -20, max: 20 } : { min: -60, max: 60 },
+    scale: { start: rustig ? 1.1 : 1.6, end: 0 }, lifespan: 2200,
+    quantity: rustig ? 1 : 3,
     tint: [0xf87171, 0xfbbf24, 0x4ade80, 0x60a5fa, 0xa855f7, 0xec4899],
-    blendMode: 'ADD',
+    blendMode: rustig ? 'NORMAL' : 'ADD',
   }).setScrollFactor(0).setDepth(depth);
   scene.time.delayedCall(2200, () => p.destroy());
   return p;

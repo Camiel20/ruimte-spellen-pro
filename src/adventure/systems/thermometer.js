@@ -11,6 +11,7 @@ import Phaser from 'phaser';
 import { SFX } from '../../sound.js';
 import { Voice } from '../../voice.js';
 import { confettiBurst } from '../../reward.js';
+import { maakTikbaar } from '../tik.js';
 
 export const THERMO_DEUR = 160; // afstand thermometer → poort (ook voor de validator)
 const PPU = 22;                 // pixels per graad op de schaal
@@ -109,8 +110,7 @@ function maakKnop(s, x, y, pijl, kleur) {
   if (pijl === 'kouder') g.fillTriangle(-11, -7, 11, -7, 0, 12);
   else g.fillTriangle(-11, 7, 11, 7, 0, -12);
   c.add(g);
-  c.setInteractive(new Phaser.Geom.Rectangle(-28, -28, 56, 60), Phaser.Geom.Rectangle.Contains);
-  c.input.cursor = 'pointer';
+  maakTikbaar(s, c, { w: 56, h: 60 }); // gedeelde tik-regels (depth 13 + gecentreerd)
   return c;
 }
 
@@ -170,8 +170,7 @@ export default {
       lg.fillStyle(0xffffff, 0.9);
       for (let a = 0; a < 6; a++) { const ang = (a / 6) * Math.PI * 2; lg.beginPath(); lg.moveTo(0, 0); lg.lineTo(Math.cos(ang) * 14, Math.sin(ang) * 14); lg.strokePath(); }
       luik.add(lg);
-      luik.setInteractive(new Phaser.Geom.Rectangle(-26, -26, 52, 52), Phaser.Geom.Rectangle.Contains);
-      luik.input.cursor = 'pointer';
+      maakTikbaar(s, luik, { w: 52, h: 52 });
 
       // de poort (schermhoge ijs-blokkade)
       const muurX = T0.x + THERMO_DEUR;

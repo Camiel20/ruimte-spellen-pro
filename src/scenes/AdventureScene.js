@@ -3,6 +3,7 @@ import { SFX, initAudio } from '../sound.js';
 import { Voice } from '../voice.js';
 import { startMusic, muziekVoorTerrein } from '../music.js';
 import { confettiBurst, showReward } from '../reward.js';
+import { reducedMotion } from '../motion.js';
 import { addStars, getStars, markLevelDone, setAdventureCurrent, getAdventureCurrent, heeftGoudenNul, markGoudenNul, telGoudenNullen, getSetting, getLevelRecord } from '../progress.js';
 import { sig, lighten, darker } from '../adventure/palette.js';
 import BuildOverlay from '../adventure/BuildOverlay.js';
@@ -10,6 +11,7 @@ import { drawCubeStack, addNumberDisc, addFeet, makeSleepingFriend, drawAwakeFri
 import { buildBackground, buildWater, buildPlatforms } from '../adventure/terrain.js';
 import { drawGrommelArt, recolorGrommelArt } from '../adventure/enemyArt.js';
 import { bossLook } from '../adventure/bossRegistry.js';
+import { bossStijl } from '../adventure/bossStijlen/index.js';
 import { SYSTEMS } from '../adventure/systems/index.js';
 import { GIANT_MIN } from '../adventure/systems/grootte.js';
 import { tekenHoedje } from '../adventure/hoedjes.js';
@@ -398,24 +400,7 @@ export default class AdventureScene extends Phaser.Scene {
     }
     this.sparkleAt(c.x, c.y, 12); SFX.combine(pz.doel || 4);
     const left = pz.stages.length - pz.stageIndex;
-    const actie = pz.stijl === 'vang' ? `vang er ${pz.doel}`
-      : pz.stijl === 'spoel' ? `zoek de pot met ${pz.doel}`
-      : pz.stijl === 'beuk' ? 'word een reus en RAM hem'
-      : pz.stijl === 'tien' ? `${pz.doel} + ? = 10`
-      : pz.stijl === 'surf' ? 'tel de golven'
-      : pz.stijl === 'schud' ? `stamp en raap er ${pz.doel}`
-      : pz.stijl === 'splits' ? 'splits het getal'
-      : pz.stijl === 'stomp' ? 'spring op zijn kop'
-      : pz.stijl === 'paar' ? 'zoek de tweelingsok'
-      : pz.stijl === 'kegel' ? 'reken de kegels uit'
-      : pz.stijl === 'sprong' ? 'tel de sprongen mee'
-      : pz.stijl === 'klok' ? 'zoek de goede klok'
-      : pz.stijl === 'balans' ? 'maak de halter gelijk'
-      : pz.stijl === 'vries' ? 'tel terug naar het ijs'
-      : pz.stijl === 'flits' ? 'tel de spookjes'
-      : pz.stijl === 'sisser' ? `schrijf de "${pz.stages[pz.stageIndex].letter}"`
-      : pz.stijl === 'finale' ? ({ vang: 'vang de kleur-orbs', muur: 'ram zijn schilden', bouw: `bouw de ${pz.doel}` })[pz.stages[pz.stageIndex].soort]
-      : `bouw de ${pz.doel}`;
+    const actie = bossStijl(pz.stijl).actie(pz); // label uit de baas-stijl-registry
     if (pz.stijl === 'tien') c.bubbleText.setText(`${pz.doel}+?`);
     if (pz.stijl === 'surf') c.bubbleText.setText('?'); // niet verklappen!
     if (pz.stijl === 'splits') {
@@ -486,109 +471,12 @@ export default class AdventureScene extends Phaser.Scene {
     // bij 'surf'/'splits'/'sisser' is er geen getal-doel om voor te lezen;
     // bij 'paar' is het doel een patroon (geen getal) en bij 'kegel'/
     // 'sprong'/'klok' is het doel het ANTWOORD — voorlezen zou het verklappen
-    const stil = pz.stijl === 'surf' || pz.stijl === 'splits' || pz.stijl === 'sisser'
-      || pz.stijl === 'paar' || pz.stijl === 'kegel' || pz.stijl === 'sprong' || pz.stijl === 'klok'
-      || pz.stijl === 'vries' || pz.stijl === 'flits';
-    if (!stil) Voice.number(pz.doel);
-    // gesproken aanmoediging per stijl, netjes ná het getal
-    const BAAS_CLIP = { vang: 'baas-vang', spoel: 'baas-spoel', beuk: 'baas-beuk', tien: 'baas-tien', surf: 'baas-surf', schud: 'baas-schud', splits: 'baas-splits', stomp: 'baas-stomp', sisser: 'baas-bouw', paar: 'baas-paar', kegel: 'baas-kegel', sprong: 'baas-sprong', klok: 'baas-klok', balans: 'baas-balans', vries: 'baas-vries', flits: 'baas-flits' };
-    const finaleClip = pz.stijl === 'finale'
-      ? ({ vang: 'baas-vang', muur: 'hint-grauwmuur', bouw: 'baas-bouw' })[pz.stages[pz.stageIndex].soort] : null;
-    Voice.hint(finaleClip || BAAS_CLIP[pz.stijl], stil ? 200 : 1100);
-    if (pz.stijl === 'vang') {
-      const look = bossLook(pz.look);
-      this.questText.setText((look.vangTekst || 'Vang {n} toppings terug! 🍅').replace('{n}', pz.doel));
-      this.strooiToppings(pz);
-    } else if (pz.stijl === 'beuk') {
-      this.questText.setText(`Hij is ${pz.doel} groot! Hap een appel en RAM hem! 🍎🦣`);
-    } else if (pz.stijl === 'tien') {
-      this.questText.setText(`${pz.doel} + ? = 10 — raak de goede bel! 💙`);
-      pz.bossArt.bubbleText.setText(`${pz.doel}+?`);
-      this.toonBossBellen(pz);
-    } else if (pz.stijl === 'surf') {
-      // TEL de golven: de baas stuurt een telbaar setje — geen antwoord tonen!
-      this.questText.setText('TEL de golven — daar komen ze! 🌊');
-      pz.bossArt.bubbleText.setText('?');
-      this.surfBurst(pz);
-    } else if (pz.stijl === 'schud') {
-      // eerst de boom wakker stampen — dán vallen de eikels
-      pz.eikelsLos = false;
-      this.questText.setText('STAMP naast de boom — schud de eikels los! 🌰');
-    } else if (pz.stijl === 'splits') {
-      const st = pz.stages[pz.stageIndex];
-      this.questText.setText(`${st.van} = ${st.weg} + ? — raak het goede kristal! 💎`);
-      pz.bossArt.bubbleText.setText(`${st.van}=${st.weg}+?`).setFontSize(14);
-      this.toonBossBellen(pz);
-    } else if (pz.stijl === 'paar') {
-      // de Sokken-Dief toont een sok — raak de TWEELING tussen de opties
-      this.questText.setText('Kijk in zijn wolkje — raak de sok die HETZELFDE is! 🧦');
-      if (pz.bossArt.bubbleSok) { pz.bossArt.bubbleSok.clear(); drawSok(pz.bossArt.bubbleSok, pz.doel, 0.62); }
-      this.toonBossBellen(pz);
-    } else if (pz.stijl === 'kegel') {
-      // de Kegel-Koning kegelt zijn onderdanen om — hoeveel staan er nog?
-      const st = pz.stages[pz.stageIndex];
-      this.questText.setText(`${st.van} kegels, ${st.weg} vallen om — hoeveel staan er NOG? 🎳`);
-      pz.bossArt.bubbleText.setText(`${st.van}−${st.weg}=?`).setFontSize(14);
-      this.kegelStamp(pz, st);
-      this.toonBossBellen(pz);
-    } else if (pz.stijl === 'sprong') {
-      // Reken-Rex springt over de getallenlijn — tel mee en raak de landing
-      const st = pz.stages[pz.stageIndex];
-      this.questText.setText(`Start op ${st.start}: ${st.keer} sprongen van ${st.sprong} — waar landt hij? 🦖`);
-      pz.bossArt.bubbleText.setText(`${st.start} ▸ ?`).setFontSize(18);
-      this.sprongVisual(pz, st);
-      this.toonBossBellen(pz);
-    } else if (pz.stijl === 'klok') {
-      // Baron Tik-Tak: raak de klok die de gevraagde tijd toont
-      this.questText.setText(`Zet de tijd op ${this.tijdTekst(pz.doel)} — raak de goede klok! 🕐`);
-      pz.bossArt.bubbleText.setText(this.tijdTekst(pz.doel)).setFontSize(16);
-      this.toonBossBellen(pz);
-    } else if (pz.stijl === 'balans') {
-      // De Sterke Man: maak zijn halter aan jouw kant precies even zwaar
-      this.questText.setText(`Zijn kant weegt ${pz.doel} — maak jouw kant GELIJK! 💪`);
-      this.toonBalans(pz);
-    } else if (pz.stijl === 'stomp') {
-      this.questText.setText('Zweef omhoog en spring ÓP zijn kop! 🌙');
-    } else if (pz.stijl === 'sisser') {
-      // De Sisser: schrijf de fase-letter terug (loop naar het slapende blok →
-      // ✋). Ondertussen hijst hij stilte-wolkjes naar je toe (ontwijken!).
-      const letter = pz.stages[pz.stageIndex].letter;
-      this.questText.setText(`Schrijf de "${letter}" om De Sisser te verzwakken! ✍️`);
-      pz.bossArt.bubbleText.setText(this.maskWoord(pz.woord, pz.stageIndex));
-      this.toonSisserBlok(pz);
-    } else if (pz.stijl === 'finale') {
-      // BARON GRAUW: drie aktes die de hele reis samenvatten. Elke akte
-      // delegeert naar een bestaande sub-flow via het soort-veld.
-      const akte = pz.stages[pz.stageIndex];
-      pz.soort = akte.soort;
-      this.nulReact('ster'); // Nul moedigt je aan — het heldenmoment!
-      if (akte.soort === 'vang') {
-        this.questText.setText('Hij morst de gestolen KLEUR — vang de orbs! 🌈');
-        this.strooiToppings(pz);
-      } else if (akte.soort === 'muur') {
-        this.questText.setText('Hij verschanst zich — RAM zijn schilden! 🔟💥');
-        this.spawnFinaleMuren(pz);
-      } else {
-        // de slot-akte: het grootste bouwwerk van het spel, via de
-        // vertrouwde bouw-flow (stijl-overname is definitief: dit is
-        // altijd de laatste akte, daarna volgt defeatBoss)
-        pz.stijl = 'bouw';
-        this.questText.setText('De laatste klap: bouw zijn grootste getal! 🔨');
-      }
-    } else if (pz.stijl === 'vries') {
-      // De Vrieskoning: tel zijn thermometer terug naar het doel (0 of eronder)
-      this.questText.setText(`Zijn ijs is ${pz.stages[pz.stageIndex].start}° — tel terug naar ${pz.doel}°! ❄️`);
-      pz.bossArt.bubbleText.setText(`${pz.stages[pz.stageIndex].start}°`).setFontSize(18);
-      this.toonVriesMeter(pz);
-    } else if (pz.stijl === 'flits') {
-      // Het Grote Boe: hij tovert spookjes die 1 seconde oplichten — tel ze!
-      this.questText.setText('Kijk snel — hoeveel spookjes zie je? 👻');
-      pz.bossArt.bubbleText.setText('?');
-      this.flitsBurst(pz, true);
-    } else {
-      this.questText.setText(`Spring in de pot met ${pz.doel}! 🚽`);
-      this.toonBossPotten(pz);
-    }
+    // stil? (doel niet hardop verklappen) + voorlees-clip: uit de stijl-registry
+    const stijlDef = bossStijl(pz.stijl);
+    if (!stijlDef.stil) Voice.number(pz.doel);
+    const baasClip = typeof stijlDef.clip === 'function' ? stijlDef.clip(pz) : stijlDef.clip;
+    Voice.hint(baasClip, stijlDef.stil ? 200 : 1100);
+    bossStijl(pz.stijl).startFase(this, pz); // per-stijl fase-opbouw (registry)
     // de baas blijft gooien zolang de fase duurt — ontwijken én werken!
     // (NIET bij 'surf'/'flits': daar zijn de golven/flits-spookjes zélf de
     // telbare puzzel — extra projectielen zouden het tellen vertroebelen.)
@@ -956,7 +844,8 @@ export default class AdventureScene extends Phaser.Scene {
   flitsBurst(pz, toonBellen) {
     const groundTop = this.level.platforms[0][1];
     const n = pz.doel;
-    this.tweens.add({ targets: pz.bossArt, angle: -6, duration: 140, yoyo: true, repeat: 2 });
+    const rustig = reducedMotion(); // zachte, tragere flits — geen strobo
+    this.tweens.add({ targets: pz.bossArt, angle: -6, duration: 140, yoyo: true, repeat: rustig ? 0 : 2 });
     SFX.sparkle();
     const spread = [];
     for (let i = 0; i < n; i++) {
@@ -973,12 +862,12 @@ export default class AdventureScene extends Phaser.Scene {
       for (let k = -2; k <= 2; k++) g.fillCircle(k * 7.5, 16, 4);
       g.fillStyle(0x2b2f34, 1); g.fillCircle(-5, -2, 2.4); g.fillCircle(5, -2, 2.4);
       c.add(g);
-      c.setAlpha(0).setScale(0.6);
-      this.tweens.add({ targets: c, alpha: 1, scale: 1, duration: 160, ease: 'Back.out' });
-      this.tweens.add({ targets: c, alpha: 0, scale: 0.7, duration: 260, delay: 1000, onComplete: () => c.destroy() });
+      c.setAlpha(0).setScale(rustig ? 0.9 : 0.6);
+      this.tweens.add({ targets: c, alpha: 1, scale: 1, duration: rustig ? 420 : 160, ease: rustig ? 'Sine.out' : 'Back.out' });
+      this.tweens.add({ targets: c, alpha: 0, scale: rustig ? 0.9 : 0.7, duration: rustig ? 500 : 260, delay: rustig ? 1500 : 1000, onComplete: () => c.destroy() });
     }
     if (toonBellen) {
-      this.time.delayedCall(1380, () => {
+      this.time.delayedCall(rustig ? 2100 : 1380, () => {
         if (pz.solved || !pz.faseActief) return;
         this.questText.setText('En… weg! Hoeveel waren het? 👻');
         if (!pz.belSprites || !pz.belSprites.some((b) => b.active)) this.toonBossBellen(pz);
@@ -1006,193 +895,217 @@ export default class AdventureScene extends Phaser.Scene {
   }
 
   // Per frame: vang-toppings rapen / op de goede pot springen.
+  // Per frame: dispatch de hit-detectie naar de stijl (baas-stijl-registry).
+  // Elke stijl kiest z'n `updateFase`; de zware branch-bodies staan hieronder
+  // als scene-methodes (ze leunen op veel scene-state: player, tweens, helpers).
   updateBossFase(time) {
-    const p = this.player;
     for (const pz of this.puzzles) {
       if (pz.type !== 'boss' || !pz.faseActief || pz.solved) continue;
-      // 'schud' vóór het rapen: eerst naast de boom STAMPEN (hard landen)
-      if (pz.stijl === 'schud' && !pz.eikelsLos) {
-        const opGrond = p.body.blocked.down || p.body.touching.down;
-        if (!opGrond) pz.valVy = Math.max(pz.valVy || 0, p.body.velocity.y);
+      bossStijl(pz.stijl).updateFase?.(this, pz, time);
+    }
+  }
+
+  // 'schud' vóór het rapen: eerst naast de boom STAMPEN (hard landen).
+  bossSchudStamp(pz, time) {
+    const p = this.player;
+    const opGrond = p.body.blocked.down || p.body.touching.down;
+    if (!opGrond) pz.valVy = Math.max(pz.valVy || 0, p.body.velocity.y);
+    else {
+      if ((pz.valVy || 0) > 520 && Math.abs(p.x - pz.bossArt.x) < 280 && time > (pz.schudCd || 0)) {
+        pz.schudCd = time + 900;
+        this.schudBoom(pz);
+      }
+      pz.valVy = 0;
+    }
+  }
+
+  // finale akte 2: beide grauwe schilden geramd?
+  bossFinaleMuur(pz) {
+    if ((pz.finaleMuren || []).length && pz.finaleMuren.every((m) => m.broken)) {
+      pz.finaleMuren = [];
+      this.advanceBossStage(pz);
+    }
+  }
+
+  // vang / schud-eikels / finale-vang: raap PRECIES pz.doel gevallen dingen.
+  bossVangUpdate(pz) {
+    const p = this.player;
+    for (const f of pz.fruit) {
+      if (!f.active || f.taken) continue;
+      if (Math.abs(p.x - f.x) < 40 && Math.abs(p.y - f.y) < 52) {
+        f.taken = true;
+        pz.vangst += 1;
+        this.tweens.killTweensOf(f);
+        this.tweens.add({ targets: f, scale: 0, y: f.y - 22, duration: 220, ease: 'Back.in', onComplete: () => f.destroy() });
+        SFX.coin(); Voice.number(pz.vangst);
+        pz.teller.setText(`${pz.vangIcoon || '🍅'} ${pz.vangst} / ${pz.doel}`);
+        this.tweens.add({ targets: pz.teller, scale: 1.18, duration: 110, yoyo: true });
+        if (pz.vangst >= pz.doel) {
+          // restjes meteen als 'taken' markeren én de lus verlaten: twee
+          // vangsten in dezelfde frame mochten anders dóórtellen in de
+          // volgende fase (dubbele fase-sprong)
+          pz.fruit.forEach((r) => { if (r.active && !r.taken) { r.taken = true; this.tweens.add({ targets: r, alpha: 0, scale: 0.4, duration: 300, onComplete: () => r.destroy() }); } });
+          this.advanceBossStage(pz);
+          break;
+        }
+      }
+    }
+  }
+
+  // beuk: als REUS ram je de Reuzen-Grommel een maat kleiner.
+  bossBeukUpdate(pz, time) {
+    if (!(time > (pz.beukCd || 0))) return;
+    const p = this.player;
+    if (Math.abs(p.x - pz.bossArt.x) < 175 && Math.abs(p.y - pz.bossArt.y) < 230) {
+      if ((this.reus || 1) >= GIANT_MIN) {
+        pz.beukCd = time + 1000;
+        this.beukBoss(pz);
+      } else if (!this._beukHintAt || time > this._beukHintAt) {
+        this._beukHintAt = time + 1900;
+        this.questText.setText('Zó ram je hem niet om — word eerst een REUS! 🍎');
+      }
+    }
+  }
+
+  // keuze-stijlen (tien/splits/paar/kegel/sprong/klok/flits): raak de goede bel.
+  //  tien: 10 − getoond getal; overig: pz.doel.
+  bossKeuzeUpdate(pz, time) {
+    if (!(time > (pz.belCd || 0))) return;
+    const p = this.player;
+    const goedWaarde = pz.stijl === 'tien' ? 10 - pz.doel : pz.doel;
+    const st = pz.stages[pz.stageIndex];
+    for (const bel of (pz.belSprites || [])) {
+      if (!bel.active || bel.taken) continue;
+      const dxB = Math.max(p.body.left - bel.x, 0, bel.x - p.body.right);
+      const dyB = Math.max(p.body.top - bel.y, 0, bel.y - p.body.bottom);
+      if (dxB * dxB + dyB * dyB > 50 * 50) continue;
+      pz.belCd = time + 900;
+      if (bel.waarde === goedWaarde) {
+        // HET MAATJE! Hartjes, en de baas wankelt.
+        bel.taken = true;
+        SFX.correct();
+        if (pz.stijl === 'paar') Voice.cue('great'); // een patroon lees je niet voor
+        else if (pz.stijl === 'klok') Voice.cue('cheer'); // "7,5" voorlezen slaat nergens op
+        else Voice.number(bel.waarde);
+        this.tweens.killTweensOf(bel);
+        this.heart(bel.x, bel.y - 20); this.heart(bel.x - 20, bel.y); this.heart(bel.x + 20, bel.y);
+        this.tweens.add({ targets: bel, scale: 0, y: bel.y - 26, duration: 260, ease: 'Back.in', onComplete: () => bel.destroy() });
+        this.tweens.add({ targets: pz.bossArt, angle: { from: -7, to: 7 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => pz.bossArt.setAngle(0) });
+        this.advanceBossStage(pz);
+      } else {
+        // vriendelijke plop — probeer een andere bel
+        bel.taken = true;
+        SFX.oops(); Voice.cue('oops');
+        this.rekenFouten += 1;
+        this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 240, ease: 'Back.in' });
+        this.questText.setText(pz.stijl === 'tien'
+          ? `${pz.doel} + ${bel.waarde} is geen 10 — een andere bel! 💛`
+          : pz.stijl === 'paar' ? 'Die is nét anders — kijk goed naar het patroon! 🔍'
+          : pz.stijl === 'kegel' ? `${st.van} − ${st.weg} is geen ${bel.waarde} — tel de kegels die staan! 🎳`
+          : pz.stijl === 'sprong' ? `Niet ${bel.waarde} — tel de sprongen: steeds ${st.sprong} erbij! 🦖`
+          : pz.stijl === 'klok' ? `Die klok staat niet op ${this.tijdTekst(pz.doel)} — kijk nog eens! 🕐`
+          : pz.stijl === 'flits' ? 'Niet helemaal — kijk nog eens, ze komen terug! 👻'
+          : `${st.weg} + ${bel.waarde} is geen ${st.van} — een ander kristal! 💎`);
+        // anti-gok: na 2 fouten pulseert het juiste antwoord zachtjes
+        pz.fouten = (pz.fouten || 0) + 1;
+        if (pz.fouten >= 2) {
+          const maatje = (pz.belSprites || []).find((b) => b.active && b.waarde === goedWaarde);
+          if (maatje) this.pulsHulp(maatje);
+          Voice.hint({ tien: 'baas-tien', splits: 'baas-splits', paar: 'baas-paar', kegel: 'baas-kegel', sprong: 'baas-sprong', klok: 'baas-klok', flits: 'baas-flits' }[pz.stijl], 900);
+        }
+        // flits: laat de spookjes nog eens flitsen zodat je opnieuw kunt tellen
+        if (pz.stijl === 'flits') this.time.delayedCall(700, () => { if (!pz.solved && pz.faseActief) this.flitsBurst(pz, false); });
+        this.time.delayedCall(2200, () => {
+          if (!bel.active || pz.solved) return;
+          bel.taken = false; bel.setScale(1).setAlpha(1); SFX.sparkle();
+        });
+      }
+      break;
+    }
+  }
+
+  // surf: tel de golven en raak de goede schelp; fout = golven rollen opnieuw.
+  bossSurfUpdate(pz, time) {
+    if (!(time > (pz.belCd || 0))) return;
+    const p = this.player;
+    for (const bel of (pz.belSprites || [])) {
+      if (!bel.active || bel.taken) continue;
+      const dxB = Math.max(p.body.left - bel.x, 0, bel.x - p.body.right);
+      const dyB = Math.max(p.body.top - bel.y, 0, bel.y - p.body.bottom);
+      if (dxB * dxB + dyB * dyB > 50 * 50) continue;
+      pz.belCd = time + 900;
+      if (bel.waarde === pz.doel) {
+        // GOED GETELD! De Golf-Baas wankelt.
+        bel.taken = true;
+        SFX.correct(); Voice.number(bel.waarde);
+        this.burstStars(bel.x, bel.y, 8);
+        this.tweens.killTweensOf(bel);
+        this.tweens.add({ targets: bel, scale: 0, y: bel.y - 26, duration: 260, ease: 'Back.in', onComplete: () => bel.destroy() });
+        this.tweens.add({ targets: pz.bossArt, angle: { from: -7, to: 7 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => pz.bossArt.setAngle(0) });
+        this.advanceBossStage(pz);
+      } else {
+        // fout geteld → de golven rollen opnieuw: tel nog eens mee!
+        bel.taken = true;
+        SFX.oops(); Voice.cue('oops');
+        this.rekenFouten += 1;
+        this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 240, ease: 'Back.in' });
+        this.questText.setText('Hmm — kijk, ze komen nog een keer. Tel mee! 🌊');
+        pz.fouten = (pz.fouten || 0) + 1;
+        if (pz.fouten >= 2) {
+          const goed = (pz.belSprites || []).find((b) => b.active && b.waarde === pz.doel);
+          if (goed) this.pulsHulp(goed);
+        }
+        this.time.delayedCall(900, () => { if (!pz.solved && pz.faseActief) this.surfBurst(pz); });
+        this.time.delayedCall(2400, () => {
+          if (!bel.active || pz.solved) return;
+          bel.taken = false; bel.setScale(1).setAlpha(1); SFX.sparkle();
+        });
+      }
+      break;
+    }
+  }
+
+  // stomp: land vallend óp zijn kop (Mario-regel) → hij duikt weg.
+  bossStompUpdate(pz, time) {
+    if (!(time > (pz.stompCd || 0))) return;
+    const p = this.player;
+    const b = pz.bossArt;
+    if (p.body.velocity.y > 60 && Math.abs(p.x - b.x) < 80
+      && p.body.bottom > b.y - 130 && p.body.bottom < b.y + 20) {
+      pz.stompCd = time + 900;
+      p.body.setVelocityY(-560); // stuiter!
+      SFX.stomp(); Voice.number(pz.doel);
+      this.cameraPunch(0.05, 8);
+      this.burstStars(b.x, b.y - 40, 10);
+      this.tweens.add({ targets: b, y: b.y + 26, duration: 130, yoyo: true, ease: 'Quad.out' });
+      this.advanceBossStage(pz);
+    }
+  }
+
+  // spoel: spring in de pot met de goede som → waterstraal.
+  bossSpoelUpdate(pz, time) {
+    if (!(time > (pz.potCd || 0))) return;
+    const p = this.player;
+    const onFloor = p.body.blocked.down || p.body.touching.down;
+    for (const pot of (pz.potten || [])) {
+      if (!pot.active) continue;
+      if (Math.abs(p.x - pot.x) < 30 && onFloor) {
+        pz.potCd = time + 1100;
+        if (pot.som[0] + pot.som[1] === pz.doel) this.spoelTreffer(pz, pot);
         else {
-          if ((pz.valVy || 0) > 520 && Math.abs(p.x - pz.bossArt.x) < 280 && time > (pz.schudCd || 0)) {
-            pz.schudCd = time + 900;
-            this.schudBoom(pz);
-          }
-          pz.valVy = 0;
-        }
-        continue;
-      }
-      if (pz.stijl === 'finale' && pz.soort === 'muur') {
-        // akte 2: beide schilden geramd (het grauwmuren-systeem breekt ze)?
-        if ((pz.finaleMuren || []).length && pz.finaleMuren.every((m) => m.broken)) {
-          pz.finaleMuren = [];
-          this.advanceBossStage(pz);
-        }
-        continue;
-      }
-      if (pz.stijl === 'vang' || (pz.stijl === 'schud' && pz.eikelsLos)
-        || (pz.stijl === 'finale' && pz.soort === 'vang')) {
-        for (const f of pz.fruit) {
-          if (!f.active || f.taken) continue;
-          if (Math.abs(p.x - f.x) < 40 && Math.abs(p.y - f.y) < 52) {
-            f.taken = true;
-            pz.vangst += 1;
-            this.tweens.killTweensOf(f);
-            this.tweens.add({ targets: f, scale: 0, y: f.y - 22, duration: 220, ease: 'Back.in', onComplete: () => f.destroy() });
-            SFX.coin(); Voice.number(pz.vangst);
-            pz.teller.setText(`${pz.vangIcoon || '🍅'} ${pz.vangst} / ${pz.doel}`);
-            this.tweens.add({ targets: pz.teller, scale: 1.18, duration: 110, yoyo: true });
-            if (pz.vangst >= pz.doel) {
-              // restjes meteen als 'taken' markeren én de lus verlaten: twee
-              // vangsten in dezelfde frame mochten anders dóórtellen in de
-              // volgende fase (dubbele fase-sprong)
-              pz.fruit.forEach((r) => { if (r.active && !r.taken) { r.taken = true; this.tweens.add({ targets: r, alpha: 0, scale: 0.4, duration: 300, onComplete: () => r.destroy() }); } });
-              this.advanceBossStage(pz);
-              break;
-            }
+          SFX.oops(); Voice.cue('oops');
+          this.tweens.add({ targets: pot, angle: { from: -5, to: 5 }, duration: 70, yoyo: true, repeat: 4, onComplete: () => pot.setAngle(0) });
+          p.body.setVelocity(-220, -300); // zachtjes teruggeworpen
+          this.questText.setText(`Die som is geen ${pz.doel} — een andere pot! 💛`);
+          // anti-gok: na 2 fouten pulseert de juiste pot zachtjes
+          pz.fouten = (pz.fouten || 0) + 1;
+          if (pz.fouten >= 2) {
+            const goed = (pz.potten || []).find((pt) => pt.active && pt.som[0] + pt.som[1] === pz.doel);
+            if (goed) this.pulsHulp(goed);
+            Voice.hint('baas-spoel', 900);
           }
         }
-      } else if (pz.stijl === 'beuk' && time > (pz.beukCd || 0)) {
-        // Dicht genoeg bij de Reuzen-Grommel? Als REUS ram je hem een maat
-        // kleiner; op je eigen maat krijg je een hint (de appel wacht).
-        if (Math.abs(p.x - pz.bossArt.x) < 175 && Math.abs(p.y - pz.bossArt.y) < 230) {
-          if ((this.reus || 1) >= GIANT_MIN) {
-            pz.beukCd = time + 1000;
-            this.beukBoss(pz);
-          } else if (!this._beukHintAt || time > this._beukHintAt) {
-            this._beukHintAt = time + 1900;
-            this.questText.setText('Zó ram je hem niet om — word eerst een REUS! 🍎');
-          }
-        }
-      } else if ((pz.stijl === 'tien' || pz.stijl === 'splits' || pz.stijl === 'paar' || pz.stijl === 'kegel' || pz.stijl === 'sprong' || pz.stijl === 'klok' || pz.stijl === 'flits') && time > (pz.belCd || 0)) {
-        // tien: raak het 10-maatje (goed = 10 − getoond getal)
-        // splits/kegel/sprong/klok: raak het antwoord (goed = pz.doel)
-        // paar: raak de sok met HETZELFDE patroon (goed = pz.doel, een naam)
-        // flits: raak het zerkje met het aantal geflitste spookjes (goed = pz.doel)
-        const goedWaarde = pz.stijl === 'tien' ? 10 - pz.doel : pz.doel;
-        const st = pz.stages[pz.stageIndex];
-        for (const bel of (pz.belSprites || [])) {
-          if (!bel.active || bel.taken) continue;
-          const dxB = Math.max(p.body.left - bel.x, 0, bel.x - p.body.right);
-          const dyB = Math.max(p.body.top - bel.y, 0, bel.y - p.body.bottom);
-          if (dxB * dxB + dyB * dyB > 50 * 50) continue;
-          pz.belCd = time + 900;
-          if (bel.waarde === goedWaarde) {
-            // HET MAATJE! Hartjes, en de baas wankelt.
-            bel.taken = true;
-            SFX.correct();
-            if (pz.stijl === 'paar') Voice.cue('great'); // een patroon lees je niet voor
-            else if (pz.stijl === 'klok') Voice.cue('cheer'); // "7,5" voorlezen slaat nergens op
-            else Voice.number(bel.waarde);
-            this.tweens.killTweensOf(bel);
-            this.heart(bel.x, bel.y - 20); this.heart(bel.x - 20, bel.y); this.heart(bel.x + 20, bel.y);
-            this.tweens.add({ targets: bel, scale: 0, y: bel.y - 26, duration: 260, ease: 'Back.in', onComplete: () => bel.destroy() });
-            this.tweens.add({ targets: pz.bossArt, angle: { from: -7, to: 7 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => pz.bossArt.setAngle(0) });
-            this.advanceBossStage(pz);
-          } else {
-            // vriendelijke plop — probeer een andere bel
-            bel.taken = true;
-            SFX.oops(); Voice.cue('oops');
-            this.rekenFouten += 1;
-            this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 240, ease: 'Back.in' });
-            this.questText.setText(pz.stijl === 'tien'
-              ? `${pz.doel} + ${bel.waarde} is geen 10 — een andere bel! 💛`
-              : pz.stijl === 'paar' ? 'Die is nét anders — kijk goed naar het patroon! 🔍'
-              : pz.stijl === 'kegel' ? `${st.van} − ${st.weg} is geen ${bel.waarde} — tel de kegels die staan! 🎳`
-              : pz.stijl === 'sprong' ? `Niet ${bel.waarde} — tel de sprongen: steeds ${st.sprong} erbij! 🦖`
-              : pz.stijl === 'klok' ? `Die klok staat niet op ${this.tijdTekst(pz.doel)} — kijk nog eens! 🕐`
-              : pz.stijl === 'flits' ? 'Niet helemaal — kijk nog eens, ze komen terug! 👻'
-              : `${st.weg} + ${bel.waarde} is geen ${st.van} — een ander kristal! 💎`);
-            // anti-gok: na 2 fouten pulseert het juiste antwoord zachtjes
-            pz.fouten = (pz.fouten || 0) + 1;
-            if (pz.fouten >= 2) {
-              const maatje = (pz.belSprites || []).find((b) => b.active && b.waarde === goedWaarde);
-              if (maatje) this.pulsHulp(maatje);
-              Voice.hint({ tien: 'baas-tien', splits: 'baas-splits', paar: 'baas-paar', kegel: 'baas-kegel', sprong: 'baas-sprong', klok: 'baas-klok', flits: 'baas-flits' }[pz.stijl], 900);
-            }
-            // flits: laat de spookjes nog eens flitsen zodat je opnieuw kunt tellen
-            if (pz.stijl === 'flits') this.time.delayedCall(700, () => { if (!pz.solved && pz.faseActief) this.flitsBurst(pz, false); });
-            this.time.delayedCall(2200, () => {
-              if (!bel.active || pz.solved) return;
-              bel.taken = false; bel.setScale(1).setAlpha(1); SFX.sparkle();
-            });
-          }
-          break;
-        }
-      } else if (pz.stijl === 'surf' && time > (pz.belCd || 0)) {
-        for (const bel of (pz.belSprites || [])) {
-          if (!bel.active || bel.taken) continue;
-          const dxB = Math.max(p.body.left - bel.x, 0, bel.x - p.body.right);
-          const dyB = Math.max(p.body.top - bel.y, 0, bel.y - p.body.bottom);
-          if (dxB * dxB + dyB * dyB > 50 * 50) continue;
-          pz.belCd = time + 900;
-          if (bel.waarde === pz.doel) {
-            // GOED GETELD! De Golf-Baas wankelt.
-            bel.taken = true;
-            SFX.correct(); Voice.number(bel.waarde);
-            this.burstStars(bel.x, bel.y, 8);
-            this.tweens.killTweensOf(bel);
-            this.tweens.add({ targets: bel, scale: 0, y: bel.y - 26, duration: 260, ease: 'Back.in', onComplete: () => bel.destroy() });
-            this.tweens.add({ targets: pz.bossArt, angle: { from: -7, to: 7 }, duration: 90, yoyo: true, repeat: 3, onComplete: () => pz.bossArt.setAngle(0) });
-            this.advanceBossStage(pz);
-          } else {
-            // fout geteld → de golven rollen opnieuw: tel nog eens mee!
-            bel.taken = true;
-            SFX.oops(); Voice.cue('oops');
-            this.rekenFouten += 1;
-            this.tweens.add({ targets: bel, scale: 0, alpha: 0, duration: 240, ease: 'Back.in' });
-            this.questText.setText('Hmm — kijk, ze komen nog een keer. Tel mee! 🌊');
-            pz.fouten = (pz.fouten || 0) + 1;
-            if (pz.fouten >= 2) {
-              const goed = (pz.belSprites || []).find((b) => b.active && b.waarde === pz.doel);
-              if (goed) this.pulsHulp(goed);
-            }
-            this.time.delayedCall(900, () => { if (!pz.solved && pz.faseActief) this.surfBurst(pz); });
-            this.time.delayedCall(2400, () => {
-              if (!bel.active || pz.solved) return;
-              bel.taken = false; bel.setScale(1).setAlpha(1); SFX.sparkle();
-            });
-          }
-          break;
-        }
-      } else if (pz.stijl === 'stomp' && time > (pz.stompCd || 0)) {
-        // Mario-regel: land vallend óp zijn kop (met de maan-zweef kom je
-        // hoog genoeg) → hij duikt weg en het tiental telt op.
-        const b = pz.bossArt;
-        if (p.body.velocity.y > 60 && Math.abs(p.x - b.x) < 80
-          && p.body.bottom > b.y - 130 && p.body.bottom < b.y + 20) {
-          pz.stompCd = time + 900;
-          p.body.setVelocityY(-560); // stuiter!
-          SFX.stomp(); Voice.number(pz.doel);
-          this.cameraPunch(0.05, 8);
-          this.burstStars(b.x, b.y - 40, 10);
-          this.tweens.add({ targets: b, y: b.y + 26, duration: 130, yoyo: true, ease: 'Quad.out' });
-          this.advanceBossStage(pz);
-        }
-      } else if (pz.stijl === 'spoel' && time > (pz.potCd || 0)) {
-        const onFloor = p.body.blocked.down || p.body.touching.down;
-        for (const pot of (pz.potten || [])) {
-          if (!pot.active) continue;
-          if (Math.abs(p.x - pot.x) < 30 && onFloor) {
-            pz.potCd = time + 1100;
-            if (pot.som[0] + pot.som[1] === pz.doel) this.spoelTreffer(pz, pot);
-            else {
-              SFX.oops(); Voice.cue('oops');
-              this.tweens.add({ targets: pot, angle: { from: -5, to: 5 }, duration: 70, yoyo: true, repeat: 4, onComplete: () => pot.setAngle(0) });
-              p.body.setVelocity(-220, -300); // zachtjes teruggeworpen
-              this.questText.setText(`Die som is geen ${pz.doel} — een andere pot! 💛`);
-              // anti-gok: na 2 fouten pulseert de juiste pot zachtjes
-              pz.fouten = (pz.fouten || 0) + 1;
-              if (pz.fouten >= 2) {
-                const goed = (pz.potten || []).find((pt) => pt.active && pt.som[0] + pt.som[1] === pz.doel);
-                if (goed) this.pulsHulp(goed);
-                Voice.hint('baas-spoel', 900);
-              }
-            }
-            break;
-          }
-        }
+        break;
       }
     }
   }

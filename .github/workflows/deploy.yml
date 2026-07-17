@@ -29,6 +29,9 @@ jobs:
           # lockfile-formaat van npm 11 (optionele platform-varianten).
           node-version: 24
       - run: npm ci
+      # Test-gate: de validator (die onspeelbare levels vangt) + de smoke-tests
+      # draaien hier, zodat een kapot level nooit stil live kan gaan.
+      - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
