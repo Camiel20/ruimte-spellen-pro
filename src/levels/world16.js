@@ -287,6 +287,9 @@ export const LEVEL_16_5 = {
     [1550, 430, 180, 26],   // ster-richel
   ],
 
+  // Rubriek: max 1 tel-station per level. Koekoek blijft de klok-puzzel; het
+  // tweede station (tandwiel) is vervangen door een MEGA-RAM-muur (kracht-beat,
+  // hergebruik uit W6) — meer afwisseling, geen dubbele "stop-en-antwoord".
   koekoeken: [
     { x: 900, uur: 6 },
   ],
@@ -295,9 +298,7 @@ export const LEVEL_16_5 = {
     { x: 1900, y: 260, lengte: 240 },
   ],
 
-  tandwielen: [
-    { x: 2800, y: 400 },
-  ],
+  grauwMuren: [2800], // ram de vastgelopen klokwerk-muur kapot (tien-kracht)
 
   pickups: [
     { x: 300, y: 600, amount: 1 },

@@ -168,15 +168,13 @@ export const LEVEL_11_3 = {
   ],
 
   duwKisten: [3300],
-
-  portalen: [
-    { x: 4400, doel: 7, opties: [[3, 4], [2, 4], [5, 3]] },
-  ],
+  // Rubriek: het paren-bord (even/oneven) is de tel-puzzel; het portaal-station
+  // eruit — de stuiter-billen + duw-kist geven al genoeg afwisseling.
 
   pickups: [
     { x: 300, y: 600, amount: 1 },
     { x: 1900, y: 600, amount: 1, regen: true }, // vóór het bord
-    { x: 4200, y: 600, amount: 1, regen: true }, // vóór de portalen
+    { x: 4200, y: 600, amount: 1, regen: true },
   ],
 
   grommels: [

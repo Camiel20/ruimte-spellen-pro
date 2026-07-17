@@ -269,10 +269,8 @@ export const LEVEL_15_4 = {
   fossielen: [[2700]],
 
   grauwMuren: [3050],
-
-  portalen: [
-    { x: 3350, doel: 10, opties: [[5, 5], [6, 5], [8, 3]] },
-  ],
+  // Rubriek: dino-rit is hier de tel-puzzel; het tweede station (portaal) is
+  // eruit — de mix van geiser/fossiel/duwkist/grauwmuur geeft al genoeg beats.
 
   pickups: [
     { x: 300, y: 600, amount: 1 },

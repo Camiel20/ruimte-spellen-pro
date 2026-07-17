@@ -219,10 +219,8 @@ export const LEVEL_14_4 = {
   ],
 
   maanZones: [{ x: 2200, w: 800 }], // het zweef-schot: zweef naar de hoge bonussen
-
-  portalen: [
-    { x: 4700, doel: 20, opties: [[10, 10], [15, 10], [12, 6]] },
-  ],
+  // Rubriek: bowling (tiental-aftrekken) is hier de tel-puzzel; het portaal-
+  // station eruit — de maan-zweef-sectie geeft de afwisseling.
 
   pickups: [
     { x: 300, y: 600, amount: 1 },
@@ -277,15 +275,13 @@ export const LEVEL_14_5 = {
     [950, 400, 180, 26],    // ster-richel (via de stuiterbal)
   ],
 
-  stuiterBallen: [900],
-
-  baskets: [
-    { x: 1600, doel: 5 },
-  ],
+  stuiterBallen: [900, 1600], // tweede superstuiter i.p.v. een tweede tel-station
 
   bowlingBanen: [
     { x: 2400, kegels: 20 },
   ],
+  // Rubriek: één tel-station (bowling — dat sluit aan op de Kegel-Koning);
+  // het baskets-station is eruit, vervangen door beweging (stuiterbal).
 
   pickups: [
     { x: 300, y: 600, amount: 1 },
