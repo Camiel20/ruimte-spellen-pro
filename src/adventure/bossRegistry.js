@@ -24,6 +24,8 @@ import {
   drawRexBoss, happyRexBoss, drawDinoEi, drawBotBord,
   drawTikTakBoss, happyTikTakBoss, drawWijzertje, drawKlokKeuze,
   drawSterkeManBoss, happySterkeManBoss, drawKettlebell,
+  drawVrieskoningBoss, happyVrieskoningBoss, drawSneeuwvlok,
+  drawBoeBoss, happyBoeBoss, drawSpookProjectiel, drawSpookKeuze,
 } from './enemyArt.js';
 import { tekenKegelBord } from './systems/bowling.js';
 import { sig } from './palette.js';
@@ -195,6 +197,27 @@ export const BOSS_LOOKS = {
     projectile: drawKettlebell,
     speed: -220,
     waarschuwing: 'Pas op — een kettlebell! Spring! 💪',
+  },
+  // DE VRIESKONING (W18, Onder-Nul): dwarrelende sneeuwvlokken. Verslaan met
+  // stijl 'vries': tel zijn thermometer terug naar het doel (0 of eronder) —
+  // dan dooit hij een beetje. Naar nul en verder = zijn ijs smelt.
+  vrieskoning: {
+    draw: (s, x, groundTop) => drawVrieskoningBoss(s, x, groundTop),
+    happy: (s, c) => happyVrieskoningBoss(s, c),
+    projectile: drawSneeuwvlok,
+    speed: -205,
+    waarschuwing: 'Pas op — een sneeuwvlok! Spring! ❄️',
+  },
+  // HET GROTE BOE (W19, Het Spook-Slot): zoevende spookjes. Verslaan met stijl
+  // 'flits': hij tovert een tros spookjes die 1 seconde oplichten — tel ze in
+  // één oogopslag (subitizeren) en raak het grafzerkje met het juiste aantal.
+  boe: {
+    draw: (s, x, groundTop) => drawBoeBoss(s, x, groundTop),
+    happy: (s, c) => happyBoeBoss(s, c),
+    projectile: drawSpookProjectiel,
+    speed: -225,
+    waarschuwing: 'Pas op — een zoevend spookje! Spring! 👻',
+    keuzeArt: drawSpookKeuze, // stijl 'flits': antwoord-grafzerkjes
   },
   // DE SISSER (Letter-Land, De Praatweide): stilte-wolkjes. Verslaan met stijl
   // 'sisser': ontwijk de wolkjes en SCHRIJF per fase een letter van zijn

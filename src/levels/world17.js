@@ -274,7 +274,7 @@ export const LEVEL_17_5 = {
   startDuw: true,
   startMega: true,
   intro: 'De hoofdact: versla De Sterke Man met… BALANS! 💪',
-  finale: 'slot', // het állerlaatste level: hierna het Grote Slotfeest!
+  // (finale 'slot' is verhuisd naar 19-5 — het Spook-Slot is de nieuwe laatste wereld)
 
   // De allerlaatste finale van het spel: weegwip + kanon + koord als
   // aanloop, dan De Sterke Man. Maak zijn halter per fase precies even

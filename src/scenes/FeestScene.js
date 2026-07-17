@@ -39,7 +39,7 @@ export default class FeestScene extends Phaser.Scene {
     this.add.text(W / 2, 90, this.slot ? '👑 ALLES GERED! 👑' : 'HOERA!', {
       fontFamily: 'Arial Black, Arial', fontSize: this.slot ? '34px' : '52px', fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5).setStroke('#e8402c', 12);
-    this.add.text(W / 2, 148, this.slot ? 'Alle zeventien landen dansen mee! 🎉' : 'Getallen-Land is gered! 🎉', {
+    this.add.text(W / 2, 148, this.slot ? 'Alle negentien landen dansen mee! 🎉' : 'Getallen-Land is gered! 🎉', {
       fontFamily: 'Arial Black, Arial', fontSize: '20px', fontStyle: 'bold', color: '#16202b',
     }).setOrigin(0.5).setStroke('#ffffff', 6);
 
@@ -81,13 +81,13 @@ export default class FeestScene extends Phaser.Scene {
     // hun happy-art bestaat al in het baas-register. (De vaste Grauw
     // hieronder wordt dan overgeslagen: hij staat mídden in de galerij.)
     if (this.slot) {
-      const gasten = ['golf', 'boom', 'kristal', 'meteoor', 'kaas', 'grauw', 'drol', 'reus', 'bil', 'octopus', 'pan', 'sokdief', 'kegel', 'rex', 'tiktak', 'sterkeman'];
+      const gasten = ['golf', 'boom', 'kristal', 'meteoor', 'kaas', 'grauw', 'drol', 'reus', 'bil', 'octopus', 'pan', 'sokdief', 'kegel', 'rex', 'tiktak', 'sterkeman', 'vrieskoning', 'boe'];
       gasten.forEach((lookNaam, i) => {
         try {
           const look = bossLook(lookNaam);
-          const rij = i < 8 ? 0 : 1;
-          const kol = rij === 0 ? i : i - 8;
-          const bx = (rij === 0 ? 38 : 66) + kol * 58;
+          const rij = i < 9 ? 0 : 1;
+          const kol = rij === 0 ? i : i - 9;
+          const bx = (rij === 0 ? 30 : 44) + kol * 52;
           const by = rij === 0 ? 600 : 710;
           const c = look.draw(this, bx, by);
           look.happy(this, c, { stages: [{ doel: 5 }] }); // mock-pz voor looks die 'm lezen

@@ -272,6 +272,20 @@ export function validateLevel(L) {
         // De Sterke Man: maak de halter gelijk met schijven van 1/2/5
         if (!S.doel || S.doel < 5 || S.doel > 20) err(`baas-fase ${i + 1} (balans): doel moet 5-20 zijn`);
         if (i > 0 && S.doel <= B.stages[i - 1].doel) err(`baas-fase ${i + 1} (balans): de halters horen zwaarder te worden`);
+      } else if (stijl === 'vries') {
+        // De Vrieskoning: tel de thermometer terug van 'start' naar 'doel'
+        // (0 of eronder). start > doel, doel niet kouder dan −5.
+        if (S.start == null || S.start < 1 || S.start > 9) err(`baas-fase ${i + 1} (vries): 'start' moet 1-9 zijn`);
+        if (S.doel == null || S.doel >= S.start) err(`baas-fase ${i + 1} (vries): 'doel' (${S.doel}) moet lager zijn dan start (${S.start}) — terugtellen`);
+        if (S.doel != null && S.doel < -5) err(`baas-fase ${i + 1} (vries): 'doel' (${S.doel}) mag niet kouder dan −5`);
+      } else if (stijl === 'flits') {
+        // Het Grote Boe: subitizeren — precies één zerkje toont het geflitste aantal
+        if (!S.doel || S.doel < 2 || S.doel > 6) err(`baas-fase ${i + 1} (flits): doel moet 2-6 spookjes zijn (subitize-bereik)`);
+        if (!Array.isArray(S.opties) || S.opties.length < 2) err(`baas-fase ${i + 1} (flits): minstens 2 antwoord-zerkjes nodig`);
+        else {
+          const goed = S.opties.filter((w) => w === S.doel).length;
+          if (goed !== 1) err(`baas-fase ${i + 1} (flits): ${goed} zerkjes tonen ${S.doel} — er moet er precies één kloppen`);
+        }
       } else err(`baas: onbekende stijl '${stijl}'`);
     });
     // Beuken kan alleen als reus: zonder reuzenhap is de baas onverslaanbaar.
@@ -651,6 +665,40 @@ export function validateLevel(L) {
     if (x1 < 0 || x2 > L.worldW) err(`koord ${i + 1} steekt buiten de wereld`);
     if (x2 < x1 + 100) err(`koord ${i + 1}: te kort (minstens 100px)`);
     if (y > groundTop - 40) err(`koord ${i + 1}: hangt te laag (y=${y}) — dan is het geen koorddansen`);
+  });
+
+  // Onder-Nul (W18) — vries-thermometers: doel −5..5 (terugtellen naar 0 en
+  // eronder), en doorlopende grond van de knoppen tot voorbij de poort
+  // (x + 160 = THERMO_DEUR in thermometer.js).
+  (L.thermometers || []).forEach((T, i) => {
+    if (T.doel == null || T.doel < -5 || T.doel > 5) err(`thermometer ${i + 1}: doel moet −5..5 zijn`);
+    if (T.x < 0 || T.x > L.worldW) err(`thermometer ${i + 1} staat buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= T.x - 90 && px + pw >= T.x + 180);
+    if (!support) err(`thermometer ${i + 1}: geen doorlopende grond onder knoppen + poort`);
+  });
+  // Groei-sneeuwballen: doel 3-8, en doorlopende grond van de bal tot voorbij
+  // de poort (x + 320 = SNEEUW_DEUR in sneeuwbal.js) — anders rolt hij een kloof in.
+  (L.sneeuwballen || []).forEach((B, i) => {
+    if (!B.doel || B.doel < 3 || B.doel > 8) err(`sneeuwbal ${i + 1}: doel moet 3-8 zijn`);
+    if (B.x < 0 || B.x > L.worldW) err(`sneeuwbal ${i + 1} staat buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= B.x - 30 && px + pw >= B.x + 340);
+    if (!support) err(`sneeuwbal ${i + 1}: geen doorlopende grond van de bal tot de poort`);
+  });
+
+  // Het Spook-Slot (W19) — lantaarn-flits: aantal 2-6 (subitize-bereik) en
+  // doorlopende grond van de lantaarn tot voorbij de poort (x + 170 = FLITS_DEUR).
+  (L.flitsSpoken || []).forEach((F, i) => {
+    if (!F.aantal || F.aantal < 2 || F.aantal > 6) err(`flits-spoken ${i + 1}: aantal moet 2-6 zijn (subitize-bereik)`);
+    if (F.x < 0 || F.x > L.worldW) err(`flits-spoken ${i + 1} staat buiten de wereld`);
+    const support = L.platforms.some(([px, py, pw]) => py === groundTop && px <= F.x - 140 && px + pw >= F.x + 190);
+    if (!support) err(`flits-spoken ${i + 1}: geen doorlopende grond onder lantaarn + zerkjes + poort`);
+  });
+  // Spook-treden: verdwijn-platforms — mogen zweven (zoals reuzenflips), maar
+  // wel binnen de wereld.
+  (L.spookTreden || []).forEach((T, i) => {
+    if (T.x == null || T.y == null) { err(`spook-trede ${i + 1} mist x/y`); return; }
+    const w = T.w || 120;
+    if (T.x - w / 2 < 0 || T.x + w / 2 > L.worldW || T.y < 0 || T.y > L.worldH) err(`spook-trede ${i + 1} hangt buiten de wereld`);
   });
 
   // Portaal-groepen: precies één som klopt, en doorlopende grond onder de

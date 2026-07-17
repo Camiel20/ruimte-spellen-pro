@@ -49,5 +49,9 @@ import tandwielen from './tandwielen.js';
 import weegWippen from './weegwip.js';
 import kanonnen from './kanonnen.js';
 import koorden from './koorden.js';
+import thermometers from './thermometer.js';
+import sneeuwballen from './sneeuwbal.js';
+import flitsSpoken from './flitsspoken.js';
+import spookTreden from './spooktreden.js';
 
-export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon, spoelpotten, wcRollen, stinkZones, grootte, bilTrampolines, parenBorden, zwemZones, duikboten, schrijf, wasLijnen, sokkenParen, maatRekken, knopenWinkels, stuiterBallen, bowlingBanen, baskets, dinoRitten, fossielen, koekoeken, slingers, tandwielen, weegWippen, kanonnen, koorden];
+export const SYSTEMS = [telWolken, plates, vraagMuren, chases, maanZones, raket, portalen, duwKisten, grauwMuren, geisers, kantels, bakkerij, nulFeest, flippers, glijbanen, stapel, reuzenflip, patroon, spoelpotten, wcRollen, stinkZones, grootte, bilTrampolines, parenBorden, zwemZones, duikboten, schrijf, wasLijnen, sokkenParen, maatRekken, knopenWinkels, stuiterBallen, bowlingBanen, baskets, dinoRitten, fossielen, koekoeken, slingers, tandwielen, weegWippen, kanonnen, koorden, thermometers, sneeuwballen, flitsSpoken, spookTreden];

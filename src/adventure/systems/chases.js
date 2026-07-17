@@ -36,6 +36,22 @@ function start(s, ch) {
     g.lineStyle(3, 0x9aa0a6, 1); g.strokeCircle(0, 0, 27);
     c.add(g);
     s.tweens.add({ targets: g, angle: 360, duration: 600, repeat: -1 });
+  } else if (ch.skin === 'sneeuwbal') {
+    // een rollende reuzen-sneeuwbal (Onder-Nul): wit met een blauwe glans
+    g.fillStyle(0xffffff, 1); g.fillCircle(0, 0, 28);
+    g.fillStyle(0xe8f4ff, 1); g.fillCircle(-8, -9, 16);
+    g.fillStyle(0xdff2ff, 1); g.fillCircle(9, 6, 6); g.fillCircle(-4, 11, 4); g.fillCircle(6, -12, 4);
+    g.lineStyle(3, 0xbfe3fb, 1); g.strokeCircle(0, 0, 28);
+    c.add(g);
+    s.tweens.add({ targets: g, angle: 360, duration: 620, repeat: -1 });
+  } else if (ch.skin === 'spook') {
+    // een groot, grijnzend jaag-spook (het Spook-Slot): zweeft en golft
+    g.fillStyle(0xf2f4f8, 0.96); g.fillCircle(0, -4, 27); g.fillRect(-27, -4, 54, 26);
+    for (let k = -3; k <= 3; k++) g.fillCircle(k * 8.5, 22, 6);
+    g.fillStyle(0x2b2f34, 1); g.fillEllipse(-9, -8, 7, 10); g.fillEllipse(9, -8, 7, 10);
+    g.fillStyle(0x2b2f34, 1); g.beginPath(); g.arc(0, 4, 8, 0, Math.PI, false); g.fillPath(); // grijns-mond
+    c.add(g);
+    s.tweens.add({ targets: g, y: -8, duration: 480, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   } else {
     g.fillStyle(0x6a7078, 1); g.fillCircle(0, 0, 28);
     g.fillStyle(0x7d838c, 1); g.fillCircle(-6, -6, 20);
@@ -52,7 +68,9 @@ function start(s, ch) {
   ch.rots = c;
   SFX.stomp(); s.cameraPunch(0.02, 6); Voice.cue('oops');
   s.questText.setText(ch.skin === 'komeet' ? 'RENNEN! De komeet komt! ☄️'
-    : ch.skin === 'bal' ? 'RENNEN! De reuzen-voetbal rolt! ⚽' : 'RENNEN! 🪨');
+    : ch.skin === 'bal' ? 'RENNEN! De reuzen-voetbal rolt! ⚽'
+    : ch.skin === 'sneeuwbal' ? 'RENNEN! De reuzen-sneeuwbal rolt! ⛄'
+    : ch.skin === 'spook' ? 'RENNEN! Het spook jaagt je! 👻' : 'RENNEN! 🪨');
   Voice.hint('hint-rennen'); // direct, geen delay — urgentie!
 }
 

@@ -100,6 +100,10 @@ const CLIPS = {
   'hint-tandwiel': ['hint-tandwiel', 'Teken rondjes op het tandwiel!'],
   'hint-weegwip': ['hint-weegwip', 'Maak de twee kanten gelijk!'],
   'hint-kanon': ['hint-kanon', 'Laad de vaatjes, en tik de lont!'],
+  // W18 Onder-Nul + W19 het Spook-Slot
+  'hint-thermometer': ['hint-thermometer', 'Tel terug naar het koude getal!'],
+  'hint-sneeuwbal': ['hint-sneeuwbal', 'Duw de sneeuwbal — hij groeit!'],
+  'hint-flits': ['hint-flits', 'Hoeveel spookjes flitsten er?'],
   // krachten (bij het leren van een nieuwe kracht)
   'kracht-dubbelsprong': ['kracht-dubbelsprong', 'Dubbelsprong!'],
   'kracht-stamp': ['kracht-stamp', 'Stampen!'],
@@ -120,6 +124,8 @@ const CLIPS = {
   'baas-sprong': ['baas-sprong', 'Tel de sprongen mee!'],
   'baas-klok': ['baas-klok', 'Zoek de goede klok!'],
   'baas-balans': ['baas-balans', 'Maak de halter gelijk!'],
+  'baas-vries': ['baas-vries', 'Tel zijn ijs terug naar nul!'],
+  'baas-flits': ['baas-flits', 'Tel de spookjes die oplichten!'],
   // mijlpalen
   'naar-de-vlag': ['naar-de-vlag', 'Naar de vlag!'],
   'gouden-nul': ['gouden-nul', 'Een gouden nul!'],

@@ -1643,3 +1643,181 @@ export function drawKettlebell(scene, x, y) {
   scene.tweens.add({ targets: inner, angle: { from: -20, to: 20 }, duration: 300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   return c;
 }
+
+// ===== DE VRIESKONING (Wereld 18, Onder-Nul) =====
+// Een ijzige koning van ijs met een kroon van ijspegels en een baard van
+// bevroren druppels. Stijl 'vries': tel de thermometer terug naar 0 (of
+// eronder) — dan smelt hij een beetje, wankelt, en verliest een fase.
+export function drawVrieskoningBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 78).setDepth(7);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 82, 116, 20);
+  // ijzige mantel
+  g.fillStyle(0x5aa0d0, 1); g.fillRoundedRect(-42, -20, 84, 96, 20);
+  g.fillStyle(0x7fc0e8, 1); g.fillRoundedRect(-42, -20, 84, 20, 12);
+  // bevroren "bont"-rand van de mantel
+  g.fillStyle(0xdff2ff, 1); g.fillRoundedRect(-44, -8, 88, 12, 6);
+  // hoofd (ijsblauw)
+  g.fillStyle(0xbfe3fb, 1); g.fillCircle(0, -44, 24);
+  g.fillStyle(0xdff2ff, 1); g.fillCircle(-8, -50, 8);
+  // ijspegel-baard onder de kin
+  g.fillStyle(0xe8f4ff, 1);
+  for (let i = -3; i <= 3; i++) g.fillTriangle(i * 7 - 3, -30, i * 7 + 3, -30, i * 7, -30 + (10 + Math.abs(i) * 2));
+  // de KROON van ijspegels
+  g.fillStyle(0x9fd6f2, 1);
+  for (let i = -2; i <= 2; i++) g.fillTriangle(i * 12 - 5, -62, i * 12 + 5, -62, i * 12, -62 - (16 - Math.abs(i) * 3));
+  g.fillStyle(0x6fb8e0, 1); g.fillRoundedRect(-30, -66, 60, 8, 3);
+  g.fillStyle(0xf6c624, 1); // een klein gouden bolletje bovenop de middelste pegel
+  g.fillCircle(0, -84, 3.4);
+  c.add(g);
+  c.bodyG = g;
+  // koud, streng gezichtje
+  const eL = scene.add.circle(-9, -46, 6, 0xffffff).setStrokeStyle(2.2, 0x2b5a78);
+  const eR = scene.add.circle(9, -46, 6, 0xffffff).setStrokeStyle(2.2, 0x2b5a78);
+  const pL = scene.add.circle(-8, -45, 2.4, 0x1c3a52), pR = scene.add.circle(10, -45, 2.4, 0x1c3a52);
+  const br = scene.add.graphics(); br.lineStyle(3, 0x2b5a78, 1);
+  br.beginPath(); br.moveTo(-15, -55); br.lineTo(-4, -52); br.strokePath();
+  br.beginPath(); br.moveTo(15, -55); br.lineTo(4, -52); br.strokePath();
+  const m = scene.add.graphics(); m.lineStyle(3, 0x2b5a78, 1);
+  m.beginPath(); m.arc(0, -32, 7, 1.15 * Math.PI, 1.85 * Math.PI); m.strokePath(); // koude frons
+  c.add([eL, eR, pL, pR, br, m]);
+  c.brow = br; c.mouth = m;
+
+  const bub = scene.add.container(0, -128);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-38, -24, 76, 44, 12); bg.strokeRoundedRect(-38, -24, 76, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '20px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 6, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Hij dooit! IJsblauw wordt warm, de frons wordt een lach, druppels + blosjes.
+export function happyVrieskoningBoss(scene, c) {
+  c.bodyG.clear();
+  const g = c.bodyG;
+  g.fillStyle(0x000000, 0.18); g.fillEllipse(0, 82, 116, 20);
+  g.fillStyle(0x8ac4e8, 1); g.fillRoundedRect(-42, -20, 84, 96, 20);
+  g.fillStyle(0xbfe3fb, 1); g.fillRoundedRect(-42, -20, 84, 20, 12);
+  g.fillStyle(0xffffff, 1); g.fillRoundedRect(-44, -8, 88, 12, 6);
+  g.fillStyle(0xe8f6ff, 1); g.fillCircle(0, -44, 24);
+  g.fillStyle(0xf6c624, 1);
+  for (let i = -2; i <= 2; i++) g.fillTriangle(i * 12 - 5, -62, i * 12 + 5, -62, i * 12, -62 - (14 - Math.abs(i) * 3));
+  g.fillStyle(0xe0a815, 1); g.fillRoundedRect(-30, -66, 60, 8, 3);
+  c.brow.clear();
+  c.mouth.clear();
+  c.mouth.lineStyle(4, 0x2b5a78, 1);
+  c.mouth.beginPath(); c.mouth.arc(0, -38, 9, 0.12 * Math.PI, 0.88 * Math.PI); c.mouth.strokePath();
+  c.mouth.fillStyle(0xf08a8a, 0.55);
+  c.mouth.fillEllipse(-16, -42, 10, 6); c.mouth.fillEllipse(16, -42, 10, 6);
+  // dooi-druppeltjes
+  for (let i = 0; i < 4; i++) {
+    const d = scene.add.circle(-24 + i * 16, -18, 3, 0x8fd8f8, 0.9);
+    c.add(d);
+    scene.tweens.add({ targets: d, y: d.y + 40, alpha: 0, duration: 900, delay: i * 160, repeat: -1 });
+  }
+}
+
+// Dwarrelende sneeuwvlok (projectiel van De Vrieskoning).
+export function drawSneeuwvlok(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const inner = scene.add.container(0, -16);
+  const g = scene.add.graphics();
+  g.fillStyle(0xe8f6ff, 0.6); g.fillCircle(0, 0, 11);
+  g.lineStyle(3, 0xffffff, 1);
+  for (let a = 0; a < 6; a++) {
+    const ang = (a / 6) * Math.PI * 2;
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(ang) * 12, Math.sin(ang) * 12); g.strokePath();
+    g.beginPath(); g.moveTo(Math.cos(ang) * 7, Math.sin(ang) * 7); g.lineTo(Math.cos(ang) * 7 + Math.cos(ang + 1) * 4, Math.sin(ang) * 7 + Math.sin(ang + 1) * 4); g.strokePath();
+  }
+  g.fillStyle(0x9fd6f2, 1); g.fillCircle(0, 0, 3);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, angle: 360, duration: 1400, repeat: -1 });
+  return c;
+}
+
+// ===== HET GROTE BOE (Wereld 19, Het Spook-Slot) =====
+// Het grootste, gekste spook van het slot — met een gekke onderbroek en een
+// wolkige onderkant. Stijl 'flits': hij tovert een tros spookjes die 1 seconde
+// oplichten; tel ze en raak het grafzerkje met het juiste aantal.
+export function drawBoeBoss(scene, x, groundY) {
+  const c = scene.add.container(x, groundY - 84).setDepth(7);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 92, 100, 18);
+  // wolkig spook-lijf
+  g.fillStyle(0xf2f4f8, 0.97); g.fillCircle(0, -6, 44); g.fillRect(-44, -6, 88, 60);
+  for (let k = -3; k <= 3; k++) g.fillCircle(k * 14, 54, 11); // golvende onderrand
+  // gekke onderbroek met stippen
+  g.fillStyle(0xf2a7b8, 1); g.fillRoundedRect(-30, 24, 60, 26, 10);
+  g.lineStyle(3, 0xd06a88, 1); g.strokeRoundedRect(-30, 24, 60, 26, 10);
+  g.fillStyle(0xffffff, 0.9); g.fillCircle(-16, 37, 3); g.fillCircle(0, 33, 3); g.fillCircle(16, 39, 3);
+  c.add(g);
+  c.bodyG = g;
+  // groot grijns-gezicht
+  const eL = scene.add.ellipse(-15, -12, 15, 22, 0x2b2f34);
+  const eR = scene.add.ellipse(15, -12, 15, 22, 0x2b2f34);
+  const gl1 = scene.add.circle(-13, -16, 4, 0xffffff), gl2 = scene.add.circle(17, -16, 4, 0xffffff);
+  const br = scene.add.graphics(); // wenkbrauwen (ondeugend)
+  br.lineStyle(3.5, 0x2b2f34, 1);
+  br.beginPath(); br.moveTo(-26, -30); br.lineTo(-8, -24); br.strokePath();
+  br.beginPath(); br.moveTo(26, -30); br.lineTo(8, -24); br.strokePath();
+  const m = scene.add.graphics();
+  m.fillStyle(0x2b2f34, 1); m.beginPath(); m.arc(0, 6, 15, 0, Math.PI, false); m.fillPath(); // grote grijns
+  m.fillStyle(0xf2a7b8, 1); m.fillEllipse(0, 14, 10, 6); // tongetje
+  c.add([eL, eR, gl1, gl2, br, m]);
+  c.brow = br; c.mouth = m;
+
+  const bub = scene.add.container(0, -140);
+  const bg = scene.add.graphics(); bg.fillStyle(0xffffff, 1); bg.lineStyle(3, 0x16202b, 1);
+  bg.fillRoundedRect(-36, -24, 72, 44, 12); bg.strokeRoundedRect(-36, -24, 72, 44, 12); bg.fillTriangle(-6, 18, 6, 18, 0, 30);
+  const wn = scene.add.text(0, -2, '', { fontFamily: 'Arial Black, Arial', fontSize: '24px', fontStyle: 'bold', color: '#16202b' }).setOrigin(0.5);
+  bub.add([bg, wn]); c.add(bub); c.bubble = bub; c.bubbleText = wn;
+  scene.tweens.add({ targets: bub, scale: 1.08, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  scene.tweens.add({ targets: c, y: c.y - 8, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Hij lacht het uit en bloost — de grijns wordt een brede blije lach.
+export function happyBoeBoss(scene, c) {
+  c.brow.clear();
+  c.mouth.clear();
+  c.mouth.fillStyle(0x2b2f34, 1); c.mouth.beginPath(); c.mouth.arc(0, 2, 14, 0.05 * Math.PI, 0.95 * Math.PI, false); c.mouth.fillPath();
+  c.mouth.fillStyle(0xf2a7b8, 1); c.mouth.fillEllipse(0, 12, 12, 6);
+  c.mouth.fillStyle(0xf08a8a, 0.6); c.mouth.fillEllipse(-26, 0, 12, 8); c.mouth.fillEllipse(26, 0, 12, 8); // blosjes
+}
+
+// Klein zoevend spookje (projectiel van Het Grote Boe).
+export function drawSpookProjectiel(scene, x, y) {
+  const c = scene.add.container(x, y).setDepth(8);
+  const inner = scene.add.container(0, -16);
+  const g = scene.add.graphics();
+  g.fillStyle(0xf2f4f8, 0.95); g.fillCircle(0, -2, 11); g.fillRect(-11, -2, 22, 12);
+  for (let k = -1; k <= 1; k++) g.fillCircle(k * 8, 10, 4);
+  g.fillStyle(0x2b2f34, 1); g.fillCircle(-4, -3, 2); g.fillCircle(4, -3, 2);
+  inner.add(g);
+  c.add(inner);
+  scene.tweens.add({ targets: inner, y: -22, duration: 400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  return c;
+}
+
+// Grafzerk-keuze (keuze-art voor stijl 'flits'): een gloeiend grafzerkje dat
+// 'waarde' toont. De hit-detectie in updateBossFase leest sprite.waarde.
+export function drawSpookKeuze(scene, x, y, waarde) {
+  const c = scene.add.container(x, y).setDepth(6);
+  const g = scene.add.graphics();
+  g.fillStyle(0x000000, 0.16); g.fillEllipse(0, 34, 50, 10);
+  g.fillStyle(0x8a8f9a, 1);
+  g.fillRoundedRect(-20, -26, 40, 56, 9);
+  g.slice(0, -26, 20, Math.PI, 0, false); g.fillPath();
+  g.lineStyle(2.5, 0x4a4f58, 1); g.strokeRoundedRect(-20, -26, 40, 56, 9);
+  g.fillStyle(0xbfa0f0, 0.5); g.fillCircle(0, -40, 7); // spookig gloed-kaarsje
+  c.add(g);
+  c.add(scene.add.text(0, 0, `${waarde}`, {
+    fontFamily: 'Arial Black, Arial', fontSize: '22px', fontStyle: 'bold', color: '#f6f6f6',
+  }).setOrigin(0.5).setStroke('#2b2f34', 4));
+  scene.tweens.add({ targets: c, y: y - 9, duration: 900 + (waarde % 3) * 150, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  c.waarde = waarde; c.spawnY = y; c.taken = false;
+  return c;
+}

@@ -419,6 +419,44 @@ describe('puzzellogica', () => {
     expect(validateLevel(geenLanding).some((e) => e.includes('geen grond'))).toBe(true);
   });
 
+  it('validateLevel: vangt kapotte thermometers, sneeuwballen en de vries-baas (W18)', () => {
+    const basis = {
+      id: 'x-w18', worldW: 4000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 2000, 140], [2400, 660, 1600, 140]],
+      thermometers: [{ x: 700, doel: -1 }],
+      sneeuwballen: [{ x: 1100, doel: 4 }],
+      boss: { x: 3200, look: 'vrieskoning', stijl: 'vries', stages: [{ start: 4, doel: 0 }, { start: 6, doel: -3 }] },
+      goal: { x: 3900, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const teKoud = { ...basis, thermometers: [{ x: 700, doel: -7 }] };
+    expect(validateLevel(teKoud).some((e) => e.includes('5..5'))).toBe(true);
+    const teKlein = { ...basis, sneeuwballen: [{ x: 1100, doel: 2 }] };
+    expect(validateLevel(teKlein).some((e) => e.includes('3-8'))).toBe(true);
+    const omhoog = { ...basis, boss: { ...basis.boss, stages: [{ start: 3, doel: 5 }] } }; // doel > start
+    expect(validateLevel(omhoog).some((e) => e.includes('terugtellen'))).toBe(true);
+  });
+
+  it('validateLevel: vangt kapotte flits-spoken, spook-treden en de flits-baas (W19)', () => {
+    const basis = {
+      id: 'x-w19', worldW: 4000, worldH: 800, killY: 720,
+      start: { x: 50, y: 500 },
+      platforms: [[0, 660, 4000, 140]],
+      flitsSpoken: [{ x: 700, aantal: 4 }],
+      spookTreden: [{ x: 1500, y: 400, w: 120 }],
+      boss: { x: 3200, look: 'boe', stijl: 'flits', stages: [{ doel: 3, opties: [3, 4, 2] }, { doel: 5, opties: [5, 6, 4] }] },
+      goal: { x: 3900, y: 588, value: 10 },
+    };
+    expect(validateLevel(basis)).toEqual([]);
+    const teVeel = { ...basis, flitsSpoken: [{ x: 700, aantal: 8 }] };
+    expect(validateLevel(teVeel).some((e) => e.includes('2-6'))).toBe(true);
+    const buiten = { ...basis, spookTreden: [{ x: 3990, y: 400, w: 120 }] };
+    expect(validateLevel(buiten).some((e) => e.includes('buiten de wereld'))).toBe(true);
+    const geenGoed = { ...basis, boss: { ...basis.boss, stages: [{ doel: 3, opties: [4, 5, 2] }] } };
+    expect(validateLevel(geenGoed).some((e) => e.includes('precies'))).toBe(true);
+  });
+
   it('validateLevel: vangt een onoplosbare brug (samen te weinig)', () => {
     const kapot = {
       id: 'x-1', worldW: 1000, worldH: 800, killY: 720,

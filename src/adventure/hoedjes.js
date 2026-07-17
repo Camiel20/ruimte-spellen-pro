@@ -127,6 +127,25 @@ export const HOEDJES = [
       g.fillCircle(Math.cos(ang) * 3.4 * s, -16 * s + Math.sin(ang) * 3.4 * s, 1.7 * s);
     }
   } },
+  { id: 'ijskroon', naam: 'IJs-Kroon', medal: 'world18_done', teken: (g, s) => {
+    g.fillStyle(0x9fd6f2, 1); // een kroon van ijspegels
+    g.fillTriangle(-14 * s, -2 * s, -6 * s, -2 * s, -10 * s, -18 * s);
+    g.fillTriangle(-4 * s, -2 * s, 4 * s, -2 * s, 0, -22 * s);
+    g.fillTriangle(6 * s, -2 * s, 14 * s, -2 * s, 10 * s, -18 * s);
+    g.fillStyle(0xbfe3fb, 1); g.fillRect(-15 * s, -4 * s, 30 * s, 4 * s);
+    g.fillStyle(0xffffff, 0.8); g.fillCircle(-10 * s, -10 * s, 1.6 * s); g.fillCircle(0, -13 * s, 1.8 * s); g.fillCircle(10 * s, -10 * s, 1.6 * s);
+  } },
+  { id: 'spookhoed', naam: 'Spoken-Hoed', medal: 'world19_done', teken: (g, s) => {
+    // een puntige heksen/spook-hoed met een klein spookje ervoor
+    g.fillStyle(0x2b2044, 1);
+    g.fillRect(-16 * s, -3 * s, 32 * s, 4 * s); // rand
+    g.fillTriangle(-11 * s, -3 * s, 11 * s, -3 * s, 2 * s, -26 * s); // punt (iets scheef)
+    g.fillStyle(0x6a5f88, 1); g.fillRect(-11 * s, -8 * s, 22 * s, 4 * s); // band
+    g.fillStyle(0xf6c624, 1); g.fillCircle(-4 * s, -6 * s, 2 * s); // gespje
+    g.fillStyle(0xf2f4f8, 0.95); // klein spookje op de rand
+    g.fillCircle(11 * s, -2 * s, 4 * s); g.fillRect(7 * s, -2 * s, 8 * s, 4 * s);
+    g.fillStyle(0x2b2f34, 1); g.fillCircle(10 * s, -3 * s, 0.9 * s); g.fillCircle(13 * s, -3 * s, 0.9 * s);
+  } },
   { id: 'aureool', naam: 'Gouden Nul', gouden: true, teken: (g, s) => {
     g.lineStyle(4 * s, 0xf6c624, 1); g.strokeEllipse(0, -16 * s, 26 * s, 9 * s);
     g.lineStyle(1.5 * s, 0xffe16b, 0.8); g.strokeEllipse(0, -16 * s, 30 * s, 12 * s);

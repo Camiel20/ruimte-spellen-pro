@@ -37,6 +37,8 @@ export function muziekVoorTerrein(terrain) {
     dino: { pitch: 0.841, tempo: 0.94 },   // −3, log & groots: oer-stappen
     klok: { pitch: 0.944, tempo: 1.0 },    // −1, strak op de maat: tik-tak
     circus: { pitch: 1.189, tempo: 1.14 }, // +3, uitbundig: piste-parade
+    ijs: { pitch: 1.335, tempo: 0.92 },    // +5, traag & sprankelend: koud kristal
+    spook: { pitch: 0.794, tempo: 0.9 },   // −4, traag & mineur: vriendelijk griezelen
   }[terrain] || { pitch: 1, tempo: 1 };
 }
 

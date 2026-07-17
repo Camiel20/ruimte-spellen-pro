@@ -800,6 +800,100 @@ export function buildBackground(scene, L) {
     return;
   }
 
+  if (L.terrain === 'ijs') {
+    // ONDER-NUL (Wereld 18): een ijspaleis onder een winterlucht met
+    // noorderlicht-banden, een bleke winterzon, dwarrelende sneeuw en
+    // besneeuwde heuvels.
+    const aurora = scene.add.graphics().setDepth(-29).setScrollFactor(0.12);
+    const AUR = [0x6fe3c0, 0x7fb8f0, 0xc79ff0];
+    for (let i = 0; i < 3; i++) {
+      aurora.fillStyle(AUR[i], 0.16);
+      const yy = 56 + i * 26;
+      aurora.beginPath();
+      aurora.moveTo(-40, yy);
+      for (let xx = -40; xx <= scene.scale.width + 40; xx += 40) aurora.lineTo(xx, yy + Math.sin(xx / 90 + i) * 18);
+      aurora.lineTo(scene.scale.width + 40, yy + 44); aurora.lineTo(-40, yy + 44);
+      aurora.closePath(); aurora.fillPath();
+    }
+    scene.tweens.add({ targets: aurora, alpha: 0.7, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    // bleke winterzon
+    const sun = scene.add.container(scene.scale.width - 78, 88).setDepth(-28).setScrollFactor(0.25);
+    const glow = scene.add.circle(0, 0, 50, 0xeaf6ff, 0.4);
+    sun.add([glow, scene.add.circle(0, 0, 30, 0xffffff, 0.95)]);
+    scene.tweens.add({ targets: glow, scale: 1.18, alpha: 0.6, duration: 2000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    // sneeuw-wolken (driften mee in update)
+    scene.clouds = [];
+    for (let i = 0; i < 8; i++) {
+      const x = (i / 8) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(70, 250);
+      const s = Phaser.Math.FloatBetween(0.7, 1.3);
+      const c = scene.add.container(x, y).setDepth(-27).setScale(s).setScrollFactor(0.5);
+      const g = scene.add.graphics();
+      g.fillStyle(0xeef7ff, 0.95);
+      [[-26, 4, 17], [-6, -8, 23], [16, 0, 20], [34, 7, 14], [4, 11, 26]].forEach(([cx, cy, r]) => g.fillCircle(cx, cy, r));
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(4, 10);
+      scene.clouds.push(c);
+    }
+    // besneeuwde heuvels
+    const hills = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    for (let x = -100; x < scene.scale.width + 200; x += 180) {
+      hills.fillStyle(0xdff0fb, 0.85); hills.fillCircle(x, scene.scale.height, 150);
+      hills.fillStyle(0xffffff, 0.6); hills.fillEllipse(x - 40, scene.scale.height - 120, 80, 30);
+    }
+    // dwarrelende sneeuwvlokjes (vaste laag, licht parallax)
+    const snow = scene.add.graphics().setDepth(-25).setScrollFactor(0.6);
+    for (let i = 0; i < 60; i++) { snow.fillStyle(0xffffff, Phaser.Math.FloatBetween(0.5, 0.95)); snow.fillCircle(Phaser.Math.Between(0, scene.scale.width), Phaser.Math.Between(0, scene.scale.height), Phaser.Math.FloatBetween(1.2, 2.8)); }
+    scene.tweens.add({ targets: snow, y: 20, duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    return;
+  }
+
+  if (L.terrain === 'spook') {
+    // HET SPOOK-SLOT (Wereld 19): een vriendelijke griezelnacht — paars-blauwe
+    // lucht, een grote maan, sterretjes, spinragjes in de hoeken, drijvende
+    // vleermuisjes en een kasteel-silhouet op de heuvels.
+    const moon = scene.add.container(scene.scale.width - 90, 96).setDepth(-28).setScrollFactor(0.22);
+    const halo = scene.add.circle(0, 0, 54, 0xe8e0ff, 0.25);
+    moon.add([halo, scene.add.circle(0, 0, 34, 0xf4efd8, 0.98)]);
+    const mkr = scene.add.graphics(); mkr.fillStyle(0xd8d0b8, 0.7); mkr.fillCircle(-10, -6, 6); mkr.fillCircle(8, 8, 4); mkr.fillCircle(12, -10, 3);
+    moon.add(mkr);
+    scene.tweens.add({ targets: halo, scale: 1.15, alpha: 0.4, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    // sterretjes
+    const stars = scene.add.graphics().setDepth(-29).setScrollFactor(0.12);
+    for (let i = 0; i < 50; i++) { stars.fillStyle(0xffffff, Phaser.Math.FloatBetween(0.4, 0.9)); stars.fillCircle(Phaser.Math.Between(0, scene.scale.width), Phaser.Math.Between(0, 260), Phaser.Math.FloatBetween(1, 2.2)); }
+    scene.tweens.add({ targets: stars, alpha: 0.55, duration: 1800, yoyo: true, repeat: -1 });
+    // spinragjes in de bovenhoeken
+    const web = scene.add.graphics().setDepth(-27).setScrollFactor(0.15);
+    web.lineStyle(1.4, 0xbfc4d8, 0.35);
+    for (let a = 0; a <= 4; a++) { const ang = (a / 4) * (Math.PI / 2); web.beginPath(); web.moveTo(0, 0); web.lineTo(Math.cos(ang) * 110, Math.sin(ang) * 110); web.strokePath(); }
+    for (let r = 28; r <= 100; r += 24) { web.beginPath(); web.moveTo(r, 0); web.lineTo(0, r); web.strokePath(); }
+    for (let a = 0; a <= 4; a++) { const ang = (a / 4) * (Math.PI / 2); web.beginPath(); web.moveTo(scene.scale.width, 0); web.lineTo(scene.scale.width - Math.cos(ang) * 110, Math.sin(ang) * 110); web.strokePath(); }
+    for (let r = 28; r <= 100; r += 24) { web.beginPath(); web.moveTo(scene.scale.width - r, 0); web.lineTo(scene.scale.width, r); web.strokePath(); }
+    // drijvende vleermuisjes (driften mee in update)
+    scene.clouds = [];
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * L.worldW + Phaser.Math.Between(-40, 40);
+      const y = Phaser.Math.Between(80, 260);
+      const c = scene.add.container(x, y).setDepth(-26).setScrollFactor(0.5).setAlpha(0.85);
+      const g = scene.add.graphics();
+      g.fillStyle(0x3a2b52, 0.9);
+      g.fillCircle(0, 0, 6); g.fillTriangle(-4, -1, -16, -8, -13, 4); g.fillTriangle(4, -1, 16, -8, 13, 4);
+      c.add(g);
+      c.driftSpeed = Phaser.Math.FloatBetween(6, 12);
+      scene.clouds.push(c);
+    }
+    // kasteel-silhouet met verlichte raampjes
+    const kast = scene.add.graphics().setDepth(-26).setScrollFactor(0.35);
+    kast.fillStyle(0x241a38, 0.85);
+    for (let x = -100; x < scene.scale.width + 200; x += 200) kast.fillCircle(x, scene.scale.height, 150);
+    for (const tx of [90, scene.scale.width * 0.5, scene.scale.width - 80]) {
+      kast.fillStyle(0x2b2044, 0.9); kast.fillRect(tx - 22, scene.scale.height - 150, 44, 150);
+      for (let bx = -22; bx < 22; bx += 14) kast.fillRect(tx + bx, scene.scale.height - 164, 8, 14);
+      kast.fillStyle(0xffe16b, 0.8); kast.fillRect(tx - 5, scene.scale.height - 120, 10, 12);
+    }
+    return;
+  }
+
   // Zon (licht parallax)
   const sun = scene.add.container(scene.scale.width - 70, 90).setDepth(-28).setScrollFactor(0.25);
   const glow = scene.add.circle(0, 0, 54, 0xfff3b0, 0.35);
@@ -1345,6 +1439,53 @@ export function drawGround(scene, x, y, w, h) {
         g.fillStyle(0xff6b9d, 1);
         for (let a = 0; a < 5; a++) { const ang = -Math.PI / 2 + a * (2 * Math.PI / 5); g.fillCircle(fx + Math.cos(ang) * 4, y - 8 + Math.sin(ang) * 4, 3); }
         g.fillStyle(0xffe16b, 1); g.fillCircle(fx, y - 8, 2.4);
+      }
+    }
+  } else if (scene.level.terrain === 'spook') {
+    // HET SPOOK-SLOT (Wereld 19): oude kasteelvloer — donkere flagstones met
+    // een paarse gloed-rand, en om en om een grafzerkje en een pompoen-lampje.
+    g.fillStyle(0x3a3550, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0x2b2842, 0.7);
+    for (let ex = x + 10; ex < x + w; ex += 40) g.fillRect(ex, y + 12, 2, h - 12);
+    g.fillStyle(0x4a4568, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(0x6a5f88, 1); g.fillRect(x, y, w, 6);
+    g.fillStyle(0xbfa0f0, 0.5); g.fillRect(x, y, w, 2);
+    let spk = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      spk = !spk;
+      if (spk) {
+        g.fillStyle(0x8a8f9a, 1); g.fillRoundedRect(fx - 8, y - 20, 16, 20, 5);
+        g.slice(fx, y - 20, 8, Math.PI, 0, false); g.fillPath();
+        g.lineStyle(1.5, 0x4a4f58, 1); g.strokeRoundedRect(fx - 8, y - 20, 16, 20, 5);
+      } else {
+        g.fillStyle(0xf0821f, 1); g.fillCircle(fx, y - 8, 7);
+        g.fillStyle(0x2b2f34, 1);
+        g.fillTriangle(fx - 4, y - 9, fx - 1, y - 9, fx - 2.5, y - 5);
+        g.fillTriangle(fx + 4, y - 9, fx + 1, y - 9, fx + 2.5, y - 5);
+        g.fillStyle(0x57a94f, 1); g.fillRect(fx - 1, y - 16, 2, 4);
+      }
+    }
+  } else if (scene.level.terrain === 'ijs') {
+    // ONDER-NUL (Wereld 18): pakijs — een blauw-witte laag met een glazige
+    // toplaag, en om en om een sneeuwmannetje en een ijskristal.
+    g.fillStyle(0x9fd0ea, 1); g.fillRect(x, y + 12, w, h - 12);
+    g.fillStyle(0x7fb8d8, 0.6);
+    for (let ex = x + 12; ex < x + w; ex += 46) g.fillEllipse(ex, y + 34, 16, 8);
+    g.fillStyle(0xeaf6ff, 1); g.fillRect(x, y, w, 16);
+    g.fillStyle(0xffffff, 1); g.fillRect(x, y, w, 6);
+    g.fillStyle(0xffffff, 0.7);
+    for (let gx = x + 20; gx < x + w; gx += 70) g.fillCircle(gx, y + 3, 1.6);
+    let ijs = false;
+    for (let fx = x + 50; fx < x + w - 30; fx += 150) {
+      ijs = !ijs;
+      if (ijs) {
+        g.fillStyle(0xffffff, 1); g.fillCircle(fx, y - 6, 8); g.fillCircle(fx, y - 18, 6);
+        g.lineStyle(2, 0xbfe3fb, 1); g.strokeCircle(fx, y - 6, 8); g.strokeCircle(fx, y - 18, 6);
+        g.fillStyle(0x2b2f34, 1); g.fillCircle(fx - 2, y - 19, 1); g.fillCircle(fx + 2, y - 19, 1);
+        g.fillStyle(0xe8402c, 1); g.fillTriangle(fx + 2, y - 18, fx + 9, y - 17, fx + 2, y - 16);
+      } else {
+        g.fillStyle(0xbfe3fb, 0.9); g.fillTriangle(fx - 6, y, fx + 6, y, fx, y - 20);
+        g.fillStyle(0xffffff, 0.7); g.fillTriangle(fx - 2, y, fx + 2, y, fx, y - 14);
       }
     }
   } else {
