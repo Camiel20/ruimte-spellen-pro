@@ -207,53 +207,62 @@ export const LEVEL_17_4 = {
   startStamp: true,
   startDuw: true,
   startMega: true,
-  intro: 'Hoog boven de piste: koord… koord… en KNAL! 🎪',
+  intro: 'Het hoge-draad-nummer: koord na koord na koord! 🎪',
 
-  // Les 4: het hoge-draad-nummer — twee koorden achter elkaar, dan het
-  // kanon over het grote ravijn, en een weegwip (10) als finale-poort.
+  // KOORD-GAUNTLET = DE STER (rework 2026-07-18: was kloon van de baas-aanloop
+  // 17-5 — koord+kanon+weeg. Nu VIER koorden achter elkaar met rust-richels: de
+  // hoge draad is het hele nummer). Kanon en weegwip eruit; die hebben hun eigen
+  // levels (17-2/17-3). De koorden hangen boven de piste-vloer — val je, dan
+  // land je zacht beneden en klim je opnieuw (faal-vriendelijk). Tussendoor een
+  // tel-wolken-klim naar de Gouden Nul, een duw-kist en één MEER-vraagmuur.
   platforms: [
-    [0, 660, 3800, 140],
-    [4400, 660, 1600, 140],
-    [1050, 500, 170, 26],   // koord-opstapjes
-    [1900, 500, 170, 26],
-    [2750, 500, 170, 26],
+    [0, 660, 5600, 140],     // de piste-vloer (doorlopend = vangnet)
+    [1000, 500, 160, 26],    // koord-opstapjes (rust tussen de draden)
+    [1600, 500, 160, 26],
+    [2200, 500, 160, 26],
+    [2800, 500, 160, 26],
+    [3400, 500, 160, 26],
   ],
 
   koorden: [
-    [1220, 1900, 480],
-    [2070, 2750, 480],
+    [1160, 1600, 480],   // draad 1
+    [1760, 2200, 480],   // draad 2
+    [2360, 2800, 480],   // draad 3 (de ster hangt erboven!)
+    [2960, 3400, 480],   // draad 4 — de proef
   ],
 
-  kanonnen: [
-    { x: 3500, vaatjes: 3, landX: 4600 },
-  ],
+  telWolken: [[3700, 470, 120], [3880, 370, 120]], // klim naar de Gouden Nul
 
-  weegWippen: [
-    { x: 5100, doel: 10 },
+  duwKisten: [4200],
+
+  // Eén MEER-vraagmuur als reken-hoogtepunt vlak vóór de vlag.
+  vraagMuren: [
+    { x: 4900, kies: 'meer', opties: [8, 3] },
   ],
 
   pickups: [
-    { x: 300, y: 600, amount: 1 },
-    { x: 3100, y: 600, amount: 1 },
-    { x: 4700, y: 600, amount: 1, regen: true },
+    { x: 250, y: 600, amount: 1 },
+    { x: 1080, y: 470, amount: 1 },              // op opstapje 1
+    { x: 3480, y: 470, amount: 1 },              // op opstapje 5
+    { x: 4700, y: 600, amount: 1, regen: true }, // vóór de vraagmuur
   ],
 
   grommels: [
-    { type: 'stomp', x: 700, y: 612, patrol: [600, 800] },
-    { type: 'stomp', x: 1600, y: 612, patrol: [1500, 1700] }, // onder de koorden
-    { type: 'vlieger', x: 2300, y: 300, patrol: [2100, 2500] },
-    { type: 'werper', x: 3170, y: 612, patrol: [3100, 3250] },
-    { type: 'springer', x: 4870, y: 612, patrol: [4800, 4950] },
+    { type: 'stomp', x: 600, y: 612, patrol: [500, 750] },
+    { type: 'vlieger', x: 1800, y: 300, patrol: [1500, 2100] }, // onder de draden
+    { type: 'vlieger', x: 2600, y: 300, patrol: [2300, 2900] },
+    { type: 'werper', x: 4400, y: 612, patrol: [4300, 4550] }, // gooit jongleer-balletjes!
+    { type: 'stomp', x: 5300, y: 612, patrol: [5200, 5450] },
   ],
 
-  star: { x: 2400, y: 380 },
-  goudenNul: { x: 3650, y: 280 },
+  star: { x: 2380, y: 410 },       // hoog boven draad 3 — balanceer ernaartoe!
+  goudenNul: { x: 3800, y: 330 },  // bovenop de tel-wolken-klim
 
-  goal: { x: 5900, y: 588, value: 10 },
+  goal: { x: 5500, y: 588, value: 10 },
 
   reward: {
     title: 'Level 17-4 gehaald! 🏆',
-    subtitle: 'Over de hoge draad én uit het kanon — wat een nummer!',
+    subtitle: 'Vier koorden op een rij — wat een hoge-draad-danser!',
     stars: 3, medal: 'adventure_17_4', medalLabel: 'Hoge-Draad-Danser',
   },
 };
