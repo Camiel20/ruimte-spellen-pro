@@ -5,17 +5,7 @@ import TraceScene from './scenes/TraceScene.js';
 import TraceMenuScene from './scenes/TraceMenuScene.js';
 import AwardsScene from './scenes/AwardsScene.js';
 import SettingsScene from './scenes/SettingsScene.js';
-import AdventureScene from './scenes/AdventureScene.js';
-import IntroScene from './scenes/IntroScene.js';
-import ReisScene from './scenes/ReisScene.js';
-import FeestScene from './scenes/FeestScene.js';
-import WorldMapScene from './scenes/WorldMapScene.js';
-import VillageScene from './scenes/VillageScene.js';
 import StatsScene from './scenes/StatsScene.js';
-import LetterIntroScene from './scenes/LetterIntroScene.js';
-import LetterMapScene from './scenes/LetterMapScene.js';
-import LetterFeestScene from './scenes/LetterFeestScene.js';
-import LetterMissieScene from './scenes/LetterMissieScene.js';
 import { installTracking } from './stats.js';
 import { Voice } from './voice.js';
 
@@ -41,17 +31,16 @@ const config = {
     },
   },
   scene: [
-    // Kern-scenes (eager). De LOSSE spellen (Reken-Raket, Ballon-Feest, Planeet
-    // Tikker, Piano, Bezorg-Baas, Getallen-Toren, Nul-Raket, Plakboek,
-    // Toverwinkel) worden LAZY geladen via MenuScene.launchLazy — die zitten dus
-    // niet in de start-bundel. Getallen-Land + Letter-Land inter-transitioneren
-    // (level → kaart → feest) en blijven daarom eager geregistreerd.
+    // Alleen de KERN-scenes zijn eager. De losse spellen (Reken-Raket, Ballon-
+    // Feest, Tikker, Piano, Bezorg, Toren, Nul-Raket, Plakboek, Toverwinkel) én
+    // het hele GETALLEN-LAND + LETTER-LAND cluster (Adventure/WorldMap/Feest/…)
+    // worden LAZY geladen via MenuScene (launchLazy / launchCluster) — zo blijft
+    // de start-bundel klein en start de app sneller.
     BootScene, MenuScene,
     TraceScene, TraceMenuScene,
-    AwardsScene, SettingsScene,
-    AdventureScene, IntroScene, ReisScene, FeestScene, WorldMapScene, VillageScene, StatsScene,
-    LetterIntroScene, LetterMapScene, LetterFeestScene, LetterMissieScene,
+    AwardsScene, SettingsScene, StatsScene,
   ],
+
 };
 
 const game = new Phaser.Game(config);

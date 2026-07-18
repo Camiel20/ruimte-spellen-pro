@@ -162,7 +162,7 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '🎈', name: 'Ballon-Feest',     color: 0xa855f7, go: () => this.launchLazy('Balloon', () => import('./BalloonScene.js')) },
       { icon: '🪐', name: 'Planeet Tikker',   color: 0xeab308, go: () => this.launchLazy('Clicker', () => import('./ClickerScene.js')) },
       // eerste keer: eerst het (woordeloze) verhaal van Baron Grauw
-      { icon: '🦸', name: 'Getallen-Land',     color: 0xe8402c, go: () => this.scene.start(getSetting('introGezien') ? 'WorldMap' : 'Intro') },
+      { icon: '🦸', name: 'Getallen-Land',     color: 0xe8402c, go: () => this.launchCluster(getSetting('introGezien') ? 'WorldMap' : 'Intro') },
       { icon: '🎹', name: 'Regenboog Piano',  color: 0xec4899, go: () => this.launchLazy('Piano', () => import('./PianoScene.js')) },
       { icon: '🚚', name: 'Bezorg-Baas',      color: 0x22c55e, go: () => this.launchLazy('Bezorg', () => import('./BezorgScene.js')) },
       { icon: '🧱', name: 'Getallen Toren',   color: 0x14b8a6, go: () => this.launchLazy('NumberTower', () => import('./NumberTowerScene.js')) },
@@ -172,7 +172,7 @@ export default class MenuScene extends Phaser.Scene {
       // Letter-Land — NIEUWE KERN: de woord-magie-slice (M1 "De Grijze Ochtend",
       // PraatweideScene). Spel een woord → het gebeurt. test: true = nog achter
       // Ouder-modus tot de speeltest met Adrian slaagt.
-      { icon: '🔤', name: 'Letter-Land', test: true, color: 0xf43f5e, go: () => this.scene.start('LetterMissie', { missie: 'm1' }) },
+      { icon: '🔤', name: 'Letter-Land', test: true, color: 0xf43f5e, go: () => this.launchCluster('LetterMissie', { missie: 'm1' }) },
       // test: true = nog niet klaar voor Adrian — alleen zichtbaar in de
       // Ouder-modus (testversie). De Toverwinkel wacht op de speelgoed-pass.
       { icon: '🧪', name: 'Toverwinkel', test: true, color: 0x7c3aed, go: () => this.launchLazy('Toverwinkel', () => import('./TovenScene.js')) },
@@ -336,6 +336,24 @@ export default class MenuScene extends Phaser.Scene {
       loading.destroy();
       if (!this.scene.manager.getScene(key)) this.game.scene.add(key, mod.default);
       this.scene.start(key, data);
+    }).catch(() => loading.setText('Oeps — laden mislukt 😅'));
+  }
+
+  // Lazy-load het hele GETALLEN-LAND + LETTER-LAND cluster in één keer (ze delen
+  // de Adventure-engine + wisselen onderling van scherm). Beide tegels
+  // (Getallen-Land én Letter-Land) triggeren dit; daarna zit alles geregistreerd.
+  launchCluster(target, data) {
+    if (this.scene.manager.getScene('Adventure')) { this.scene.start(target, data); return; }
+    const loading = this.add.text(this.scale.width / 2, this.scale.height / 2, 'Getallen-Land laden… 🦸', {
+      fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffffff',
+      backgroundColor: '#00000088', padding: { x: 16, y: 9 },
+    }).setOrigin(0.5).setDepth(200);
+    import('./gameCluster.js').then(({ GAME_CLUSTER }) => {
+      loading.destroy();
+      for (const [key, Cls] of GAME_CLUSTER) {
+        if (!this.scene.manager.getScene(key)) this.game.scene.add(key, Cls);
+      }
+      this.scene.start(target, data);
     }).catch(() => loading.setText('Oeps — laden mislukt 😅'));
   }
 
