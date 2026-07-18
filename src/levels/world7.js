@@ -98,17 +98,19 @@ export const LEVEL_7_2 = {
   startMega: true,
   intro: 'Zoek 6 toppings en verdeel ze EERLIJK — de oven bakt een brug! 🍕🔥',
 
-  // Eén groot saus-ravijn (te breed om te springen): alleen de gebakken
-  // pizzapunten-brug komt eroverheen. Daarna een lange overkant: kantels
-  // naar de Gouden Nul, een geiser-richel, een tweede kantel-paar en een
-  // MINDER-vraagmuur vlak voor de vlag.
+  // BAKKERIJ = DE STER (rework 2026-07-18: geisers eruit — die horen in 7-1;
+  // hier draait álles om eerlijk delen). Eén groot saus-ravijn (te breed om te
+  // springen): alleen de gebakken pizzapunten-brug komt eroverheen. Daarna een
+  // lange overkant met kantel-punten naar de Gouden Nul, een hoge richel en een
+  // MINDER-vraagmuur vlak voor de vlag. De topping-richels haal je met je
+  // dubbelsprong (geen geiser nodig).
   platforms: [
     [0, 660, 1500, 140],     // bakkerij-kant
     [300, 470, 170, 26],     // richel 1 (topping)
     [700, 400, 170, 26],     // richel 2 (topping, hoog)
     [1050, 470, 170, 26],    // richel 3 (topping)
-    [2360, 660, 3040, 140],  // overkant — kantels, geiser, vraagmuur, vlag
-    [3490, 400, 190, 26],    // geiser-richel op de overkant
+    [2360, 660, 3040, 140],  // overkant — kantels, vraagmuur, vlag
+    [3490, 430, 190, 26],    // hoge richel op de overkant (dubbelsprong)
   ],
 
   water: [[1500, 690, 860, 110]], // de tomatensaus-rivier onder de brug
@@ -123,11 +125,6 @@ export const LEVEL_7_2 = {
     ],
     brug: [1500, 660, 860],
   },
-
-  geisers: [
-    { x: 240, hoogte: 260 },                  // helpt je naar richel 1
-    { x: 3400, hoogte: 300, offset: 700 },    // overkant: naar de hoge richel
-  ],
 
   // Kantel-punten: eerst naar de Gouden Nul, verderop een tweede paar.
   kantels: [
@@ -146,7 +143,7 @@ export const LEVEL_7_2 = {
     { x: 460, y: 600, amount: 1 },
     { x: 1230, y: 600, amount: 1 },
     { x: 2550, y: 600, amount: 1, regen: true },
-    { x: 3580, y: 340, amount: 1 },              // op de geiser-richel
+    { x: 3580, y: 370, amount: 1 },              // op de hoge richel
     { x: 4600, y: 600, amount: 1, regen: true }, // vóór de vraagmuur
   ],
 
@@ -190,15 +187,17 @@ export const LEVEL_7_3 = {
   startMega: true,
   intro: 'De pizzapunten kantelen — blijf doorspringen! 🍕⏱️',
 
-  // Les 3: kantel-punten. DRIE saus-kloven nu, steeds hoger en verder uit
-  // elkaar. Tussendoor een geef-plaat, en op het eind een geiser-lancering
-  // naar een bonus-richel.
+  // KANTEL = DE STER (rework 2026-07-18: geisers eruit — pure kantel-canyon).
+  // DRIE saus-kloven, steeds hoger en verder uit elkaar. Tussendoor een
+  // geef-plaat, een ster op een richel boven het midden-eiland en een
+  // bonus-richel aan het eind (allebei met je dubbelsprong te halen).
   platforms: [
     [0, 660, 700, 140],       // startvlakte
     [1310, 660, 580, 140],    // midden-eiland 1
+    [1490, 450, 170, 26],     // richel boven het eiland (met de ster)
     [2470, 660, 900, 140],    // midden-vlakte (met geef-plaat)
     [4030, 660, 1370, 140],   // eind-vlakte
-    [4390, 400, 170, 26],     // bonus-richel boven de eind-geiser
+    [4390, 430, 170, 26],     // bonus-richel (dubbelsprong)
   ],
 
   water: [
@@ -219,11 +218,6 @@ export const LEVEL_7_3 = {
     [3860, 590, 120],
   ],
 
-  geisers: [
-    { x: 1600, hoogte: 320 },  // midden-eiland: lancering naar de ster
-    { x: 4300, hoogte: 300, offset: 800 },
-  ],
-
   // Geef-plaat op de midden-vlakte: geef 3 blokjes weg (aftrekken met je lijf).
   plates: [
     { x: 2900, doel: 3 },
@@ -234,7 +228,7 @@ export const LEVEL_7_3 = {
     { x: 1450, y: 600, amount: 1 },
     { x: 1760, y: 600, amount: 1 },
     { x: 2600, y: 600, amount: 1, regen: true }, // groei-hulp vóór de plaat
-    { x: 4480, y: 340, amount: 1 },              // op de bonus-richel
+    { x: 4480, y: 370, amount: 1 },              // op de bonus-richel
   ],
 
   grommels: [
@@ -246,8 +240,8 @@ export const LEVEL_7_3 = {
     { type: 'stomp', x: 5100, y: 612, patrol: [5000, 5250] },
   ],
 
-  // Ster hoog boven de geiser op het midden-eiland.
-  star: { x: 1600, y: 260 },
+  // Ster op de richel boven het midden-eiland (dubbelsprong).
+  star: { x: 1575, y: 405 },
 
   goal: { x: 5320, y: 588, value: 6 },
 
@@ -260,7 +254,7 @@ export const LEVEL_7_3 = {
 
 export const LEVEL_7_4 = {
   id: '7-4',
-  naam: 'De Oven-Klim',
+  naam: 'Het Rollende Kaaswiel',
 
   worldW: 5600,
   worldH: 800,
@@ -273,78 +267,57 @@ export const LEVEL_7_4 = {
   startStamp: true,
   startDuw: true,
   startMega: true,
-  intro: 'De grote klim naar de oven — geisers, punten én dubbel-raadsels! 🌋',
+  intro: 'RENNEN! Een reuzen-kaaswiel rolt achter je aan! 🧀💨',
 
-  // Meesterproef: alles samen. Portaal-dubbelen (4+4=8), geisers, kantels,
-  // de tweede bakkerij, een MEER-vraagmuur en op het eind een TWEEDE
-  // portaal-raadsel (5+5=10) — dubbelen tot en met tien.
+  // BEWEGING-LEVEL (rework 2026-07-18: was de vormeloze "meesterproef-mix" met
+  // geiser+kantel+bakkerij+2 portalen). Nu één duidelijke ruggengraat: RENNEN
+  // voor een rollend reuzen-kaaswiel, dan een koord-oversteek over het saus-
+  // ravijn, één dubbel-portaal (5+5=10) als reken-hoogtepunt, en een tel-wolken-
+  // klim naar de ster. Geen geiser hier — die horen in 7-1.
   platforms: [
-    [0, 660, 1250, 140],      // aanloop met portalen
-    [1250, 660, 550, 140],    // geiser-plein
-    [1050, 430, 170, 26],     // richel boven geiser (topping-plek)
-    [1550, 400, 170, 26],     // hoge richel (topping-plek)
-    [2560, 660, 3040, 140],   // top-vlakte — vraagmuur, portaal 2 en de vlag
+    [0, 660, 3400, 140],      // de renbaan (kaaswiel-achtervolging)
+    [3700, 660, 1900, 140],   // de overkant (na het koord)
   ],
 
-  water: [[1800, 690, 760, 110]], // het laatste saus-ravijn voor de top
+  water: [[3400, 690, 300, 110]], // saus-ravijn onder het koord
 
-  // Dubbel-raadsels: welk portaal maakt 8? En verderop: welke som is 10?
+  achtervolgingen: [
+    { spawnX: 400, triggerX: 900, endX: 3100, skin: 'kaaswiel' }, // RENNEN!
+  ],
+
+  koorden: [[3380, 3740, 480]], // koord-oversteek over het ravijn
+
+  // Eén dubbel-raadsel als reken-hoogtepunt: welke som maakt 10?
   portalen: [
-    { x: 400, doel: 8, opties: [[4, 4], [5, 4], [3, 4]] },
-    { x: 4000, doel: 10, opties: [[5, 5], [4, 5], [6, 5]] },
+    { x: 4300, doel: 10, opties: [[5, 5], [4, 5], [6, 5]] },
   ],
 
-  geisers: [
-    { x: 960, hoogte: 300, offset: 400 },
-    { x: 1460, hoogte: 340, offset: 1200 },
-    { x: 5050, hoogte: 320, offset: 700 }, // feest-lancering bij de vlag
-  ],
-
-  kantels: [
-    [1730, 560, 120],   // opstapje richting de bakkerij-kant
-  ],
-
-  bakkerij: {
-    x: 1300,
-    pizzas: 2,
-    per: 4,             // stapje moeilijker: 8 toppings, 4 op elk
-    toppings: [
-      [240, 600], [700, 600], [880, 600], [1180, 600],
-      [1135, 370], [1635, 340],           // op de richels (geiser-werk!)
-      [1385, 600], [1730, 500],           // bij het plein + op de kantel-punt
-    ],
-    brug: [1800, 660, 760],
-  },
-
-  // MEER-vraagmuur op de top-vlakte.
-  vraagMuren: [
-    { x: 3250, kies: 'meer', opties: [8, 4] },
-  ],
+  telWolken: [[4850, 460, 120], [5050, 360, 120]], // wolken-klim naar de ster
 
   pickups: [
-    { x: 320, y: 600, amount: 1 },
-    { x: 1080, y: 600, amount: 1 },
-    { x: 2700, y: 600, amount: 1, regen: true },
-    { x: 3800, y: 600, amount: 1, regen: true }, // vóór portaal 2
+    { x: 250, y: 600, amount: 1 },
+    { x: 600, y: 600, amount: 1 },
+    { x: 3800, y: 600, amount: 1 },              // na het koord
+    { x: 4150, y: 600, amount: 1, regen: true }, // vóór het portaal
   ],
 
   grommels: [
-    { type: 'stomp', x: 700, y: 612, patrol: [600, 850] },
-    { type: 'stomp', x: 1500, y: 612, patrol: [1350, 1700] },
-    { type: 'vlieger', x: 1350, y: 250, patrol: [1000, 1700] },
-    { type: 'werper', x: 2800, y: 612, patrol: [2700, 2950] }, // gooit tomaten!
-    { type: 'glijder', x: 4750, y: 612, patrol: [4650, 4900] },
+    { type: 'stomp', x: 650, y: 612, patrol: [550, 800] }, // vóór de achtervolging
+    { type: 'vlieger', x: 2100, y: 300, patrol: [1800, 2400] }, // vliegende tomaat
+    { type: 'springer', x: 3950, y: 612, patrol: [3850, 4100] },
+    { type: 'werper', x: 5000, y: 612, patrol: [4900, 5150] }, // gooit tomaten!
   ],
 
-  // Ster boven de hoogste richel.
-  star: { x: 1635, y: 270 },
+  // Ster bovenop de tel-wolken-klim; Gouden Nul hoog boven het koord.
+  star: { x: 5100, y: 310 },
+  goudenNul: { x: 3560, y: 380 },
 
-  goal: { x: 5450, y: 588, value: 8 },
+  goal: { x: 5500, y: 588, value: 10 },
 
   reward: {
     title: 'Level 7-4 gehaald! 🏆',
-    subtitle: '4+4 én 5+5 — dubbel-meester op de top van de vulkaan!',
-    stars: 3, medal: 'adventure_7_4', medalLabel: 'Oven-Klimmer',
+    subtitle: 'Het kaaswiel voorbij gerend — en 5+5=10 op de koop toe!',
+    stars: 3, medal: 'adventure_7_4', medalLabel: 'Kaas-Renner',
   },
 };
 
