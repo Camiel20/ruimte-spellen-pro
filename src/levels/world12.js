@@ -135,7 +135,7 @@ export const LEVEL_12_2 = {
 
 export const LEVEL_12_3 = {
   id: '12-3',
-  naam: 'De Donkere Geul',
+  naam: 'De Diepzee-Duik',
 
   worldW: 5600,
   worldH: 800,
@@ -148,121 +148,118 @@ export const LEVEL_12_3 = {
   startStamp: true,
   startDuw: true,
   startMega: true,
-  intro: 'TWEE geulen, TWEE duikboten — zoek beide 10-maatjes! 🫧🫧',
+  intro: 'Een HAAI! Zwem naar de duikboot en vaar de diepte in! 🦈🫧',
 
-  // Les 3: de dubbele duikboot-tocht. 4 + ? en 8 + ? — twee tanks, twee
-  // ritten over twee donkere geulen, met een zwem-eiland ertussen.
+  // Les 3 HERBOUWD (was ~= 12-1, "zwem+duik+vraag"). Nu een eigen verhaal: een
+  // jaag-HAAI drijft je over het rif naar de duikboot; je maakt de tank vol
+  // (7 ❤ 3) en VAART de haai voorbij, de donkere geul over. Aan de overkant een
+  // rustige zwem-zone naar de vlag. De duikboot is hier de STER (één grote rit).
   platforms: [
-    [0, 660, 1600, 140],
-    [2400, 660, 1400, 140],  // het midden-eiland
-    [4600, 660, 1000, 140],  // de overkant
-    [600, 420, 180, 26],     // richel voor de Gouden Nul
+    [0, 660, 2500, 140],     // het rif (haai-vlucht + duikboot-dok)
+    [3400, 660, 2200, 140],  // de overkant (na de diepe geul)
+    [340, 470, 170, 26],     // richel met de Gouden Nul (vóór de haai losbreekt)
   ],
 
-  water: [[1600, 690, 800, 110], [3800, 690, 800, 110]],
+  water: [[2500, 690, 900, 110]], // de diepe geul — alleen per duikboot!
 
-  zwemZones: [{ x: 2700, w: 600 }],
+  achtervolgingen: [
+    { spawnX: 200, triggerX: 700, endX: 2100, skin: 'haai' }, // ZWEM! de haai jaagt!
+  ],
 
   duikboten: [
-    { x: 1400, landX: 2560, toon: 4, bellen: [[900, 500, 6], [1080, 420, 2], [1230, 520, 5]] },
-    { x: 3600, landX: 4760, toon: 8, bellen: [[3000, 480, 2], [3180, 400, 6], [3330, 500, 1]] },
+    { x: 2250, landX: 3500, toon: 7, bellen: [[1650, 470, 6], [1820, 390, 3], [1980, 510, 8]] },
   ],
 
-  vraagMuren: [
-    { x: 3500, kies: 'meer', opties: [8, 4] },
-  ],
+  zwemZones: [{ x: 4200, w: 600 }], // rustig omhoog zwemmen naar de ster
 
   pickups: [
-    { x: 300, y: 600, amount: 1 },
-    { x: 2550, y: 600, amount: 1 },
-    { x: 3350, y: 600, amount: 1, regen: true }, // vóór de vraagmuur
+    { x: 250, y: 600, amount: 1 },
+    { x: 3600, y: 600, amount: 1 },              // na de landing
+    { x: 4900, y: 600, amount: 1, regen: true },
   ],
 
   grommels: [
-    { type: 'stomp', x: 500, y: 612, patrol: [400, 600] },
-    { type: 'springer', x: 2870, y: 612, patrol: [2800, 2950] },
-    { type: 'vlieger', x: 3200, y: 280, patrol: [3000, 3400] },
-    { type: 'stomp', x: 4900, y: 612, patrol: [4800, 5000] },
+    { type: 'vlieger', x: 2900, y: 300, patrol: [2700, 3100] }, // een kwal boven de geul
+    { type: 'springer', x: 3600, y: 612, patrol: [3500, 3750] },
+    { type: 'vlieger', x: 4300, y: 280, patrol: [4100, 4500] }, // kwal in de zwem-zone
+    { type: 'stomp', x: 5200, y: 612, patrol: [5100, 5400] },
   ],
 
-  // Ster hoog in de zwem-zone; Gouden Nul boven de start-richel.
-  star: { x: 3000, y: 220 },
-  goudenNul: { x: 690, y: 300 },
+  // Gouden Nul op de vroege richel (pak 'm vóór de haai losbreekt!); ster hoog
+  // in de zwem-zone aan de overkant.
+  star: { x: 4500, y: 210 },
+  goudenNul: { x: 425, y: 420 },
 
-  goal: { x: 5450, y: 588, value: 10 },
+  goal: { x: 5500, y: 588, value: 10 },
 
   reward: {
     title: 'Level 12-3 gehaald! 🏆',
-    subtitle: 'Twee geulen, twee verliefde paren — kapitein op de vloot!',
-    stars: 3, medal: 'adventure_12_3', medalLabel: 'Geul-Kapitein',
+    subtitle: 'De haai voorbij gevaren — 7 en 3 zijn verliefd, samen 10!',
+    stars: 3, medal: 'adventure_12_3', medalLabel: 'Diepzee-Kapitein',
   },
 };
 
 export const LEVEL_12_4 = {
   id: '12-4',
-  naam: 'De Bellen-Tuin',
+  naam: 'De Stroom-Klim',
 
-  worldW: 6000,
-  worldH: 800,
-  killY: 720,
+  worldW: 2400,
+  worldH: 1800,
+  killY: 1730,
   terrain: 'zee',
-  bg: { top: 0x4fa8cc, bottom: 0x17587a },
+  bg: { top: 0x5fb8dd, bottom: 0x0f4a68 }, // licht bovenaan → donkere diepte onder
 
-  start: { x: 90, y: 560 },
+  start: { x: 90, y: 1560 },
   startDoubleJump: true,
   startStamp: true,
   startDuw: true,
   startMega: true,
-  intro: 'De grote bellen-tuin: zwem, vaar en maak overal 10! 💙',
+  intro: 'Kom met de duikboot en ZWEM daarna de stroom omhoog! 🫧⬆️',
 
-  // Les 4: de grote mix. Een duikboot-rit als lucht-lift over het drukke
-  // rif, twee zwem-zones, een duw-kist, een MINDER-muur en als finale een
-  // portaal-som die óók 10 maakt (natuurlijk).
+  // Les 4 HERBOUWD (was de "grote mix"). Nu de enige VERTICALE Bubbel-Zee-
+  // beat: arriveer per duikboot (7 ❤ 3) onderin, en ZWEM daarna de stroom-
+  // kolom omhoog — tik-tik-tik langs koraal-richels en kwallen naar de zwevende
+  // vlag bovenin. Val je? Dan dobber je zacht terug (faal-vriendelijk; je kunt
+  // in het water niet dood). NB: onderste vloer = platforms[0] (systemen
+  // ankeren op de hoofdvloer); de vlag is een zweef-sensor (geen bonk).
   platforms: [
-    [0, 660, 6000, 140],
-    [900, 420, 180, 26],    // koraal-richel
-    [3300, 400, 200, 26],   // hoge richel met de ster
+    [0, 1660, 900, 140],      // dok-vloer (start + duikboot) — hoofdvloer
+    [1300, 1660, 1100, 140],  // klim-vloer (voet van de stroom-kolom)
+    [1400, 1400, 150, 22],    // koraal-richel links
+    [2150, 1200, 150, 22],    // koraal-richel rechts
+    [1400, 1000, 150, 22],    // koraal-richel links
+    [2150, 800, 150, 22],     // koraal-richel rechts (ster)
+    [1400, 600, 150, 22],     // koraal-richel links (gouden nul)
   ],
 
-  zwemZones: [{ x: 1400, w: 800 }, { x: 4200, w: 600 }],
+  water: [[900, 1690, 400, 110]], // de geul onder de duikboot (900-1300)
 
   duikboten: [
-    { x: 2600, landX: 3920, toon: 6, bellen: [[2200, 480, 4], [2340, 400, 3], [2470, 520, 7]] },
+    { x: 600, landX: 1400, toon: 7, bellen: [[220, 1560, 4], [380, 1500, 3], [520, 1560, 8]] },
   ],
 
-  duwKisten: [1200],
-
-  vraagMuren: [
-    { x: 4800, kies: 'minder', opties: [3, 9] },
-  ],
-
-  portalen: [
-    { x: 5150, doel: 10, opties: [[6, 4], [5, 3], [8, 3]] }, // ook hier: samen 10!
-  ],
+  zwemZones: [{ x: 1400, w: 900 }], // de stroom-kolom: zwem omhoog!
 
   pickups: [
-    { x: 300, y: 600, amount: 1 },
-    { x: 2000, y: 600, amount: 1 },
-    { x: 4600, y: 600, amount: 1, regen: true }, // vóór de vraagmuur
+    { x: 250, y: 1600, amount: 1 },
+    { x: 1560, y: 1600, amount: 1 }, // aan de voet van de kolom
   ],
 
   grommels: [
-    { type: 'stomp', x: 600, y: 612, patrol: [500, 700] },
-    { type: 'springer', x: 1970, y: 612, patrol: [1900, 2050] },
-    { type: 'glijder', x: 2300, y: 612, patrol: [2200, 2400] },
-    { type: 'vlieger', x: 3300, y: 260, patrol: [3000, 3600] },
-    { type: 'stomp', x: 4170, y: 612, patrol: [4100, 4250] },
+    { type: 'vlieger', x: 1800, y: 1250, patrol: [1450, 2250] }, // kwal
+    { type: 'vlieger', x: 1950, y: 780, patrol: [1500, 2280] },  // kwal
+    { type: 'vlieger', x: 1700, y: 440, patrol: [1450, 2050] },  // kwal bewaakt de top
   ],
 
-  star: { x: 3400, y: 350 },
-  goudenNul: { x: 4500, y: 180 }, // helemaal bovenin zwem-zone 2
+  star: { x: 2225, y: 760 },       // op de rechter koraal-richel
+  goudenNul: { x: 1475, y: 560 },  // op de hoge linker koraal-richel
 
-  goal: { x: 5920, y: 588, value: 10 },
+  goal: { x: 1850, y: 320, value: 10 }, // zweeft bovenin de stroom-kolom
 
   reward: {
     title: 'Level 12-4 gehaald! 🏆',
-    subtitle: 'Overal 10 gemaakt — de bellen-tuin bloeit voor jou!',
-    stars: 3, medal: 'adventure_12_4', medalLabel: 'Bellen-Tuinier',
+    subtitle: 'De hele stroom omhoog gezwommen — naar de top van de zee!',
+    stars: 3, medal: 'adventure_12_4', medalLabel: 'Stroom-Klimmer',
   },
 };
 

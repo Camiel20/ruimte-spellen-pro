@@ -52,6 +52,21 @@ function start(s, ch) {
     g.fillStyle(0x2b2f34, 1); g.beginPath(); g.arc(0, 4, 8, 0, Math.PI, false); g.fillPath(); // grijns-mond
     c.add(g);
     s.tweens.add({ targets: g, y: -8, duration: 480, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  } else if (ch.skin === 'haai') {
+    // een grijze jaag-haai (de Bubbel-Zee): glijdt en golft, geen rol
+    g.fillStyle(0x6b7f8c, 1); g.fillEllipse(6, 0, 64, 34);           // lijf (neus naar rechts)
+    g.fillStyle(0xdfeaf0, 1); g.fillEllipse(8, 9, 52, 15);          // witte buik
+    g.fillStyle(0x6b7f8c, 1);
+    g.fillTriangle(-2, -15, 14, -15, 6, -34);                       // rugvin
+    g.fillTriangle(-24, 0, -44, -16, -44, 16);                      // staartvin
+    g.fillStyle(0x53646f, 1); g.fillTriangle(6, 12, 22, 12, 12, 26);// borstvin
+    g.fillStyle(0x243038, 1); g.fillTriangle(20, 6, 38, 3, 36, 13); // bek
+    g.fillStyle(0xffffff, 1);                                       // tandjes
+    g.fillTriangle(23, 6, 27, 6, 25, 11); g.fillTriangle(29, 5.2, 33, 5.2, 31, 10);
+    g.fillStyle(0x16202b, 1); g.fillCircle(22, -5, 3.4);            // oog
+    g.lineStyle(3, 0x4a5a64, 1); g.strokeEllipse(6, 0, 64, 34);
+    c.add(g);
+    s.tweens.add({ targets: g, y: -6, duration: 440, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   } else {
     g.fillStyle(0x6a7078, 1); g.fillCircle(0, 0, 28);
     g.fillStyle(0x7d838c, 1); g.fillCircle(-6, -6, 20);
@@ -70,7 +85,8 @@ function start(s, ch) {
   s.questText.setText(ch.skin === 'komeet' ? 'RENNEN! De komeet komt! ☄️'
     : ch.skin === 'bal' ? 'RENNEN! De reuzen-voetbal rolt! ⚽'
     : ch.skin === 'sneeuwbal' ? 'RENNEN! De reuzen-sneeuwbal rolt! ⛄'
-    : ch.skin === 'spook' ? 'RENNEN! Het spook jaagt je! 👻' : 'RENNEN! 🪨');
+    : ch.skin === 'spook' ? 'RENNEN! Het spook jaagt je! 👻'
+    : ch.skin === 'haai' ? 'ZWEM! De haai jaagt je! 🦈' : 'RENNEN! 🪨');
   Voice.hint('hint-rennen'); // direct, geen delay — urgentie!
 }
 
