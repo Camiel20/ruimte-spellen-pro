@@ -26,8 +26,10 @@ export const LEVEL_9_1 = {
   startMega: true,
   intro: 'Welkom in Wc-Wonderland! De stank tilt je OMHOOG! 💩💨',
 
-  // Les 1: stink-wolkjes (zweef-kolommen), wc-rollen, een "wees 2"-deurtje
-  // (splitsen!) en op het eind een stink-lancering naar de vlag-richel.
+  // STINK-LIFT = DE STER (rework 2026-07-18: wc-rollen eruit — die horen in
+  // 9-3). Álles draait om de zweef-kolommen: stap in een stink-wolk en de
+  // stank tilt je naar de hoge richels. Tussendoor een tel-wolken-klim, een
+  // "wees 2"-deurtje (splitsen!) en op het eind een stink-lancering naar de vlag.
   platforms: [
     [0, 660, 5200, 140],
     [640, 430, 180, 26],     // richel boven stink-kolom 1
@@ -45,11 +47,8 @@ export const LEVEL_9_1 = {
     { x: 4820, w: 110 },
   ],
 
-  wcRollen: [
-    [1050, 540, 150],        // oefen-rolletje naar een bolletje
-    [2650, 550, 140],        // extra rolletje met een bolletje erop
-    [4300, 550, 140],
-  ],
+  // Tel-wolken-trapje halverwege (klim naar een bonus tussen de stink-kolommen).
+  telWolken: [[2400, 450, 120], [2620, 350, 120]],
 
   // Alleen als je PRECIES 2 bent past het wc-deurtje (tik = splitsen!).
   doors: [
@@ -58,11 +57,11 @@ export const LEVEL_9_1 = {
 
   pickups: [
     { x: 250, y: 600, amount: 1 },
-    { x: 1050, y: 490, amount: 1 },  // op de wc-rol!
+    { x: 700, y: 380, amount: 1 },   // op richel 1 (via de stank)
     { x: 1900, y: 600, amount: 1, regen: true },
-    { x: 2650, y: 500, amount: 1 },  // op het extra rolletje
+    { x: 2680, y: 300, amount: 1 },  // bovenop het tel-wolken-trapje
     { x: 3790, y: 340, amount: 1 },  // op richel 3
-    { x: 4300, y: 500, amount: 1 },
+    { x: 4300, y: 600, amount: 1 },
   ],
 
   grommels: [
@@ -177,12 +176,14 @@ export const LEVEL_9_3 = {
   startMega: true,
   intro: 'Het papier rolt af — RENNEN over de rollen! 🧻⚡',
 
-  // Les 3: TWEE lange wc-rol-kettingen over het spoelwater. Blijf bewegen:
-  // het papier scheurt onder je voeten! Tussendoor een geef-plaat, en de
-  // tweede ketting is hoger en langer.
+  // WC-ROL = DE STER (rework 2026-07-18: stink-zone eruit — pure wc-rol-ren).
+  // TWEE lange wc-rol-kettingen over het spoelwater. Blijf bewegen: het papier
+  // scheurt onder je voeten! Tussendoor een geef-plaat, een ster-richel boven
+  // het midden-eiland, en de tweede ketting is hoger en langer.
   platforms: [
     [0, 660, 700, 140],
     [1450, 660, 550, 140],
+    [1650, 470, 150, 26],    // ster-richel boven het midden-eiland
     [2450, 660, 1150, 140],
     [4200, 660, 1200, 140],
   ],
@@ -205,8 +206,6 @@ export const LEVEL_9_3 = {
     [4090, 600, 130],
   ],
 
-  stinkZones: [{ x: 1700, w: 110 }],
-
   // Geef-plaat: geef 2 blokjes om de slagboom te openen (aftrekken!).
   plates: [
     { x: 3100, doel: 2 },
@@ -228,8 +227,8 @@ export const LEVEL_9_3 = {
     { type: 'stomp', x: 4800, y: 612, patrol: [4700, 4900] },
   ],
 
-  // Ster hoog in de stink-kolom op het midden-eiland.
-  star: { x: 1755, y: 300 },
+  // Ster op de richel boven het midden-eiland (dubbelsprong).
+  star: { x: 1725, y: 420 },
 
   // GEHEIM: een Gouden Nul boven de rollen-ketting.
   goudenNul: { x: 1190, y: 470 },
@@ -245,7 +244,7 @@ export const LEVEL_9_3 = {
 
 export const LEVEL_9_4 = {
   id: '9-4',
-  naam: 'Het Grote Doorspoelen',
+  naam: 'Het Huppelende Drolletje',
 
   worldW: 5600,
   worldH: 800,
@@ -258,66 +257,59 @@ export const LEVEL_9_4 = {
   startStamp: true,
   startDuw: true,
   startMega: true,
-  intro: 'De meesterproef: spoel dóór met sommen tot 20! 🚽💨',
+  intro: 'RENNEN! Een reuzen-drolletje huppelt achter je aan! 💩💨',
 
-  // Alles samen: DRIE pot-raadsels (12, 18, 20 — tientallen!), wc-rollen,
-  // een stink-klim naar de ster, en een MINDER-vraagmuur als slot.
+  // BEWEEG-LEVEL (rework 2026-07-18: was de vormeloze "grote mix" met spoel-
+  // potten+wcrol+stink). Nu één duidelijke ruggengraat: RENNEN voor een
+  // huppelend reuzen-drolletje → koord-oversteek over de spoel-kloof → een
+  // duw-kist naar de Gouden Nul → één MEER-vraagmuur als reken-hoogtepunt →
+  // tel-wolken-klim naar de ster. Geen spoelpotten hier (die zijn 9-2's ster).
   platforms: [
-    [0, 660, 900, 140],
-    [1300, 660, 800, 140],
-    [2600, 660, 1000, 140],
-    [4100, 660, 1500, 140],
-    [2860, 400, 160, 26],    // ster-richel boven de stink-kolom
+    [0, 660, 3400, 140],      // de renbaan (drol-achtervolging)
+    [3700, 660, 1900, 140],   // de overkant (na het koord)
   ],
 
-  water: [
-    [900, 690, 400, 110],
-    [2100, 690, 500, 110],
-    [3600, 690, 500, 110],
+  water: [[3400, 690, 300, 110]], // spoel-kloof onder het koord
+
+  achtervolgingen: [
+    { spawnX: 400, triggerX: 900, endX: 3100, skin: 'drol' }, // RENNEN!
   ],
 
-  spoelpotten: [
-    { x: 440, doel: 12, opties: [[6, 6], [5, 6], [7, 6]], uitX: 1380 },
-    { x: 1700, doel: 20, opties: [[10, 10], [10, 5], [10, 9]], uitX: 2680 },
-    { x: 3150, doel: 18, opties: [[10, 8], [9, 8], [10, 7]], uitX: 4180 },
-  ],
+  koorden: [[3380, 3740, 480]], // koord-oversteek over de kloof
 
-  wcRollen: [[1480, 560, 130], [4400, 560, 130]],
+  duwKisten: [4150], // opstapje naar de Gouden Nul
 
-  stinkZones: [{ x: 2740, w: 100 }], // links van de ster-richel (geen hoofdstoot)
-
-  // MINDER-vraagmuur als allerlaatste proef vóór de vlag.
+  // Eén MEER-vraagmuur als reken-hoogtepunt vlak vóór de klim.
   vraagMuren: [
-    { x: 4900, kies: 'minder', opties: [6, 14] },
+    { x: 4700, kies: 'meer', opties: [9, 6] },
   ],
+
+  telWolken: [[5000, 450, 120], [5200, 350, 120]], // wolken-klim naar de ster
 
   pickups: [
     { x: 250, y: 600, amount: 1 },
-    { x: 1480, y: 510, amount: 1 },  // op de wc-rol
-    { x: 2750, y: 600, amount: 1 },
-    { x: 4750, y: 600, amount: 1, regen: true }, // vóór de vraagmuur
+    { x: 600, y: 600, amount: 1 },
+    { x: 3800, y: 600, amount: 1 },              // na het koord
+    { x: 4500, y: 600, amount: 1, regen: true }, // vóór de vraagmuur
   ],
 
   grommels: [
-    { type: 'stomp', x: 700, y: 612, patrol: [600, 850] },
-    { type: 'vlieger', x: 1600, y: 300, patrol: [1350, 1900] },
-    { type: 'stomp', x: 1950, y: 612, patrol: [1850, 2080] },
-    { type: 'loerder', x: 4600, y: 632, patrol: [4500, 4700] }, // loert uit z'n pot!
-    { type: 'springer', x: 5150, y: 612, patrol: [5080, 5250] },
+    { type: 'stomp', x: 650, y: 612, patrol: [550, 800] },       // vóór de achtervolging
+    { type: 'vlieger', x: 2100, y: 300, patrol: [1800, 2400] },  // een vliegje
+    { type: 'loerder', x: 3950, y: 632, patrol: [3850, 4050] },  // loert uit z'n pot!
+    { type: 'stomp', x: 4900, y: 612, patrol: [4800, 5000] },
   ],
 
-  // Ster op de hoge richel — laat de stank je erheen tillen.
-  star: { x: 2930, y: 340 },
+  // Ster bovenop de tel-wolken-klim; Gouden Nul boven de duw-kist.
+  star: { x: 5250, y: 300 },
+  goudenNul: { x: 4200, y: 460 },
 
-  // GEHEIM: een Gouden Nul boven de tweede potten-rij.
-  goudenNul: { x: 1830, y: 420 },
-
-  goal: { x: 5450, y: 588, value: 20 }, // de vlag toont TWINTIG!
+  goal: { x: 5500, y: 588, value: 10 },
 
   reward: {
     title: 'Level 9-4 gehaald! 🏆',
-    subtitle: '10+10 en 10+8 — jij spoelt zelfs met tientallen door!',
-    stars: 3, medal: 'adventure_9_4', medalLabel: 'Meester-Doorspoeler',
+    subtitle: 'Het drolletje voorbij gerend — niemand vangt jou!',
+    stars: 3, medal: 'adventure_9_4', medalLabel: 'Drol-Renner',
   },
 };
 

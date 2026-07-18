@@ -78,6 +78,16 @@ function start(s, ch) {
     g.lineStyle(3, 0xb9832a, 1); g.strokeCircle(0, 0, 28);
     c.add(g);
     s.tweens.add({ targets: g, angle: 360, duration: 620, repeat: -1 });
+  } else if (ch.skin === 'drol') {
+    // een vrolijk huppelend drolletje (Wc-Wonderland): bruine krul + gezichtje
+    g.fillStyle(0x8a5a33, 1);
+    g.fillEllipse(0, 14, 52, 20); g.fillEllipse(0, -2, 40, 18); g.fillEllipse(2, -16, 26, 14); g.fillEllipse(0, -27, 14, 9);
+    g.fillStyle(0xa9713f, 0.7); g.fillEllipse(-9, 0, 14, 7);
+    g.fillStyle(0xffffff, 1); g.fillCircle(-8, -6, 5.5); g.fillCircle(8, -6, 5.5);
+    g.fillStyle(0x2c1c0e, 1); g.fillCircle(-8, -5, 2.6); g.fillCircle(8, -5, 2.6);
+    g.lineStyle(2.5, 0x2c1c0e, 1); g.beginPath(); g.arc(0, 2, 6, 0.2, Math.PI - 0.2); g.strokePath(); // lach
+    c.add(g);
+    s.tweens.add({ targets: g, y: -8, duration: 300, yoyo: true, repeat: -1, ease: 'Quad.easeOut' }); // huppel
   } else {
     g.fillStyle(0x6a7078, 1); g.fillCircle(0, 0, 28);
     g.fillStyle(0x7d838c, 1); g.fillCircle(-6, -6, 20);
@@ -98,7 +108,8 @@ function start(s, ch) {
     : ch.skin === 'sneeuwbal' ? 'RENNEN! De reuzen-sneeuwbal rolt! ⛄'
     : ch.skin === 'spook' ? 'RENNEN! Het spook jaagt je! 👻'
     : ch.skin === 'haai' ? 'ZWEM! De haai jaagt je! 🦈'
-    : ch.skin === 'kaaswiel' ? 'RENNEN! Het kaaswiel rolt! 🧀' : 'RENNEN! 🪨');
+    : ch.skin === 'kaaswiel' ? 'RENNEN! Het kaaswiel rolt! 🧀'
+    : ch.skin === 'drol' ? 'RENNEN! Het drolletje huppelt achter je aan! 💩' : 'RENNEN! 🪨');
   Voice.hint('hint-rennen'); // direct, geen delay — urgentie!
 }
 
