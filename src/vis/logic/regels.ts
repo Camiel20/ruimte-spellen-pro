@@ -28,20 +28,25 @@ export function massaNaEten(massa: number, prooiMassa: number): number {
   return Math.min(MASSA_MAX, massa + prooiMassa * GROEI_OPNAME);
 }
 
+// NB: deze functies draaien in de update-lus van de scene. Ze gebruiken
+// bewust geïndexeerde lussen in plaats van find/for-of, want die maken per
+// aanroep een closure of iterator aan — en dat mag niet per frame gebeuren.
+
 /** Fasenummer (1..5) voor een massa; onder de eerste drempel geldt fase 1. */
 export function faseVoorMassa(massa: number): number {
   let fase = FASES[0].fase;
-  for (const f of FASES) {
-    if (massa >= f.drempel) fase = f.fase;
+  for (let i = 0; i < FASES.length; i++) {
+    if (massa >= FASES[i].drempel) fase = FASES[i].fase;
   }
   return fase;
 }
 
 /** Massadrempel waarop een fase ingaat. */
 export function faseDrempel(fase: number): number {
-  const gevonden = FASES.find((f) => f.fase === fase);
-  if (!gevonden) throw new Error(`Onbekende fase: ${fase}`);
-  return gevonden.drempel;
+  for (let i = 0; i < FASES.length; i++) {
+    if (FASES[i].fase === fase) return FASES[i].drempel;
+  }
+  throw new Error(`Onbekende fase: ${fase}`);
 }
 
 /**
@@ -67,9 +72,10 @@ export function radiusVoorMassa(massa: number): number {
 /** Maximale zwemsnelheid (px/s) van de speler: constant binnen de fase. */
 export function maxSnelheidVoorMassa(massa: number): number {
   const fase = faseVoorMassa(massa);
-  const cfg = FASES.find((f) => f.fase === fase);
-  if (!cfg) throw new Error(`Onbekende fase: ${fase}`);
-  return cfg.maxSnelheid;
+  for (let i = 0; i < FASES.length; i++) {
+    if (FASES[i].fase === fase) return FASES[i].maxSnelheid;
+  }
+  throw new Error(`Onbekende fase: ${fase}`);
 }
 
 /**

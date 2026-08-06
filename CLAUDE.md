@@ -343,7 +343,7 @@ een nul weg (÷10), `↺` reset. Doorgroeien tot **triljoen** (10^18, 18 nullen)
 - **Geluid:** `SFX.grow` (oplopend), `SFX.fanfare` bij mijlpalen + voorlezen
   van de getalnaam (Web Speech).
 
-## Hapvis (`src/vis/`) — IN AANBOUW (fase 2 van 4+, aug 2026)
+## Hapvis (`src/vis/`) — SPEELBAAR (fase 3, aug 2026)
 Offline 2D "eet en groei"-vissenspel (eigen ontwerp, geen kopie). **Het
 vastgestelde ontwerp is `docs/DESIGN.md` — de bron van ALLE getallen**; elke
 waarde daar staat letterlijk in `src/vis/GameConfig.ts` (met eenheid +
@@ -364,7 +364,18 @@ doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
   (vlucht/zichtkegel/draaiklem/boids), `SaveManager.ts` (enige opslagpunt,
   sleutel `hapvis_v1`, records + laatste 5 + unlocks; in-memory-terugval).
   Logic-modules importeren géén Phaser → unit-getest in `tests/vis-*.test.ts`.
-- **Nog niet gebouwd**: VisScene, graphics.ts (generateTexture-vissen),
-  geluid.ts (WebAudio-synth), menutegel-integratie in `main.js`/`MenuScene`.
-  Harde eisen: volledig offline, geen binaire assets, max 60 actieve vissen
-  (pooling), opslag alleen via de SaveManager.
+- **Fase 3 (klaar): het spel zelf.** `VisScene.ts` (scene-key `Hapvis`,
+  menutegel 🐟 — voorlopig achter **Ouder-modus** tot de speeltest met Adrian
+  slaagt), `graphics.ts` (alle vissen getekend met Graphics →
+  `generateTexture`; vignet via canvas-verloop), `geluid.ts` (WebAudio-synthese,
+  geen bestanden). Beweging is **handmatig, geen Arcade Physics** — de globale
+  zwaartekracht uit `main.js` zou anders meedoen; acceleratie/traagheid/
+  draaiklem volgen exact het ontwerp. Pooling: 80 sprites, max 60 actief.
+  Vissen kijken in hun bewegingsrichting (`setFlipY` bij naar links).
+- **Valkuilen**: (1) de scene tekent zijn eigen achtergrond (verplicht sinds de
+  rebrand); (2) hot-path-helpers in `logic/sturing.ts` schrijven in
+  out-parameters — geen objectcreatie per frame; (3) het menurooster in
+  `MenuScene.buildGrid` schaalt de tegelhoogte met het aantal rijen: met
+  Ouder-modus aan viel de onderste rij eerder buiten het 800px-scherm.
+- **Nog niet gebouwd**: niets uit het ontwerp — v1 is compleet. Openstaand is
+  alleen de speeltest met Adrian (daarna `test: true` weghalen in `MenuScene`).

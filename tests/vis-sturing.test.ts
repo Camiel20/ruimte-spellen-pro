@@ -107,4 +107,30 @@ describe('schoolgedrag (boids)', () => {
     expect(kracht.y).toBeCloseTo(0.6, 10); // alignment-gewicht op genormaliseerde snelheid
     expect(kracht.x).toBeCloseTo(0.4, 10); // plus cohesie richting de buur
   });
+
+  it('rekent alleen over de eerste `aantal` buren van een hergebruikte buffer', () => {
+    // De scene geeft een vaste buffer mee; alles voorbij `aantal` is oud vuil
+    // en mag het resultaat niet beïnvloeden.
+    const buffer = [
+      { pos: { x: 100, y: 0 }, vel: { x: 0, y: 0 } },
+      { pos: { x: 0, y: 100 }, vel: { x: 0, y: 0 } }, // oude buur: telt niet mee
+    ];
+    const kracht = schoolKracht({ x: 0, y: 0 }, buffer, 1);
+    expect(kracht.x).toBeCloseTo(0.4, 10);
+    expect(kracht.y).toBeCloseTo(0, 10);
+  });
+
+  it('schrijft in de meegegeven uit-vector zonder een nieuwe te maken', () => {
+    const uit = { x: 9, y: 9 };
+    const buren = [{ pos: { x: 100, y: 0 }, vel: { x: 0, y: 0 } }];
+    const resultaat = schoolKracht({ x: 0, y: 0 }, buren, 1, uit);
+    expect(resultaat).toBe(uit);
+    expect(uit.x).toBeCloseTo(0.4, 10);
+
+    const doel = { x: 0, y: 0 };
+    expect(normaliseer({ x: 3, y: 4 }, doel)).toBe(doel);
+    expect(doel.x).toBeCloseTo(0.6, 10);
+    expect(vluchtVector({ x: 0, y: 0 }, { x: 10, y: 0 }, doel)).toBe(doel);
+    expect(doel.x).toBeCloseTo(-1, 10);
+  });
 });

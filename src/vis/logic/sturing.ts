@@ -20,16 +20,28 @@ export function lengte(v: Vec): number {
   return Math.sqrt(v.x * v.x + v.y * v.y);
 }
 
-/** Genormaliseerde vector; de nulvector blijft {0, 0}. */
-export function normaliseer(v: Vec): Vec {
+/**
+ * Genormaliseerde vector; de nulvector blijft {0, 0}. Geef `uit` mee om in een
+ * bestaande vector te schrijven — de scene doet dat in zijn update-lus, zodat
+ * er per frame niets wordt aangemaakt.
+ */
+export function normaliseer(v: Vec, uit: Vec = { x: 0, y: 0 }): Vec {
   const l = lengte(v);
-  if (l === 0) return { x: 0, y: 0 };
-  return { x: v.x / l, y: v.y / l };
+  if (l === 0) {
+    uit.x = 0;
+    uit.y = 0;
+    return uit;
+  }
+  uit.x = v.x / l;
+  uit.y = v.y / l;
+  return uit;
 }
 
 /** Eenheidsvector die recht van de bedreiging af wijst. */
-export function vluchtVector(eigen: Vec, bedreiging: Vec): Vec {
-  return normaliseer({ x: eigen.x - bedreiging.x, y: eigen.y - bedreiging.y });
+export function vluchtVector(eigen: Vec, bedreiging: Vec, uit: Vec = { x: 0, y: 0 }): Vec {
+  uit.x = eigen.x - bedreiging.x;
+  uit.y = eigen.y - bedreiging.y;
+  return normaliseer(uit, uit);
 }
 
 /** Kortste hoekverschil doel − huidig, gewikkeld naar [−π, π]. */
@@ -78,42 +90,72 @@ export interface SchoolLid {
   vel: Vec;
 }
 
+// Werkvectoren voor schoolKracht: hergebruikt, zodat de update-lus van de
+// scene geen objecten per frame aanmaakt.
+const _sep: Vec = { x: 0, y: 0 };
+const _somVel: Vec = { x: 0, y: 0 };
+const _zwaartepunt: Vec = { x: 0, y: 0 };
+const _hulp: Vec = { x: 0, y: 0 };
+
 /**
  * Boids-kracht (richtingsvector, niet geschaald naar snelheid) voor een
  * schoolvis: separatie + alignment + cohesie over de buren binnen
  * SCHOOL_RADIUS. Zonder buren: nulvector.
+ *
+ * `aantal` laat de scene een hergebruikte buffer meegeven waarvan alleen de
+ * eerste n plekken gevuld zijn; `uit` voorkomt een nieuwe vector per aanroep.
  */
-export function schoolKracht(eigenPos: Vec, buren: SchoolLid[]): Vec {
-  const binnen = buren.filter((b) => {
-    const dx = b.pos.x - eigenPos.x;
-    const dy = b.pos.y - eigenPos.y;
-    return Math.sqrt(dx * dx + dy * dy) <= SCHOOL_RADIUS;
-  });
-  if (binnen.length === 0) return { x: 0, y: 0 };
+export function schoolKracht(
+  eigenPos: Vec,
+  buren: SchoolLid[],
+  aantal: number = buren.length,
+  uit: Vec = { x: 0, y: 0 },
+): Vec {
+  _sep.x = 0;
+  _sep.y = 0;
+  _somVel.x = 0;
+  _somVel.y = 0;
+  _zwaartepunt.x = 0;
+  _zwaartepunt.y = 0;
+  let n = 0;
 
-  const separatie: Vec = { x: 0, y: 0 };
-  const somVel: Vec = { x: 0, y: 0 };
-  const zwaartepunt: Vec = { x: 0, y: 0 };
-  for (const b of binnen) {
+  for (let i = 0; i < aantal; i++) {
+    const b = buren[i];
     const dx = eigenPos.x - b.pos.x;
     const dy = eigenPos.y - b.pos.y;
-    if (Math.sqrt(dx * dx + dy * dy) <= SCHOOL_SEPARATIE_AFSTAND) {
-      const weg = normaliseer({ x: dx, y: dy });
-      separatie.x += weg.x;
-      separatie.y += weg.y;
+    const afstand = Math.sqrt(dx * dx + dy * dy);
+    if (afstand > SCHOOL_RADIUS) continue;
+    n++;
+    if (afstand <= SCHOOL_SEPARATIE_AFSTAND) {
+      _hulp.x = dx;
+      _hulp.y = dy;
+      normaliseer(_hulp, _hulp);
+      _sep.x += _hulp.x;
+      _sep.y += _hulp.y;
     }
-    somVel.x += b.vel.x;
-    somVel.y += b.vel.y;
-    zwaartepunt.x += b.pos.x;
-    zwaartepunt.y += b.pos.y;
+    _somVel.x += b.vel.x;
+    _somVel.y += b.vel.y;
+    _zwaartepunt.x += b.pos.x;
+    _zwaartepunt.y += b.pos.y;
   }
-  const alignment = normaliseer({ x: somVel.x / binnen.length, y: somVel.y / binnen.length });
-  const cohesie = normaliseer({
-    x: zwaartepunt.x / binnen.length - eigenPos.x,
-    y: zwaartepunt.y / binnen.length - eigenPos.y,
-  });
-  return {
-    x: separatie.x * SCHOOL_SEPARATIE + alignment.x * SCHOOL_ALIGNMENT + cohesie.x * SCHOOL_COHESIE,
-    y: separatie.y * SCHOOL_SEPARATIE + alignment.y * SCHOOL_ALIGNMENT + cohesie.y * SCHOOL_COHESIE,
-  };
+
+  if (n === 0) {
+    uit.x = 0;
+    uit.y = 0;
+    return uit;
+  }
+
+  _hulp.x = _somVel.x / n;
+  _hulp.y = _somVel.y / n;
+  normaliseer(_hulp, _hulp);
+  const alignX = _hulp.x;
+  const alignY = _hulp.y;
+
+  _hulp.x = _zwaartepunt.x / n - eigenPos.x;
+  _hulp.y = _zwaartepunt.y / n - eigenPos.y;
+  normaliseer(_hulp, _hulp);
+
+  uit.x = _sep.x * SCHOOL_SEPARATIE + alignX * SCHOOL_ALIGNMENT + _hulp.x * SCHOOL_COHESIE;
+  uit.y = _sep.y * SCHOOL_SEPARATIE + alignY * SCHOOL_ALIGNMENT + _hulp.y * SCHOOL_COHESIE;
+  return uit;
 }

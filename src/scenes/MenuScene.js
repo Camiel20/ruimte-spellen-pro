@@ -176,12 +176,23 @@ export default class MenuScene extends Phaser.Scene {
       // test: true = nog niet klaar voor Adrian — alleen zichtbaar in de
       // Ouder-modus (testversie). De Toverwinkel wacht op de speelgoed-pass.
       { icon: '🧪', name: 'Toverwinkel', test: true, color: 0x7c3aed, go: () => this.launchLazy('Toverwinkel', () => import('./TovenScene.js')) },
+      // Hapvis — offline "eet en groei"-vissenspel (src/vis/, TypeScript).
+      // test: true tot de speeltest met Adrian geslaagd is.
+      { icon: '🐟', name: 'Hapvis', test: true, color: 0x0284c7, go: () => this.launchLazy('Hapvis', () => import('../vis/VisScene.ts')) },
     ].filter((g) => !g.test || getSetting('ouderModus'));
 
     // Compact rooster zodat álles (ook de laatste rij) op 800px hoogte past.
-    const cardW = 213, cardH = 98, gapX = 8, gapY = 7;
+    // De tegelhoogte volgt uit het AANTAL rijen: bij 6 rijen komt er precies 98
+    // uit (de oude vaste waarde), en in de Ouder-modus — met de testtegels erbij
+    // — krimpen ze net genoeg zodat de onderste rij niet meer buiten beeld valt.
+    const cardW = 213, gapX = 8, gapY = 7, ondermarge = 16;
     const startX = (width - cardW * 2 - gapX) / 2 + cardW / 2;
     const startY = 210;
+    const rijen = Math.ceil(GAMES.length / 2);
+    const cardH = Math.min(
+      98,
+      (this.scale.height - ondermarge - startY - (rijen - 1) * gapY) / (rijen - 0.5),
+    );
 
     GAMES.forEach((game, i) => {
       const col = i % 2;
@@ -194,6 +205,9 @@ export default class MenuScene extends Phaser.Scene {
 
   makeGameTile(x, y, w, h, { icon, name, color, go }, index) {
     const r = 18;
+    // Icoon en naampilletje schalen mee met de tegelhoogte (f = 1 bij de
+    // normale 98px, kleiner zodra er een rij bij komt).
+    const f = h / 98;
 
     const container = this.add.container(x, y + 28).setDepth(5).setAlpha(0);
 
@@ -208,16 +222,16 @@ export default class MenuScene extends Phaser.Scene {
 
     // Groot emoji-icoon (in de bovenste helft)
     const iconTxt = this.add.text(0, -h * 0.16, icon, {
-      fontSize: '40px',
+      fontSize: `${Math.round(40 * f)}px`,
     }).setOrigin(0.5);
 
     // Naam op een donker pilletje, zodat het op elke kleur leesbaar is
-    const pillW = w - 26, pillH = 30, pillY = h / 2 - 26;
+    const pillW = w - 26, pillH = 30 * f, pillY = h / 2 - 26 * f;
     const pill = this.add.graphics();
     pill.fillStyle(0x12203a, 0.88);
     pill.fillRoundedRect(-pillW / 2, pillY - pillH / 2, pillW, pillH, 12);
     const nameTxt = this.add.text(0, pillY, name, {
-      fontFamily: 'Arial Black, Arial', fontSize: '15px', fontStyle: 'bold', color: '#ffffff',
+      fontFamily: 'Arial Black, Arial', fontSize: `${Math.round(15 * f)}px`, fontStyle: 'bold', color: '#ffffff',
     }).setOrigin(0.5);
 
     // Onzichtbare gloed-ring (voor de pulse-animatie hieronder)
