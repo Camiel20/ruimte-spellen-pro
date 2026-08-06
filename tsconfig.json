@@ -1,0 +1,19 @@
+{
+  // TypeScript-check alleen voor het Hapvis-spel (src/vis/ + vis-tests).
+  // De rest van het project blijft JavaScript en wordt hier bewust NIET gecheckt.
+  // Draaien: npx tsc --noEmit  (of: npm run typecheck)
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020", "DOM"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["src/vis/**/*.ts", "tests/vis-*.ts"]
+}

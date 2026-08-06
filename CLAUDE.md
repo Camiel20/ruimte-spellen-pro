@@ -342,3 +342,29 @@ een nul weg (÷10), `↺` reset. Doorgroeien tot **triljoen** (10^18, 18 nullen)
   geeft de medaille `rocket_max`.
 - **Geluid:** `SFX.grow` (oplopend), `SFX.fanfare` bij mijlpalen + voorlezen
   van de getalnaam (Web Speech).
+
+## Hapvis (`src/vis/`) — IN AANBOUW (fase 2 van 4+, aug 2026)
+Offline 2D "eet en groei"-vissenspel (eigen ontwerp, geen kopie). **Het
+vastgestelde ontwerp is `docs/DESIGN.md` — de bron van ALLE getallen**; elke
+waarde daar staat letterlijk in `src/vis/GameConfig.ts` (met eenheid +
+commentaar, geen magische getallen elders). Werkwijze: strikt per fase (alleen
+doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
+`npm run typecheck` (= `npx tsc --noEmit`), `npm run build`, `npm test`.
+- **TypeScript alleen hier**: de rest van de repo blijft JS. `tsconfig.json`
+  checkt uitsluitend `src/vis/**` + `tests/vis-*.ts` (strict). Vite/vitest
+  verwerken `.ts` out of the box; `typescript` is devDependency.
+- **Fase 2 (klaar): de pure kern, nog geen scene/graphics.**
+  `GameConfig.ts` (alle tuning), `logic/regels.ts` (eetregel 0,8 ×
+  botsingsradius, groei massa += prooi × 0,5, radius-lerp tussen 5
+  fasedrempels 10/30/80/200/500, kwal-straf met fasedrempel-vloer,
+  boost-energie), `logic/moeilijkheid.ts` (dreiging 0-10 per 30 s;
+  spawngewicht-verschuiving +2 pp naar rato met 10%-vloer; jaagsnelheid
+  +2%/stap max +20%, apex-burst schaalt níet mee), `logic/spawn.ts`
+  (ring buiten beeld ≈ 667-1600 px, injecteerbare rng), `logic/sturing.ts`
+  (vlucht/zichtkegel/draaiklem/boids), `SaveManager.ts` (enige opslagpunt,
+  sleutel `hapvis_v1`, records + laatste 5 + unlocks; in-memory-terugval).
+  Logic-modules importeren géén Phaser → unit-getest in `tests/vis-*.test.ts`.
+- **Nog niet gebouwd**: VisScene, graphics.ts (generateTexture-vissen),
+  geluid.ts (WebAudio-synth), menutegel-integratie in `main.js`/`MenuScene`.
+  Harde eisen: volledig offline, geen binaire assets, max 60 actieve vissen
+  (pooling), opslag alleen via de SaveManager.
