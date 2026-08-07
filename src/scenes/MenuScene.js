@@ -169,16 +169,14 @@ export default class MenuScene extends Phaser.Scene {
       { icon: '🚀', name: 'Nul-Raket',        color: 0x6366f1, go: () => this.launchLazy('ZeroRocket', () => import('./ZeroRocketScene.js')) },
       { icon: '🐍', name: 'Tel-Slang',        color: 0x06b6d4, go: () => this.launchSnake() },
       { icon: '📖', name: 'Plakboek',         color: 0xf59e0b, go: () => this.launchLazy('Sticker', () => import('./StickerScene.js')) },
-      // Letter-Land — NIEUWE KERN: de woord-magie-slice (M1 "De Grijze Ochtend",
-      // PraatweideScene). Spel een woord → het gebeurt. test: true = nog achter
-      // Ouder-modus tot de speeltest met Adrian slaagt.
-      { icon: '🔤', name: 'Letter-Land', test: true, color: 0xf43f5e, go: () => this.launchCluster('LetterMissie', { missie: 'm1' }) },
-      // test: true = nog niet klaar voor Adrian — alleen zichtbaar in de
-      // Ouder-modus (testversie). De Toverwinkel wacht op de speelgoed-pass.
-      { icon: '🧪', name: 'Toverwinkel', test: true, color: 0x7c3aed, go: () => this.launchLazy('Toverwinkel', () => import('./TovenScene.js')) },
+      // Letter-Land — de woord-magie-slice (M1 "De Grijze Ochtend",
+      // PraatweideScene): spel een woord → het gebeurt.
+      { icon: '🔤', name: 'Letter-Land', color: 0xf43f5e, go: () => this.launchCluster('LetterMissie', { missie: 'm1' }) },
+      { icon: '🧪', name: 'Toverwinkel', color: 0x7c3aed, go: () => this.launchLazy('Toverwinkel', () => import('./TovenScene.js')) },
       // Hapvis — offline "eet en groei"-vissenspel (src/vis/, TypeScript).
-      // test: true tot de speeltest met Adrian geslaagd is.
-      { icon: '🐟', name: 'Hapvis', test: true, color: 0x0284c7, go: () => this.launchLazy('Hapvis', () => import('../vis/VisScene.ts')) },
+      { icon: '🐟', name: 'Hapvis', color: 0x0284c7, go: () => this.launchLazy('Hapvis', () => import('../vis/VisScene.ts')) },
+      // `test: true` blijft beschikbaar voor een volgend spel dat nog niet klaar
+      // is: die tegel is dan alleen zichtbaar in de Ouder-modus.
     ].filter((g) => !g.test || getSetting('ouderModus'));
 
     // Compact rooster zodat álles (ook de laatste rij) op 800px hoogte past.

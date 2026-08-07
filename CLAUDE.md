@@ -202,8 +202,7 @@ op in de winkel (kleur keert terug).
   ketel (`roerBeweging` sommeert de draaihoek; lepel volgt je vinger, draaikolk
   groeit). **Letters prik je uit opstijgende bellen** (`spawnBel`/`prikBel`;
   foute bel = onschuldige plop). Het wijs-handje volgt bewegende doelen via
-  `update()` (`_wijzerDoel`). Tegel staat nog achter de Ouder-modus (test)
-  tot de speeltest met Adrian slaagt.
+  `update()` (`_wijzerDoel`). Tegel staat sinds aug 2026 gewoon in het menu.
 - **Grafische overhaul (2026-07-05)**: van platte vormen naar een geschilderd,
   sfeervol decor. `schilderWinkel()` tekent het interieur één keer op een
   canvas-textuur (`tw_bg`): muur-verloop, warme gloed, houten planken met
@@ -365,8 +364,7 @@ doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
   sleutel `hapvis_v1`, records + laatste 5 + unlocks; in-memory-terugval).
   Logic-modules importeren géén Phaser → unit-getest in `tests/vis-*.test.ts`.
 - **Fase 3 (klaar): het spel zelf.** `VisScene.ts` (scene-key `Hapvis`,
-  menutegel 🐟 — voorlopig achter **Ouder-modus** tot de speeltest met Adrian
-  slaagt), `graphics.ts` (alle vissen getekend met Graphics →
+  menutegel 🐟), `graphics.ts` (alle vissen getekend met Graphics →
   `generateTexture`; vignet via canvas-verloop), `geluid.ts` (WebAudio-synthese,
   geen bestanden). Beweging is **handmatig, geen Arcade Physics** — de globale
   zwaartekracht uit `main.js` zou anders meedoen; acceleratie/traagheid/
@@ -399,5 +397,13 @@ doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
   Hapvis keert nu wél sterren en 4 medailles uit aan `progress.js`
   (`vis_diep/reus/apex/boek`) — daarvoor is `AwardsScene` naar 4 kolommen
   herbouwd, want met 17 medailles liep die kast al buiten beeld.
-- **Nog niet gebouwd**: niets uit het ontwerp. Openstaand is alleen de speeltest
-  met Adrian (daarna `test: true` weghalen in `MenuScene`) en pushen.
+- **Nog niet gebouwd**: niets uit het ontwerp. Speeltest geslaagd (aug 2026); de
+  tegel staat gewoon in het menu.
+
+## Menu: alle spellen zichtbaar (aug 2026)
+Sinds augustus 2026 staat er **geen enkel spel meer achter de Ouder-modus** —
+Letter-Land, Toverwinkel en Hapvis zijn vrijgegeven. Het zijn nu 14 tegels in
+7 rijen; `buildGrid` schaalt de tegelhoogte mee (98 → 82 px) en `makeGameTile`
+schaalt icoon en naampilletje met `f = h / 98`, zodat de onderste rij binnen de
+800 px blijft. De `test: true`-vlag in de `GAMES`-array werkt nog wél: gebruik
+die voor een volgend spel dat nog niet klaar is voor Adrian.
