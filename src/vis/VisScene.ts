@@ -848,7 +848,28 @@ export default class VisScene extends Phaser.Scene {
       telOntdekt(this.saveData.vangst),
       (p) => this.sluitBoek(p),
     );
+    this.zetOverlayVast();
     this.overlay.setVisible(true);
+  }
+
+  /**
+   * De overlay zelf staat op scrollFactor 0, maar KINDEREN erven dat niet. Voor
+   * het tekenen maakt dat niets uit (de container bepaalt de plek), maar het
+   * AANRAAKGEBIED wordt wel met de camera meegeschoven — en die staat in deze
+   * wereld van 3200×4800 px bijna nooit op 0. Zonder deze regel liggen de
+   * knoppen van de eind- en pauzekaart dus honderden pixels naast waar je ze
+   * ziet, en lijkt het spel vast te zitten. Moet ná het toevoegen van de
+   * kinderen gebeuren.
+   */
+  private zetOverlayVast(): void {
+    this.overlay.setScrollFactor(0);
+    // LET OP: `setScrollFactor(0, 0, true)` werkt hier NIET. Phaser gebruikt
+    // daarvoor SetAll, en dat slaat objecten over die de eigenschap niet als
+    // eigen property hebben — en `scrollFactorX` komt van de prototype-mixin.
+    // Per kind de methode aanroepen zet hem wél.
+    for (const kind of this.overlay.list) {
+      (kind as Partial<Phaser.GameObjects.Components.ScrollFactor>).setScrollFactor?.(0, 0);
+    }
   }
 
   /**
@@ -1006,6 +1027,7 @@ export default class VisScene extends Phaser.Scene {
       for (let i = 1; i < kinderen.length; i++) kinderen[i].y += verschuif;
     }
 
+    this.zetOverlayVast();
     this.overlay.setVisible(true);
   }
 

@@ -400,6 +400,24 @@ doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
 - **Nog niet gebouwd**: niets uit het ontwerp. Speeltest geslaagd (aug 2026); de
   tegel staat gewoon in het menu.
 
+## VALKUIL: tik-zones in een scrollFactor(0)-overlay
+Een overlay-container op `setScrollFactor(0)` geeft zijn kinderen dat **niet**
+door. Voor het tekenen maakt dat niets uit, maar het **aanraakgebied** van een
+interactief kind schuift wél met de camera mee — dus in een spel met een
+scrollende camera liggen de knoppen honderden pixels naast waar je ze ziet en
+lijkt het spel vast te zitten. `AdventureScene` had deze fix al (zie het comment
+bij `exitPanel`); Hapvis kreeg 'm in aug 2026 alsnog, nadat de eindkaart op de
+iPhone niet reageerde.
+
+Twee dingen om te weten:
+- `container.setScrollFactor(0, 0, true)` **werkt niet**: Phaser gebruikt daarvoor
+  `SetAll`, en dat slaat objecten over die de eigenschap niet als *eigen*
+  property hebben — en `scrollFactorX` komt van de prototype-mixin. Roep de
+  methode per kind aan (`kind.setScrollFactor(0, 0)`), zoals `zetOverlayVast()`
+  in `VisScene.ts`.
+- Alternatief (Bezorg-Baas) is knoppen helemaal niet interactief maken en de
+  pointer-posities zelf uitlezen; dat omzeilt de hit-test volledig.
+
 ## Menu: alle spellen zichtbaar (aug 2026)
 Sinds augustus 2026 staat er **geen enkel spel meer achter de Ouder-modus** —
 Letter-Land, Toverwinkel en Hapvis zijn vrijgegeven. Het zijn nu 14 tegels in
