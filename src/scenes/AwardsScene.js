@@ -23,6 +23,10 @@ const ALL_MEDALS = [
   { id: 'snake_50', icon: '🐍', label: 'Slangenmeester' },
   { id: 'snake_100', icon: '👑', label: 'Slangen-Koning' },
   { id: 'tover_start', icon: '🧪', label: 'Leerling-Tovenaar' },
+  { id: 'vis_diep', icon: '🌊', label: 'Diepzee-Duiker' },
+  { id: 'vis_reus', icon: '🐟', label: 'Reuzenvis' },
+  { id: 'vis_apex', icon: '😱', label: 'Schrik-Verslinder' },
+  { id: 'vis_boek', icon: '📘', label: 'Vissenboek Vol' },
 ];
 
 export default class AwardsScene extends Phaser.Scene {
@@ -47,11 +51,14 @@ export default class AwardsScene extends Phaser.Scene {
       fontFamily: 'Arial', fontSize: '16px', color: '#5b7083',
     }).setOrigin(0.5);
 
-    // Medailles in een rooster van 3 kolommen
-    const cols = 3;
-    const cellW = 120, cellH = 120;
-    const startX = width / 2 - cellW;
-    const startY = 210;
+    // Medailles in een rooster van 4 kolommen. LET OP: met 3 kolommen liep de
+    // kast al buiten beeld (rij 6 begon op y=810 op een scherm van 800px),
+    // waardoor de laatste medailles half afgesneden waren.
+    const cols = 4;
+    const cellW = 112, cellH = 98;
+    const vak = 88; // breedte/hoogte van het vakje zelf
+    const startX = width / 2 - (cellW * (cols - 1)) / 2;
+    const startY = 200;
     ALL_MEDALS.forEach((m, i) => {
       const col = i % cols, row = Math.floor(i / cols);
       const x = startX + col * cellW, y = startY + row * cellH;
@@ -60,16 +67,16 @@ export default class AwardsScene extends Phaser.Scene {
       const bg = this.add.graphics();
       bg.fillStyle(owned ? 0xfef3c7 : 0xffffff, owned ? 0.95 : 0.55);
       bg.lineStyle(3, owned ? 0xf59e0b : 0x94a3b8, owned ? 1 : 0.5);
-      bg.fillRoundedRect(x - 50, y - 50, 100, 100, 14);
-      bg.strokeRoundedRect(x - 50, y - 50, 100, 100, 14);
+      bg.fillRoundedRect(x - vak / 2, y - vak / 2, vak, vak, 12);
+      bg.strokeRoundedRect(x - vak / 2, y - vak / 2, vak, vak, 12);
 
-      const icon = this.add.text(x, y - 12, owned ? m.icon : '🔒', { fontSize: owned ? '42px' : '30px' }).setOrigin(0.5);
+      const icon = this.add.text(x, y - 12, owned ? m.icon : '🔒', { fontSize: owned ? '34px' : '26px' }).setOrigin(0.5);
       if (!owned) icon.setAlpha(0.45);
       if (owned) this.tweens.add({ targets: icon, angle: { from: -6, to: 6 }, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
-      this.add.text(x, y + 34, owned ? m.label : '???', {
-        fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold',
-        color: owned ? '#92400e' : '#8296a8', align: 'center', wordWrap: { width: 96 },
+      this.add.text(x, y + 26, owned ? m.label : '???', {
+        fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold',
+        color: owned ? '#92400e' : '#8296a8', align: 'center', wordWrap: { width: 86 },
       }).setOrigin(0.5);
     });
 

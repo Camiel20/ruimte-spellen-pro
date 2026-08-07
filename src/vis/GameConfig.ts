@@ -67,6 +67,37 @@ export const SOORTEN: Record<SoortId, SoortConfig> = {
   kwal:         { gedrag: 'gevaar',    massa: 0,   radius: 14, kruisSnelheid: 0,  topSnelheid: 0,   score: 0,   zones: [2, 3, 4] },
 };
 
+/**
+ * Nederlandse namen — kolom 1 van de tabel in §2 van DESIGN.md. Bewust NAAST
+ * `SOORTEN` en niet erin: die tabel wordt in tests/vis-regels.test.ts letterlijk
+ * vastgepind als wisselbeveiliging, en een naam is geen speltuning.
+ */
+export const SOORT_NAAM: Record<SoortId, string> = {
+  pijltje: 'Pijltje',
+  vlokje: 'Vlokje',
+  stipje: 'Stipje',
+  fonkeltje: 'Fonkeltje',
+  pruillip: 'Pruillip',
+  flapper: 'Flapper',
+  maantje: 'Maantje',
+  zilverpijl: 'Zilverpijl',
+  snapper: 'Snapper',
+  snorrebol: 'Snorrebol',
+  bolwang: 'Bolwang',
+  pijlbek: 'Pijlbek',
+  grombaars: 'Grombaars',
+  prikbek: 'Prikbek',
+  diepteschrik: 'Diepteschrik',
+  hengelbek: 'Hengelbek',
+  kwal: 'Kwal',
+};
+
+/**
+ * Vissenboek: hoe vaak de speler elke soort ooit opat. Sleutel aanwezig =
+ * ontdekt; waarde 0 = "ontmoet" (die soort at de speler op).
+ */
+export type Vangst = Partial<Record<SoortId, number>>;
+
 export const VLUCHT_FACTOR = 1.6; // vluchtsnelheid prooi = kruissnelheid × dit
 export const NPC_ACCEL = 300; // px/s²
 export const NPC_DRAAI = 2.5; // rad/s (prooi- en schoolvissen)
@@ -241,3 +272,13 @@ export const KLEUR_UNLOCKS: KleurUnlock[] = [
 
 export const STANDAARD_KLEUR = 'oranje';
 export const STANDAARD_SKIN = 'gewoon';
+
+// ── Beloningen in de app (§9 van DESIGN.md) ─────────────────────────────────
+export const STER_PER_SCORE = 250; // punten per ster aan het eind van een ronde
+export const STERREN_MAX_RONDE = 8; // plafond, zodat één lange ronde de pot niet scheeftrekt
+
+/** Medaille-id's; moeten exact zo in ALL_MEDALS van AwardsScene.js staan. */
+export const MEDAILLE_DIEP = 'vis_diep'; // de Inktdiepte bereikt
+export const MEDAILLE_REUS = 'vis_reus'; // fase 5 bereikt
+export const MEDAILLE_APEX = 'vis_apex'; // een Diepteschrik opgegeten
+export const MEDAILLE_BOEK = 'vis_boek'; // alle soorten in het vissenboek

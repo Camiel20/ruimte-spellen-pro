@@ -83,6 +83,58 @@ describe('records en laatste 5', () => {
   });
 });
 
+describe('vissenboek (vangst)', () => {
+  it('lege save begint met een leeg boek', () => {
+    expect(new SaveManager(maakStub()).laad().vangst).toEqual({});
+  });
+
+  it('telt vangsten op; een delta van 0 zet de soort alleen op ontdekt', () => {
+    const sm = new SaveManager(maakStub());
+    sm.registreerVangst({ vlokje: 2 });
+    sm.registreerVangst({ vlokje: 2, maantje: 1 });
+    expect(sm.laad().vangst).toEqual({ vlokje: 4, maantje: 1 });
+    sm.registreerVangst({ hengelbek: 0 });
+    expect(sm.laad().vangst.hengelbek).toBe(0);
+    expect('hengelbek' in sm.laad().vangst).toBe(true);
+  });
+
+  it('een afgeronde ronde WIST het boek niet', () => {
+    // Dit is de belangrijkste regressietest: laad() bouwt de save veld voor
+    // veld op en bewaar() schrijft dat terug. Ontbreekt `vangst` daar, dan
+    // veegt elke ronde stilletjes het hele boek leeg.
+    const sm = new SaveManager(maakStub());
+    sm.registreerVangst({ vlokje: 3, snapper: 1 });
+    sm.registreerRonde(ronde({ score: 120 }));
+    expect(sm.laad().vangst).toEqual({ vlokje: 3, snapper: 1 });
+  });
+
+  it('een oude save zonder vangst blijft gewoon werken', () => {
+    const stub = maakStub();
+    stub.data.set(
+      OPSLAG_SLEUTEL,
+      JSON.stringify({ hoogsteScore: 900, totaalGegeten: 40, gekozenKleur: 'groen' }),
+    );
+    const data = new SaveManager(stub).laad();
+    expect(data.vangst).toEqual({});
+    expect(data.hoogsteScore).toBe(900);
+    expect(data.gekozenKleur).toBe('groen');
+  });
+
+  it('filtert rommel uit een kapotte vangst-tabel', () => {
+    const stub = maakStub();
+    const zet = (vangst: unknown) => stub.data.set(OPSLAG_SLEUTEL, JSON.stringify({ vangst }));
+
+    zet(null);
+    expect(new SaveManager(stub).laad().vangst).toEqual({});
+    zet('nee');
+    expect(new SaveManager(stub).laad().vangst).toEqual({});
+    zet([1, 2, 3]); // array-indices mogen geen soort-id's worden
+    expect(new SaveManager(stub).laad().vangst).toEqual({});
+    zet({ vlokje: -3, stipje: 1.7, flapper: null, zeemeermin: 4, kwal: 2, maantje: 2 });
+    expect(new SaveManager(stub).laad().vangst).toEqual({ vlokje: 0, stipje: 1, maantje: 2 });
+  });
+});
+
 describe('unlocks', () => {
   it('kleuren volgen de hoogste score (500 / 2000 / 5000)', () => {
     const sm = new SaveManager(maakStub());

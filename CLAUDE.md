@@ -384,5 +384,14 @@ doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
   sprites uit en bevriest de hele app. Gebruik `events.once` voor SHUTDOWN.
   (5) Art is geen speltuning: kleuren/animatie staan in `graphics.ts`, alle
   spelwaarden in `GameConfig.ts`.
-- **Nog niet gebouwd**: niets uit het ontwerp — v1 is compleet. Openstaand is
-  alleen de speeltest met Adrian (daarna `test: true` weghalen in `MenuScene`).
+- **Vissenboek + beloningen (aug 2026)**: 16 vissoorten verzamelen
+  (`logic/boek.ts` + `BoekOverlay.ts`, opslag `vangst` in de SaveManager). Een
+  soort komt erin als je hem opeet **of als hij jou opeet** — zo krijgt de
+  Hengelbek (nooit eetbaar) ook een tegel. Bewust géén score-missies: een kind
+  van 5-6 leest nog niet en score is abstract; een verzameling is beeld. Ook géén
+  resetbare opdrachten (dat is een retentietruc voor volwassenen).
+  Hapvis keert nu wél sterren en 4 medailles uit aan `progress.js`
+  (`vis_diep/reus/apex/boek`) — daarvoor is `AwardsScene` naar 4 kolommen
+  herbouwd, want met 17 medailles liep die kast al buiten beeld.
+- **Nog niet gebouwd**: niets uit het ontwerp. Openstaand is alleen de speeltest
+  met Adrian (daarna `test: true` weghalen in `MenuScene`) en pushen.

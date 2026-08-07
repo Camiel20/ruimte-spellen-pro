@@ -31,6 +31,9 @@ import {
   type Vec,
 } from './logic/sturing';
 import { SaveManager, type SaveData } from './SaveManager';
+import { boekPagina, boekVol, telOntdekt } from './logic/boek';
+import { bouwBoek } from './BoekOverlay';
+import { addStars, giveMedal } from '../progress.js';
 import {
   ANIM_FPS,
   ANIM_FRAMES,
@@ -39,6 +42,7 @@ import {
   ZONE_LUCHT,
   kleurNummer,
   maakBesturingTexturen,
+  maakBoekTexturen,
   maakDieptelagen,
   maakEffectTexturen,
   maakLichtstralen,
@@ -46,6 +50,7 @@ import {
   maakSpelerTexturen,
   maakVignet,
   texSchaalVoor,
+  vernietigBoekTexturen,
 } from './graphics';
 import { Geluid } from './geluid';
 import { stopMusic } from '../music.js';
@@ -92,6 +97,14 @@ interface Speler {
 }
 
 type Status = 'spelen' | 'pauze' | 'dood';
+
+/** Hoe de kleur-unlocks in een zin heten ("nog 40 punten tot de groene vis"). */
+const KLEUR_NAAM: Record<string, string> = {
+  oranje: 'oranje',
+  groen: 'groene',
+  paars: 'paarse',
+  goud: 'gouden',
+};
 
 // Maatvoering van de dieptemeter rechts in beeld (alleen opmaak, geen speltuning).
 const DM_X = CFG.SCHERM_B - 20;
@@ -143,6 +156,17 @@ export default class VisScene extends Phaser.Scene {
   private hintTekst!: Phaser.GameObjects.Text;
   private hintT = 0; // s dat de hint nog blijft staan
   private duikHintGehad = false; // de duik-hint komt één keer per ronde
+
+  // Vissenboek en beloningen
+  private rondeVangst: CFG.Vangst = {}; // nog niet weggeschreven ontmoetingen
+  private ontdekt = new Set<SoortId>(); // wat al in het boek staat
+  private boekOpen = false;
+  private nieuwTekst!: Phaser.GameObjects.Text;
+  private nieuwT = 0; // s dat de NIEUW!-melding nog staat
+  private nieuwRij: SoortId[] = []; // wachtrij: je eet er soms drie kort na elkaar
+  private nieuwRecord = false;
+  private sterrenRonde = 0; // sterren die deze ronde zijn uitgekeerd
+  private gehaaldeKleuren = 0; // hoeveel kleur-drempels al gemeld zijn
 
   // Besturing
   private toetsen: Record<string, Phaser.Input.Keyboard.Key> = {};
@@ -408,6 +432,21 @@ export default class VisScene extends Phaser.Scene {
       .setDepth(102)
       .setAlpha(0);
 
+    // Eigen plek voor de NIEUW!-melding: de fasenaam staat op 0,32 H en de
+    // duikhint op 0,62 H, dus die zouden elkaar overschrijven.
+    this.nieuwTekst = this.add
+      .text(CFG.SCHERM_B / 2, CFG.SCHERM_H * 0.44, '', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '20px',
+        color: '#ffe066',
+        backgroundColor: '#03101fcc',
+        padding: { x: 12, y: 6 },
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(102)
+      .setAlpha(0);
+
     this.hintTekst = this.add
       .text(CFG.SCHERM_B / 2, CFG.SCHERM_H * 0.62, '', {
         fontFamily: 'Arial Black, Arial',
@@ -439,6 +478,7 @@ export default class VisScene extends Phaser.Scene {
     this.pauzeKnop.on('pointerdown', () => {
       Geluid.ontgrendel();
       Geluid.knop();
+      if (this.boekOpen) return; // het boek heeft zijn eigen terugknop
       if (this.status === 'spelen') this.pauzeer();
       else if (this.status === 'pauze') this.hervat();
     });
@@ -453,6 +493,14 @@ export default class VisScene extends Phaser.Scene {
       >;
       kb.on('keydown-ESC', () => {
         Geluid.ontgrendel();
+        if (this.boekOpen) {
+          // Esc sluit eerst het boek, terug naar de kaart eronder.
+          this.boekOpen = false;
+          vernietigBoekTexturen(this);
+          if (this.status === 'pauze') this.toonPauzeKaart();
+          else this.toonEindKaart();
+          return;
+        }
         if (this.status === 'spelen') this.pauzeer();
         else if (this.status === 'pauze') this.hervat();
       });
@@ -606,6 +654,17 @@ export default class VisScene extends Phaser.Scene {
     this.hintTekst.setAlpha(0);
     this.duikHintGehad = false;
 
+    // Vissenboek en beloningen: de al ontdekte soorten komen uit de save.
+    this.rondeVangst = {};
+    this.ontdekt = new Set(Object.keys(this.saveData.vangst) as SoortId[]);
+    this.nieuwRij.length = 0;
+    this.nieuwT = 0;
+    this.nieuwTekst.setAlpha(0);
+    this.boekOpen = false;
+    this.nieuwRecord = false;
+    this.sterrenRonde = 0;
+    this.gehaaldeKleuren = CFG.KLEUR_UNLOCKS.filter((k) => k.drempelScore === 0).length;
+
     // Camera meteen op de speler, zodat de eerste spawns écht buiten beeld
     // vallen (de spawnring rekent met het cameracentrum).
     this.cameras.main.centerOn(this.speler.pos.x, this.speler.pos.y);
@@ -630,8 +689,15 @@ export default class VisScene extends Phaser.Scene {
   private pauzeer(): void {
     if (this.status !== 'spelen') return;
     this.status = 'pauze';
+    this.bewaarVangst();
+    this.toonPauzeKaart();
+  }
+
+  /** De pauzekaart; ook gebruikt om te verversen na een keuze of het boek. */
+  private toonPauzeKaart(): void {
     this.toonKaart('Pauze', this.recordRegels(), [
       { tekst: '▶ Verder spelen', kleur: 0x22c55e, actie: () => this.hervat() },
+      { tekst: '📖 Vissenboek', kleur: 0x0ea5e9, actie: () => this.toonBoek() },
       { tekst: '⬅ Terug naar het menu', kleur: 0x64748b, actie: () => this.scene.start('Menu') },
     ]);
   }
@@ -643,15 +709,18 @@ export default class VisScene extends Phaser.Scene {
     this.overlay.removeAll(true);
   }
 
-  private gaDood(): void {
+  private gaDood(doorSoort?: SoortId): void {
     if (this.status === 'dood') return;
     this.status = 'dood';
     Geluid.dood();
     this.cameras.main.shake(260, 0.012);
     this.speler.boostAan = false;
 
-    const vorige = this.saveData;
-    const nieuwRecord = this.score > vorige.hoogsteScore;
+    // Wie jou opeet komt óók in het vissenboek — met teller 0 ("ontmoet").
+    if (doorSoort) this.telVangst(doorSoort, 0);
+    this.bewaarVangst();
+
+    this.nieuwRecord = this.score > this.saveData.hoogsteScore;
     this.saveData = this.save.registreerRonde({
       score: this.score,
       duurSec: Math.round(this.rondeT),
@@ -660,6 +729,7 @@ export default class VisScene extends Phaser.Scene {
       gegeten: this.gegeten,
       datumIso: new Date().toISOString(),
     });
+    this.verdeelBeloningen();
 
     this.tweens.add({
       targets: this.speler.sprite,
@@ -667,22 +737,109 @@ export default class VisScene extends Phaser.Scene {
       scale: this.speler.sprite.scale * 0.4,
       duration: CFG.DOOD_ANIMATIE * 1000,
       onComplete: () => {
-        if (nieuwRecord) Geluid.record();
-        const naam = CFG.FASES.find((f) => f.fase === this.grootsteFase)?.naam ?? '';
-        const regels = [
-          `Score: ${this.score}${nieuwRecord ? '   ⭐ NIEUW RECORD!' : ''}`,
-          `Overleefd: ${this.tijdTekst(this.rondeT)}`,
-          `Grootste vis: ${naam} (fase ${this.grootsteFase})`,
-          `Vissen gegeten: ${this.gegeten}`,
-          '',
-          ...this.recordRegels(),
-        ];
-        this.toonKaart('Opgegeten!', regels, [
-          { tekst: '▶ Nog een keer', kleur: 0x22c55e, actie: () => this.startRonde() },
-          { tekst: '⬅ Terug naar het menu', kleur: 0x64748b, actie: () => this.scene.start('Menu') },
-        ]);
+        if (this.nieuwRecord) Geluid.record();
+        this.toonEindKaart();
       },
     });
+  }
+
+  /** De eindkaart; ook gebruikt om te verversen na een keuze of het boek. */
+  private toonEindKaart(): void {
+    const naam = CFG.FASES.find((f) => f.fase === this.grootsteFase)?.naam ?? '';
+    const regels = [
+      `Score: ${this.score}${this.nieuwRecord ? '   ⭐ NIEUW RECORD!' : ''}`,
+      `Overleefd: ${this.tijdTekst(this.rondeT)}`,
+      `Grootste vis: ${naam} (fase ${this.grootsteFase})`,
+      `Vissen gegeten: ${this.gegeten}`,
+    ];
+    if (this.sterrenRonde > 0) regels.push(`Verdiend: ${this.sterrenRonde} ⭐ voor je prijzenkast`);
+    const volgende = this.volgendeKleur();
+    if (volgende) regels.push(`Nog ${volgende.tekort} punten tot de ${volgende.naam} vis.`);
+    regels.push('', ...this.recordRegels());
+
+    this.toonKaart('Opgegeten!', regels, [
+      { tekst: '▶ Nog een keer', kleur: 0x22c55e, actie: () => this.startRonde() },
+      { tekst: '📖 Vissenboek', kleur: 0x0ea5e9, actie: () => this.toonBoek() },
+      { tekst: '⬅ Terug naar het menu', kleur: 0x64748b, actie: () => this.scene.start('Menu') },
+    ]);
+  }
+
+  /** Welke kleur is de eerstvolgende die je kunt ontgrendelen, en hoe ver nog? */
+  private volgendeKleur(): { naam: string; tekort: number } | null {
+    const hoogste = this.saveData.hoogsteScore;
+    for (const k of CFG.KLEUR_UNLOCKS) {
+      if (k.drempelScore > hoogste) {
+        return { naam: KLEUR_NAAM[k.id] ?? k.id, tekort: k.drempelScore - hoogste };
+      }
+    }
+    return null;
+  }
+
+  // ───────────────────────────────────────────────────────── vissenboek
+
+  /** Telt een ontmoeting; `n = 0` betekent "ontdekt, maar niet opgegeten". */
+  private telVangst(id: SoortId, n: number): void {
+    if (CFG.SOORTEN[id].gedrag === 'gevaar') return; // de kwal hoort niet in het boek
+    this.rondeVangst[id] = (this.rondeVangst[id] ?? 0) + n;
+    if (this.ontdekt.has(id)) return;
+
+    this.ontdekt.add(id);
+    if (n > 0) this.meldNieuweSoort(id);
+    // Een nieuwe soort gebeurt hoogstens 16 keer in het leven van een save:
+    // dat moment wil je niet verliezen als de tab wordt weggeveegd.
+    this.bewaarVangst();
+  }
+
+  /** Schrijft de nog niet bewaarde vangsten weg (en leegt de tussenstand). */
+  private bewaarVangst(): void {
+    if (Object.keys(this.rondeVangst).length === 0) return;
+    this.saveData = this.save.registreerVangst(this.rondeVangst);
+    this.rondeVangst = {};
+  }
+
+  private toonBoek(): void {
+    this.boekOpen = true;
+    maakBoekTexturen(this);
+    this.overlay.removeAll(true);
+    const zone4 = this.save.zone4Ontgrendeld(this.saveData);
+    bouwBoek(
+      this,
+      this.overlay,
+      boekPagina(this.saveData.vangst, zone4),
+      telOntdekt(this.saveData.vangst),
+      (p) => this.sluitBoek(p),
+    );
+    this.overlay.setVisible(true);
+  }
+
+  /**
+   * Keert sterren en medailles uit aan de rest van Nul & Co (§9 van DESIGN.md).
+   * Dit is het enige punt waar Hapvis in `progress.js` schrijft.
+   */
+  private verdeelBeloningen(): void {
+    this.sterrenRonde = Math.min(
+      CFG.STERREN_MAX_RONDE,
+      Math.floor(this.score / CFG.STER_PER_SCORE),
+    );
+    if (this.sterrenRonde > 0) addStars(this.sterrenRonde);
+
+    if (this.speler.pos.y >= CFG.GRENS_Y) giveMedal(CFG.MEDAILLE_DIEP);
+    if (this.grootsteFase >= CFG.FASES[CFG.FASES.length - 1].fase) giveMedal(CFG.MEDAILLE_REUS);
+    if ((this.saveData.vangst.diepteschrik ?? 0) > 0) giveMedal(CFG.MEDAILLE_APEX);
+    if (boekVol(this.saveData.vangst)) giveMedal(CFG.MEDAILLE_BOEK);
+  }
+
+  /** Zet een pas ontdekte soort in de wachtrij voor de NIEUW!-melding. */
+  private meldNieuweSoort(id: SoortId): void {
+    this.nieuwRij.push(id);
+  }
+
+  private sluitBoek(p: Phaser.Input.Pointer): void {
+    this.boekOpen = false;
+    this.negeerPointer = p.id;
+    vernietigBoekTexturen(this);
+    if (this.status === 'pauze') this.toonPauzeKaart();
+    else this.toonEindKaart();
   }
 
   private tijdTekst(sec: number): string {
@@ -722,6 +879,13 @@ export default class VisScene extends Phaser.Scene {
     this.overlay.removeAll(true);
     const b = CFG.SCHERM_B;
     const h = CFG.SCHERM_H;
+
+    // Lopende meldingen wegzetten: de kaart is 96% dekkend, dus een vervagende
+    // hint schemert er anders doorheen.
+    this.hintT = 0;
+    this.hintTekst.setAlpha(0);
+    this.nieuwT = 0;
+    this.nieuwTekst.setAlpha(0);
 
     this.overlay.add(this.add.rectangle(0, 0, b, h, 0x03101f, 0.72).setOrigin(0));
 
@@ -791,10 +955,14 @@ export default class VisScene extends Phaser.Scene {
     kaart.lineStyle(4, 0x14303f, 1);
     kaart.strokeRoundedRect(20, kaartTop, b - 40, kaartHoog, 22);
 
-    // Alles behalve de verduistering (kind 0) zakt naar het midden van het
-    // scherm; de verduistering moet het hele scherm blijven bedekken.
-    const verschuif = Math.max(0, Math.round((h - kaartHoog) / 2 - kaartTop));
-    if (verschuif > 0) {
+    // Alles behalve de verduistering (kind 0) verschuift naar het midden van
+    // het scherm; de verduistering moet het hele scherm blijven bedekken.
+    // De verschuiving mag ook NEGATIEF zijn: een volle eindkaart (5 rondes,
+    // keuzerij én drie knoppen) is hoger dan het scherm en moet dan omhoog in
+    // plaats van eruit lopen. De bovenkant blijft wel op ≥ 12 px staan.
+    let verschuif = Math.round((h - kaartHoog) / 2 - kaartTop);
+    if (kaartTop + verschuif < 12) verschuif = 12 - kaartTop;
+    if (verschuif !== 0) {
       const kinderen = this.overlay.list as unknown as { y: number }[];
       for (let i = 1; i < kinderen.length; i++) kinderen[i].y += verschuif;
     }
@@ -880,32 +1048,10 @@ export default class VisScene extends Phaser.Scene {
     maakSpelerTexturen(this, CFG.FASES, this.saveData.gekozenKleur, this.saveData.gekozenSkin);
     this.speler.sprite.setTexture(TEX.speler(this.speler.fase, this.speler.frame));
     this.tekenSpeler();
-    if (this.status === 'pauze') this.pauzeer2();
-    else if (this.status === 'dood') this.herbouwEindkaart();
-  }
-
-  /** Ververst de pauzekaart (dezelfde inhoud, nieuwe selectie-markering). */
-  private pauzeer2(): void {
-    this.toonKaart('Pauze', this.recordRegels(), [
-      { tekst: '▶ Verder spelen', kleur: 0x22c55e, actie: () => this.hervat() },
-      { tekst: '⬅ Terug naar het menu', kleur: 0x64748b, actie: () => this.scene.start('Menu') },
-    ]);
-  }
-
-  private herbouwEindkaart(): void {
-    const naam = CFG.FASES.find((f) => f.fase === this.grootsteFase)?.naam ?? '';
-    const regels = [
-      `Score: ${this.score}`,
-      `Overleefd: ${this.tijdTekst(this.rondeT)}`,
-      `Grootste vis: ${naam} (fase ${this.grootsteFase})`,
-      `Vissen gegeten: ${this.gegeten}`,
-      '',
-      ...this.recordRegels(),
-    ];
-    this.toonKaart('Opgegeten!', regels, [
-      { tekst: '▶ Nog een keer', kleur: 0x22c55e, actie: () => this.startRonde() },
-      { tekst: '⬅ Terug naar het menu', kleur: 0x64748b, actie: () => this.scene.start('Menu') },
-    ]);
+    // Eén bron voor beide kaarten: eerder waren dit aparte kopieën, waardoor
+    // de "NIEUW RECORD"-regel verdween zodra je een kleur koos.
+    if (this.status === 'pauze') this.toonPauzeKaart();
+    else if (this.status === 'dood') this.toonEindKaart();
   }
 
   // ───────────────────────────────────────────────────────── spawnen
@@ -1450,7 +1596,7 @@ export default class VisScene extends Phaser.Scene {
         kanEten(e.radius, s.radius) &&
         eetBinnenBereik(afstand, e.radius)
       ) {
-        this.gaDood();
+        this.gaDood(e.soort);
         return;
       }
     }
@@ -1467,6 +1613,7 @@ export default class VisScene extends Phaser.Scene {
 
     Geluid.hap(e.radius);
     this.flits(e.pos.x, e.pos.y, 0xffffff);
+    this.telVangst(e.soort, 1);
     this.geefTerug(e);
 
     const nieuweFase = faseVoorMassa(s.massa);
@@ -1658,6 +1805,27 @@ export default class VisScene extends Phaser.Scene {
       this.hintT -= dt;
       this.hintTekst.setAlpha(Math.min(1, this.hintT / 0.8));
     }
+
+    // NIEUW!-meldingen één voor één: in zone 1 eet je makkelijk drie nieuwe
+    // soorten binnen een paar seconden, en dan overschrijft de derde de eerste.
+    if (this.nieuwT > 0) {
+      this.nieuwT -= dt;
+      this.nieuwTekst.setAlpha(Math.min(1, this.nieuwT / 0.5));
+    } else if (this.nieuwRij.length > 0) {
+      const id = this.nieuwRij.shift() as SoortId;
+      this.nieuwTekst.setText(`NIEUW!  ${CFG.SOORT_NAAM[id]}`).setAlpha(1);
+      this.nieuwT = CFG.HINT_DUUR * 0.6;
+      Geluid.record();
+    }
+
+    // Kleur-mijlpalen: die bestonden al, maar waren alleen op de eindkaart te
+    // zien. Nu hoor en zie je het op het moment zelf.
+    const gehaald = CFG.KLEUR_UNLOCKS.filter((k) => this.score >= k.drempelScore).length;
+    if (gehaald > this.gehaaldeKleuren) {
+      const k = CFG.KLEUR_UNLOCKS[gehaald - 1];
+      this.gehaaldeKleuren = gehaald;
+      if (k.drempelScore > 0) this.toonHint(`Nieuwe kleur: de ${KLEUR_NAAM[k.id] ?? k.id} vis!`);
+    }
   }
 
   private toonHint(tekst: string): void {
@@ -1725,6 +1893,8 @@ export default class VisScene extends Phaser.Scene {
   }
 
   private opruimen(): void {
+    this.bewaarVangst(); // niets van het vissenboek verliezen bij het verlaten
+    vernietigBoekTexturen(this);
     this.input.removeAllListeners();
     this.input.keyboard?.removeAllListeners();
   }

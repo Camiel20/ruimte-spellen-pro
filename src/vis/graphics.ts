@@ -73,6 +73,7 @@ export const TEX = {
   stickBasis: 'hv_stick_basis',
   stickDuim: 'hv_stick_duim',
   boostKnop: 'hv_boost',
+  boek: (id: SoortId) => `hv_boek_${id}`,
 } as const;
 
 /** Achtergrondkleuren per dieptezone (boven → onder). */
@@ -655,6 +656,42 @@ function bakVisFrames(scene: Phaser.Scene, keyVoor: (tex: number) => string, r: 
     canvasTextuur(scene, keyVoor(f), breed, hoog, (ctx) => {
       tekenVis(ctx, breed * 0.54, hoog / 2, rr, stijl, FRAME_SLAG[f]);
     });
+  }
+}
+
+// ── Vissenboek ──────────────────────────────────────────────────────────────
+// Alle soorten worden voor het boek op één vaste maat gebakken. Opschalen van
+// de spel-textures kan niet: die staan op spelgrootte, en het Pijltje (radius 5)
+// zou dan 3× vergroot worden — juist de vis die een kind als eerste vangt.
+
+const BOEK_VIS_R = 17; // getekende straal in het boek (opmaak, geen speltuning)
+const BOEK_SUPERSAMPLE = 2;
+/** Schaal waarop een boek-texture getoond moet worden. */
+export const BOEK_TEX_SCHAAL = 1 / BOEK_SUPERSAMPLE;
+
+/**
+ * Bakt één stilstaand plaatje per vissoort op boekgrootte. Lui aanroepen (bij
+ * het openen van het boek) en daarna weer opruimen: het kost ~2,7 MB.
+ */
+export function maakBoekTexturen(scene: Phaser.Scene): void {
+  const rr = BOEK_VIS_R * BOEK_SUPERSAMPLE * VIS_SCHAAL;
+  const breed = rr * 4.6;
+  const hoog = rr * 4;
+  for (const id of Object.keys(SOORTEN) as SoortId[]) {
+    if (SOORTEN[id].gedrag === 'gevaar') continue; // de kwal is geen vis
+    const key = TEX.boek(id);
+    if (scene.textures.exists(key)) continue;
+    canvasTextuur(scene, key, breed, hoog, (ctx) => {
+      tekenVis(ctx, breed * 0.54, hoog / 2, rr, SOORT_STIJL[id], 0);
+    });
+  }
+}
+
+/** Geeft het videogeheugen van de boek-plaatjes weer vrij. */
+export function vernietigBoekTexturen(scene: Phaser.Scene): void {
+  for (const id of Object.keys(SOORTEN) as SoortId[]) {
+    const key = TEX.boek(id);
+    if (scene.textures.exists(key)) scene.textures.remove(key);
   }
 }
 

@@ -5,3 +5,11 @@
 declare module '*/music.js' {
   export function stopMusic(): void;
 }
+
+declare module '*/progress.js' {
+  /** Telt sterren op bij de gedeelde pot van Nul & Co; geeft het nieuwe totaal. */
+  export function addStars(n: number): number;
+  /** Kent een medaille toe; true als die nog niet behaald was. */
+  export function giveMedal(id: string): boolean;
+  export function hasMedal(id: string): boolean;
+}

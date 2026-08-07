@@ -7,11 +7,14 @@ import {
   KLEUR_UNLOCKS,
   LAATSTE_N_RONDES,
   OPSLAG_SLEUTEL,
+  SOORTEN,
   SKIN_NEON_EIS_GEGETEN,
   SKIN_STEKELBAARS_EIS_FASE,
   STANDAARD_KLEUR,
   STANDAARD_SKIN,
   ZONE4_EIS_FASE,
+  type SoortId,
+  type Vangst,
 } from './GameConfig';
 
 export interface OpslagAchtig {
@@ -29,6 +32,7 @@ export interface Ronde {
 }
 
 export interface SaveData {
+  vangst: Vangst; // vissenboek: per soort hoe vaak gegeten (0 = alleen ontmoet)
   hoogsteScore: number;
   langsteOverlevingSec: number;
   grootsteMassa: number; // record "grootste vis"
@@ -42,6 +46,7 @@ export interface SaveData {
 
 function leegSave(): SaveData {
   return {
+    vangst: {},
     hoogsteScore: 0,
     langsteOverlevingSec: 0,
     grootsteMassa: 0,
@@ -60,6 +65,25 @@ function getal(waarde: unknown, terugval: number): number {
 
 function tekst(waarde: unknown, terugval: string): string {
   return typeof waarde === 'string' && waarde.length > 0 ? waarde : terugval;
+}
+
+/**
+ * Leest een vangst-tabel uit de opslag. Alleen bekende soort-id's en hele
+ * getallen ≥ 0; de kwal hoort niet in het boek. Let op: `null` en arrays zijn
+ * allebei `typeof 'object'`, dus die moeten expliciet worden afgevangen —
+ * anders sluipen array-indices als soort-id's naar binnen.
+ */
+function vangstVan(waarde: unknown): Vangst {
+  if (typeof waarde !== 'object' || waarde === null || Array.isArray(waarde)) return {};
+  const uit: Vangst = {};
+  for (const [sleutel, aantal] of Object.entries(waarde as Record<string, unknown>)) {
+    if (!Object.prototype.hasOwnProperty.call(SOORTEN, sleutel)) continue;
+    const id = sleutel as SoortId;
+    if (SOORTEN[id].gedrag === 'gevaar') continue; // kwal is geen vis
+    if (typeof aantal !== 'number' || !Number.isFinite(aantal)) continue;
+    uit[id] = Math.max(0, Math.floor(aantal));
+  }
+  return uit;
 }
 
 /** In-memory terugval als localStorage ontbreekt of stuk is (bv. private mode). */
@@ -103,6 +127,9 @@ export class SaveManager {
       const parsed = JSON.parse(ruw) as Partial<SaveData>;
       const leeg = leegSave();
       return {
+        // LET OP: elk veld dat hier ontbreekt wordt bij de eerstvolgende
+        // schrijfactie stilletjes gewist — `bewaar()` schrijft dit resultaat terug.
+        vangst: vangstVan(parsed.vangst),
         hoogsteScore: getal(parsed.hoogsteScore, leeg.hoogsteScore),
         langsteOverlevingSec: getal(parsed.langsteOverlevingSec, leeg.langsteOverlevingSec),
         grootsteMassa: getal(parsed.grootsteMassa, leeg.grootsteMassa),
@@ -147,6 +174,22 @@ export class SaveManager {
     data.meesteGegeten = Math.max(data.meesteGegeten, ronde.gegeten);
     data.totaalGegeten += ronde.gegeten;
     data.laatste5 = [ronde, ...data.laatste5].slice(0, LAATSTE_N_RONDES);
+    this.bewaar(data);
+    return data;
+  }
+
+  /**
+   * Telt vangsten op bij het vissenboek. Een delta van 0 zet de soort alleen
+   * op "ontdekt" — dat is wat er gebeurt als die soort de speler opat.
+   */
+  registreerVangst(delta: Readonly<Vangst>): SaveData {
+    const data = this.laad();
+    for (const [sleutel, aantal] of Object.entries(delta)) {
+      const id = sleutel as SoortId;
+      if (!Object.prototype.hasOwnProperty.call(SOORTEN, id)) continue;
+      if (SOORTEN[id].gedrag === 'gevaar') continue;
+      data.vangst[id] = (data.vangst[id] ?? 0) + Math.max(0, Math.floor(aantal ?? 0));
+    }
     this.bewaar(data);
     return data;
   }

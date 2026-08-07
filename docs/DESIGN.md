@@ -183,9 +183,11 @@ zelf.
 | `src/vis/logic/moeilijkheid.ts` | dreigingsniveau(t), spawngewicht- en snelheidsfactor | GameConfig |
 | `src/vis/logic/spawn.ts` | spawnpunt-keuze (buiten beeld) + soortkeuze per zone (rng als parameter, deterministisch testbaar) | GameConfig |
 | `src/vis/logic/sturing.ts` | pure steering-helpers: vluchtvector, jaagbesluit, schoolkrachten | GameConfig |
-| `src/vis/SaveManager.ts` | records + unlocks in localStorage (sleutel `hapvis_v1`) | GameConfig; géén Phaser |
-| `src/vis/graphics.ts` | getekende textures: visvormen (oog, vinnen, staart — vrolijke cartoonstijl), kwal, joystick, knoppen | Phaser, GameConfig |
+| `src/vis/logic/boek.ts` | vissenboek: welke soorten, ontdekt/op slot, volgorde | GameConfig, regels |
+| `src/vis/SaveManager.ts` | records, unlocks + vangst in localStorage (sleutel `hapvis_v1`) | GameConfig; géén Phaser |
+| `src/vis/graphics.ts` | getekende textures: visvormen (oog, vinnen, staart — vrolijke cartoonstijl), kwal, joystick, knoppen, boek-plaatjes | Phaser, GameConfig |
 | `src/vis/geluid.ts` | WebAudio-synth: hap, fase-fanfare, boost, au, einde-deuntje | niets van Phaser |
+| `src/vis/BoekOverlay.ts` | tekent het vissenboek-raster (alleen opbouw, geen toestand) | Phaser, GameConfig, boek |
 | `src/vis/VisScene.ts` | de Phaser-scene: pooling, input, camera, HUD, pauze-/dood-overlay | alles hierboven |
 
 Modules onder `logic/` en `SaveManager` importeren géén Phaser → unit-testbaar met
@@ -206,7 +208,48 @@ totaalGegeten, gekozenKleur, gekozenSkin. **Unlocks:** kleuren Groen/Paars/Goud 
 score ≥ 500 / 2000 / 5000; visvorm-skin "Neonvisje" bij 100 totaal gegeten;
 "Stekelbaars" bij 1× fase 5; zone 4 bij 1× fase 3. Kiezen op de dood-/pauze-overlay
 (§1); skins/kleuren zijn puur cosmetisch. Score = som van de score-kolom in §2, alleen
-door te eten.
+door te eten. De kleur-drempels worden ook tíjdens het spel getoond: op de eindkaart
+staat hoeveel punten de volgende kleur nog kost, en bij het passeren van een drempel
+verschijnt kort een melding.
+
+## 8. Vissenboek
+
+Een permanente verzameling van de **16 vissoorten** (de Kwal telt niet mee:
+`gedrag === 'gevaar'`). Gekozen boven score-missies omdat het beeld is in plaats
+van tekst — een kind van 5-6 leest nog niet, maar ziet meteen welk vakje leeg is.
+
+- **Ontdekregel:** een soort komt in het boek als je hem opeet **óf als hij jou
+  opeet**. Dat geeft de Hengelbek (radius 72, nooit eetbaar: 72 × 0,8 = 57,6 > 56)
+  een plek, en maakt van opgegeten worden ook iets om te ontdekken.
+- **Opslag:** `vangst` in de SaveManager — per soort het aantal keer gegeten.
+  Sleutel aanwezig = ontdekt; waarde 0 = "ontmoet" (hij at jou op).
+- **Weergave:** raster van 4 × 4 op de volle kaart, gesorteerd op oplopende radius,
+  zodat het boek de voedselketen leest. Ontdekt = het echte visplaatje + naam +
+  teller; nog niet ontdekt = hetzelfde silhouet in donker met een `?`. Per tegel
+  stippen in de zonekleuren van de dieptemeter, zodat zichtbaar is wáár die vis
+  zwemt. Soorten die alleen in zone 4 leven tonen 🔒 + "haal fase
+  `ZONE4_EIS_FASE`" zolang de Inktdiepte dicht is.
+- **Bereikbaar** vanaf de pauzekaart én de eindkaart. Tijdens het spelen verschijnt
+  bij een eerste vangst kort "NIEUW! <naam>".
+- **Plaatjes** worden apart gebakken op boekgrootte (straal `BOEK_VIS_R`), niet
+  opgeschaald: de speltextures staan op spelgrootte en het Pijltje (radius 5) zou
+  anders 3× vergroot worden. Ze worden lui gebakken bij het openen en weer
+  opgeruimd bij het sluiten, zodat het videogeheugen in rust gelijk blijft.
+
+## 9. Beloningen in de app
+
+Hapvis levert sterren en medailles aan Nul & Co (dit vervangt de eerdere keuze
+"geen koppeling"). Sterren gaan naar de gedeelde pot in `src/progress.js` en zijn
+dus ook in het Plakboek te besteden.
+
+- **Sterren per ronde:** `score / STER_PER_SCORE`, naar beneden afgerond, met een
+  plafond van `STERREN_MAX_RONDE` — zodat één lange ronde de sterrenpot niet
+  scheeftrekt.
+- **Medailles** (`giveMedal`, getoond op Hapvis' eigen eindkaart): `vis_diep`
+  (Inktdiepte bereikt), `vis_reus` (fase 5 bereikt), `vis_apex` (een Diepteschrik
+  opgegeten), `vis_boek` (alle 16 soorten in het boek).
+
+## 10. Niet in versie 1
 
 **Besturing:** mobiel — virtuele joystick links (straal 60 px, dode zone 10 px),
 boostknop rechts (straal 72 px), pauzeknop rechtsboven; desktop — WASD/pijltjes,
@@ -214,10 +257,14 @@ spatie = boost, Esc = pauze.
 
 ## 8. Niet in versie 1
 
-- Geen missies, quests, power-ups (behalve boost), baasgevechten of meta-progressie
-  buiten de records/unlocks hierboven.
+- Geen missies of quests, en met name geen terugkerende/resetbare opdrachten: dat
+  is een retentiemechaniek voor volwassenen en wordt bij een kind een verplichting.
+  Het vissenboek (§8) is bewust een permanente verzameling.
+- Geen power-ups (behalve boost) of baasgevechten.
 - Geen achtergrondmuziek (alleen SFX); geen instellingenscherm (alleen pauze).
-- Geen koppeling met Nul & Co-sterren/medailles/Plakboek.
+- Geen koppeling met het Plakboek zelf: Hapvis levert sterren (§9), maar krijgt
+  geen eigen stickerpagina — anders kun je een vissenalbum vullen zonder Hapvis
+  te spelen.
 - Geen dag/nacht, weer of stromingen; geen gamepad; geen save van een lopende ronde.
 - Geen extra speelbare soorten met eigen gedrag of stats (skins zijn puur cosmetisch).
 - Geen NPC-onderlinge ecologie (roofvissen eten alleen de speler, zie §2).
