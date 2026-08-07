@@ -377,5 +377,12 @@ doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
   out-parameters — geen objectcreatie per frame; (3) het menurooster in
   `MenuScene.buildGrid` schaalt de tegelhoogte met het aantal rijen: met
   Ouder-modus aan viel de onderste rij eerder buiten het 800px-scherm.
+  (4) **Phaser hergebruikt de scene-instantie**: `create()` draait bij élk
+  bezoek opnieuw, terwijl de sprites van het vorige bezoek al vernietigd zijn.
+  Lijsten die in `create()` gevuld worden (pool, bellen, plankton, spoor,
+  flitsen) MOETEN daar eerst leeggemaakt worden — anders deelt de pool dode
+  sprites uit en bevriest de hele app. Gebruik `events.once` voor SHUTDOWN.
+  (5) Art is geen speltuning: kleuren/animatie staan in `graphics.ts`, alle
+  spelwaarden in `GameConfig.ts`.
 - **Nog niet gebouwd**: niets uit het ontwerp — v1 is compleet. Openstaand is
   alleen de speeltest met Adrian (daarna `test: true` weghalen in `MenuScene`).
