@@ -8,7 +8,7 @@
 // Images. Vissen kijken naar RECHTS (+x); de scene draait ze.
 
 import Phaser from 'phaser';
-import { SOORTEN, VIGNET_STRAAL, type SoortId } from './GameConfig';
+import { SOORTEN, VIGNET_KERN, VIGNET_STRAAL, type SoortId } from './GameConfig';
 
 /**
  * Textures worden iets groter getekend dan ze getoond worden, zodat ze bij het
@@ -800,9 +800,14 @@ export function maakVignet(scene: Phaser.Scene, grootte: number): void {
   if (scene.textures.exists(TEX.vignet)) return;
   canvasTextuur(scene, TEX.vignet, grootte, grootte, (ctx) => {
     const c = grootte / 2;
-    const verloop = ctx.createRadialGradient(c, c, Math.min(VIGNET_STRAAL * 0.4, c), c, c, c);
+    // VIGNET_STRAAL is de afstand waarop je nog goed ziet: tot VIGNET_KERN ×
+    // die straal blijft het volledig helder, op de straal zelf is het half
+    // donker, en daarbuiten loopt het naar zwart.
+    const kern = Math.min(VIGNET_STRAAL * VIGNET_KERN, c);
+    const verloop = ctx.createRadialGradient(c, c, kern, c, c, c);
     verloop.addColorStop(0, 'rgba(0,0,0,0)');
-    verloop.addColorStop(0.6, 'rgba(0,0,0,0.5)');
+    const opStraal = Phaser.Math.Clamp((VIGNET_STRAAL - kern) / Math.max(1, c - kern), 0.05, 0.95);
+    verloop.addColorStop(opStraal, 'rgba(0,0,0,0.5)');
     verloop.addColorStop(1, 'rgba(0,0,0,0.92)');
     ctx.fillStyle = verloop;
     ctx.fillRect(0, 0, grootte, grootte);

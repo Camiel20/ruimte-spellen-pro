@@ -95,6 +95,7 @@ export const SCHOOL_ALIGNMENT = 0.6; // gewicht alignment
 export const SCHOOL_COHESIE = 0.4; // gewicht cohesie
 export const SCHOOL_SPAWN_N = 5; // leden per school-spawn (één spawn-actie)
 export const SCHOOL_SPAWN_STRAAL = 80; // px spreiding rond het spawnpunt
+export const SCHOOL_MAX_BUREN = 10; // max buren in de boids-som (meer verandert niets merkbaars)
 
 export const PATROUILLE_MIN = 2; // s min. richtingswissel-interval roofvis
 export const PATROUILLE_MAX = 4; // s max. richtingswissel-interval roofvis
@@ -127,7 +128,8 @@ export const RAND_MARGE = 100; // px: NPC-dwaalrichting spiegelt naar binnen bin
 export const ZONE_UITLOOP = 200; // px: NPC buigt terug als hij zó ver buiten zijn zoneband is
 export const GRENS_Y = 3600; // px koudwatergrens (zone 4) vóór ontgrendeling
 export const GRENS_DUW = 200; // px/s terugduw bij de koudwatergrens
-export const VIGNET_STRAAL = 420; // px zichtvignet rond de speler in zone 4
+export const VIGNET_STRAAL = 420; // px: tot hier ziet de speler in zone 4 nog goed
+export const VIGNET_KERN = 0.55; // aandeel van die straal dat volledig helder blijft
 
 export const START_POS = { x: 1600, y: 400 }; // px startpositie (horizontaal midden, boven in zone 1)
 export const DOOD_ANIMATIE = 0.8; // s opgegeten-animatie voor de overlay
@@ -170,6 +172,8 @@ export const DREIGING_SNELHEID_MAX = 0.2; // max +20% (apex-burst en vlucht scha
 // ── HUD & besturing ─────────────────────────────────────────────────────────
 export const JOYSTICK_STRAAL = 60; // px virtuele joystick (mobiel, links)
 export const JOYSTICK_DODE_ZONE = 10; // px dode zone in het midden
+export const JOYSTICK_ZONE_B = 0.62; // aandeel schermbreedte waarin een tik stuurt
+export const JOYSTICK_ZONE_H = 0.35; // vanaf dit aandeel schermhoogte stuurt een tik
 export const BOOSTKNOP_STRAAL = 72; // px boostknop (mobiel, rechts)
 
 // ── Opslag, records & unlocks (§7 van DESIGN.md) ────────────────────────────

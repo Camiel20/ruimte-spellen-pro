@@ -49,6 +49,10 @@ staan los in de tabel. Alle NPC's: acceleratie `NPC_ACCEL = 300` px/s², draaisn
 `ONKWETSBAAR = 1.0` s. **Ecologie v1:** roofvissen jagen en eten alléén de speler;
 NPC's eten elkaar niet en groeien niet; de kwal raakt alleen de speler; prooivissen
 vluchten wél voor elke grotere vis, ook NPC-roofvissen (gedrag zonder gevolg).
+Een roofvis jaagt alleen als hij de speler kán opeten; is de speler groter, dan
+vlucht hij op `kruissnelheid × VLUCHT_FACTOR` binnen `PROOI_DETECTIE`. De
+Diepteschrik vlucht nooit: die blijft patrouilleren en is zo in fase 5 het
+trofee-doel.
 
 **Speler:** start massa 10, radius 12. `SPELER_ACCEL = 400` px/s², demping
 `SPELER_DRAG = 250` px/s², draaisnelheid 3,5 rad/s; elke vis kijkt altijd in zijn
@@ -97,7 +101,10 @@ sneller dan zwemmen; daarvoor is boost nodig (fase 4: 155 × 1,8 = 279 > 260; fa
   zichtradius/-hoek, geheugen, max tijd/afstand, afkoeltijd.
 - **Diepteschrik (apex)** — max 1 tegelijk; elke 30 s een spawnkans van 15%, alleen
   in zone 4. Patrouilleert op 60 px/s; ziet rondom (360°) binnen 260 px; burst
-  260 px/s, max 2 s, daarna 6 s rust. Zelfde geheugen- en afbreekregels als de roofvis.
+  260 px/s, max 2 s, daarna 6 s rust. Zelfde geheugen- en afbreekregels als de
+  roofvis (`JAAG_MAX_T`/`JAAG_MAX_AFSTAND` → `JAAG_AFKOEL`); een burst die
+  eindigt doordat de speler uit zicht raakt kost óók `APEX_RUST`, zodat de
+  burst niet eindeloos te verlengen is.
 
 ## 5. Zones & wereld
 

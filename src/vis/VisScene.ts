@@ -122,6 +122,8 @@ export default class VisScene extends Phaser.Scene {
   private spoor: Phaser.GameObjects.Image[] = [];
   private spoorIndex = 0;
   private spoorT = 0;
+  private flitsen: Phaser.GameObjects.Image[] = [];
+  private flitsIndex = 0;
 
   // HUD
   private hudBalken!: Phaser.GameObjects.Graphics;
@@ -134,9 +136,12 @@ export default class VisScene extends Phaser.Scene {
   private joystickBasis!: Phaser.GameObjects.Image;
   private joystickDuim!: Phaser.GameObjects.Image;
   private joystickPointer: number | null = null;
+  private joystickThuis: Punt = { x: 0, y: 0 };
   private boostKnop!: Phaser.GameObjects.Image;
   private boostKnopTekst!: Phaser.GameObjects.Text;
   private boostPointer: number | null = null;
+  /** Vinger die op een overlay-knop drukte; die mag niet ook gaan sturen. */
+  private negeerPointer: number | null = null;
   private invoer: Vec = { x: 0, y: 0 };
   private invoerSterkte = 0;
 
@@ -152,6 +157,9 @@ export default class VisScene extends Phaser.Scene {
   private faseCfg: Record<number, CFG.FaseConfig> = {};
   /** Dieptegrenzen per soort; voorkomt zoeken + spreads in de AI-lus. */
   private zoneGrens: Record<string, { boven: number; onder: number }> = {};
+  /** Kant-en-klare texture-sleutels per animatieframe: geen strings per frame. */
+  private soortSleutels: Record<string, string[]> = {};
+  private spelerSleutels: string[][] = [];
 
   constructor() {
     super('Hapvis');
@@ -170,7 +178,17 @@ export default class VisScene extends Phaser.Scene {
     maakDieptelagen(this, CFG.SCHERM_B, CFG.SCHERM_H);
 
     this.cameras.main.setBounds(0, 0, CFG.WERELD_B, CFG.WERELD_H);
-    this.physics.world.setBounds(0, 0, CFG.WERELD_B, CFG.WERELD_H);
+
+    // Phaser hergebruikt dezelfde scene-instantie: bij een tweede bezoek draait
+    // create() opnieuw, terwijl de sprites van de vorige keer al vernietigd
+    // zijn. De lijsten moeten dus leeg vóórdat we ze opnieuw vullen — anders
+    // deelt de pool dode sprites uit en klapt het spel eruit.
+    this.pool.length = 0;
+    this.bellen.length = 0;
+    this.plankton.length = 0;
+    this.spoor.length = 0;
+    this.flitsen.length = 0;
+    this.actiefAantal = 0;
 
     this.bouwAchtergrond();
     this.bouwPool();
@@ -181,7 +199,8 @@ export default class VisScene extends Phaser.Scene {
     this.overlay = this.add.container(0, 0).setScrollFactor(0).setDepth(200).setVisible(false);
 
     this.cameras.main.startFollow(this.speler.sprite, false, CFG.CAMERA_LERP, CFG.CAMERA_LERP);
-    this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => this.opruimen());
+    // `once`: anders stapelt er per bezoek een luisteraar op.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.opruimen());
 
     this.startRonde();
   }
@@ -194,7 +213,17 @@ export default class VisScene extends Phaser.Scene {
    * zou de update-lus per vis per frame moeten zoeken (en closures maken).
    */
   private bouwOpzoektabellen(): void {
-    for (const f of CFG.FASES) this.faseCfg[f.fase] = f;
+    for (const f of CFG.FASES) {
+      this.faseCfg[f.fase] = f;
+      const rij: string[] = [];
+      for (let frame = 0; frame < ANIM_FRAMES; frame++) rij[frame] = TEX.speler(f.fase, frame);
+      this.spelerSleutels[f.fase] = rij;
+    }
+    for (const id of Object.keys(CFG.SOORTEN) as SoortId[]) {
+      const rij: string[] = [];
+      for (let frame = 0; frame < ANIM_FRAMES; frame++) rij[frame] = TEX.soort(id, frame);
+      this.soortSleutels[id] = rij;
+    }
     for (const id of Object.keys(CFG.SOORTEN) as SoortId[]) {
       const zones = CFG.SOORTEN[id].zones;
       let laagste = zones[0] ?? 1;
@@ -254,6 +283,10 @@ export default class VisScene extends Phaser.Scene {
     // Bellenspoor achter de speler tijdens het zwiepen.
     for (let i = 0; i < 16; i++) {
       this.spoor.push(this.add.image(0, 0, TEX.bubbel).setDepth(5).setVisible(false));
+    }
+    // Hap-flitsjes: ook gepoold, zodat er tijdens het spelen niets ontstaat.
+    for (let i = 0; i < 8; i++) {
+      this.flitsen.push(this.add.image(0, 0, TEX.hap).setDepth(8).setVisible(false));
     }
 
     // Koudwatergrens: alleen zichtbaar zolang zone 4 op slot zit.
@@ -397,14 +430,27 @@ export default class VisScene extends Phaser.Scene {
       .setDepth(101)
       .setAlpha(0.9);
 
+    this.joystickThuis.x = jx;
+    this.joystickThuis.y = jy;
+
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       Geluid.ontgrendel();
+      // Deze tik hoorde bij een overlay-knop (die de status net op 'spelen'
+      // zette); hij mag de vis niet óók laten wegschieten.
+      if (p.id === this.negeerPointer) return;
       if (this.status !== 'spelen') return;
       if (this.raaktBoostKnop(p)) {
         this.boostPointer = p.id;
-      } else if (p.x < CFG.SCHERM_B * 0.62 && p.y > CFG.SCHERM_H * 0.35) {
+      } else if (
+        p.x < CFG.SCHERM_B * CFG.JOYSTICK_ZONE_B &&
+        p.y > CFG.SCHERM_H * CFG.JOYSTICK_ZONE_H
+      ) {
+        // Zwevende joystick: de ring springt naar de vinger, zodat je vanaf
+        // dat punt fijn kunt doseren in plaats van meteen vol uitslag te geven.
         this.joystickPointer = p.id;
-        this.zetDuim(p.x, p.y);
+        this.joystickBasis.setPosition(p.x, p.y);
+        this.joystickDuim.setPosition(p.x, p.y);
+        this.invoerSterkte = 0;
       }
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
@@ -413,10 +459,12 @@ export default class VisScene extends Phaser.Scene {
     const losLaten = (p: Phaser.Input.Pointer): void => {
       if (p.id === this.joystickPointer) {
         this.joystickPointer = null;
-        this.joystickDuim.setPosition(this.joystickBasis.x, this.joystickBasis.y);
+        this.joystickBasis.setPosition(this.joystickThuis.x, this.joystickThuis.y);
+        this.joystickDuim.setPosition(this.joystickThuis.x, this.joystickThuis.y);
         this.invoerSterkte = 0;
       }
       if (p.id === this.boostPointer) this.boostPointer = null;
+      if (p.id === this.negeerPointer) this.negeerPointer = null;
     };
     this.input.on('pointerup', losLaten);
     this.input.on('pointerupoutside', losLaten);
@@ -481,6 +529,7 @@ export default class VisScene extends Phaser.Scene {
     this.speler.frame = 0;
     this.speler.sprite.setTexture(TEX.speler(1, 0)).setVisible(true).setAlpha(1);
     for (const bel of this.spoor) bel.setVisible(false);
+    for (const f of this.flitsen) f.setVisible(false);
     this.tekenSpeler();
 
     this.grensBand.setVisible(!this.save.zone4Ontgrendeld(this.saveData));
@@ -652,9 +701,10 @@ export default class VisScene extends Phaser.Scene {
           color: '#ffffff',
         })
         .setOrigin(0.5);
-      vlak.on('pointerdown', () => {
+      vlak.on('pointerdown', (p: Phaser.Input.Pointer) => {
         Geluid.ontgrendel();
         Geluid.knop();
+        this.negeerPointer = p.id; // deze vinger stuurt niet mee
         k.actie();
       });
       this.overlay.add(vlak);
@@ -807,9 +857,11 @@ export default class VisScene extends Phaser.Scene {
   }
 
   private probeerApex(): void {
+    let apexen = 0;
     for (const e of this.pool) {
-      if (e.actief && e.gedrag === 'apex') return; // er is er al één
+      if (e.actief && e.gedrag === 'apex') apexen++;
     }
+    if (apexen >= CFG.APEX_MAX_ACTIEF) return;
     for (let i = 0; i < CFG.SPAWN_POGINGEN; i++) {
       const punt = kiesSpawnPunt(this.camCentrum, Math.random);
       if (punt && zoneVoorY(punt.y) === CFG.AANTAL_ZONES) {
@@ -834,7 +886,11 @@ export default class VisScene extends Phaser.Scene {
       e.vel.x = Math.cos(e.hoek) * cfg.kruisSnelheid;
       e.vel.y = Math.sin(e.hoek) * cfg.kruisSnelheid;
       e.dwaalHoek = e.hoek;
-      e.dwaalT = CFG.DWAAL_MIN + Math.random() * (CFG.DWAAL_MAX - CFG.DWAAL_MIN);
+      // Jagers patrouilleren in een ander tempo dan prooivissen dwalen.
+      const jager = cfg.gedrag === 'roofvis' || cfg.gedrag === 'apex';
+      const dwaalMin = jager ? CFG.PATROUILLE_MIN : CFG.DWAAL_MIN;
+      const dwaalMax = jager ? CFG.PATROUILLE_MAX : CFG.DWAAL_MAX;
+      e.dwaalT = dwaalMin + Math.random() * (dwaalMax - dwaalMin);
       e.jaagT = 0;
       e.afkoelT = 0;
       e.geheugenT = 0;
@@ -883,6 +939,7 @@ export default class VisScene extends Phaser.Scene {
     this.botsingen();
     this.updateSpawner(dt);
     this.updateBellen(dt);
+    this.updateFlitsen(dt);
     this.tekenHud();
   }
 
@@ -960,7 +1017,7 @@ export default class VisScene extends Phaser.Scene {
     const frame = Math.floor(s.animT * ANIM_FPS) % ANIM_FRAMES;
     if (frame !== s.frame) {
       s.frame = frame;
-      s.sprite.setTexture(TEX.speler(s.fase, frame));
+      s.sprite.setTexture(this.spelerSleutels[s.fase][frame]);
     }
 
     this.updateSpoor(dt);
@@ -1047,16 +1104,30 @@ export default class VisScene extends Phaser.Scene {
       let doelHoek = e.dwaalHoek;
       let doelSnelheid = cfg.kruisSnelheid;
 
+      // Dwaalt/patrouilleert deze vis? Alleen dán mag de zoneband zijn koers
+      // bijsturen — een jager of vluchter laat zich daardoor niet leiden.
+      let dwaaltNu = true;
+
       if (e.gedrag === 'roofvis' || e.gedrag === 'apex') {
-        // Een roofvis die de speler niet aankan, is zelf prooi en vlucht.
-        if (kanEten(speler.radius, e.radius) && afstandSpeler < CFG.PROOI_DETECTIE) {
+        // Een roofvis die de speler niet aankan, is zelf prooi en vlucht. De
+        // apex vlucht nooit: die is het trofee-doel en blijft rustig rondgaan.
+        if (
+          e.gedrag === 'roofvis' &&
+          kanEten(speler.radius, e.radius) &&
+          afstandSpeler < CFG.PROOI_DETECTIE
+        ) {
           vluchtVector(e.pos, speler.pos, this.v1);
           doelHoek = Math.atan2(this.v1.y, this.v1.x);
           doelSnelheid = cfg.kruisSnelheid * CFG.VLUCHT_FACTOR;
+          dwaaltNu = false;
         } else {
           doelSnelheid = this.jaagGedrag(e, dt, afstandSpeler, cfg.kruisSnelheid);
-          if (e.geheugenT > 0) doelHoek = Math.atan2(e.doelY - e.pos.y, e.doelX - e.pos.x);
-          else doelHoek = this.dwaal(e, dt, CFG.PATROUILLE_MIN, CFG.PATROUILLE_MAX);
+          if (e.geheugenT > 0) {
+            doelHoek = Math.atan2(e.doelY - e.pos.y, e.doelX - e.pos.x);
+            dwaaltNu = false;
+          } else {
+            doelHoek = this.dwaal(e, dt, CFG.PATROUILLE_MIN, CFG.PATROUILLE_MAX);
+          }
         }
       } else {
         // Prooi- en schoolvissen: vluchten voor alles wat groter is.
@@ -1064,6 +1135,7 @@ export default class VisScene extends Phaser.Scene {
         if (vlucht) {
           doelHoek = Math.atan2(this.v1.y, this.v1.x);
           doelSnelheid = cfg.topSnelheid;
+          dwaaltNu = false;
         } else if (e.gedrag === 'schoolvis') {
           const aantal = this.verzamelBuren(e);
           if (aantal > 0) {
@@ -1081,7 +1153,7 @@ export default class VisScene extends Phaser.Scene {
         }
       }
 
-      doelHoek = this.buigNaarBinnen(e, doelHoek);
+      doelHoek = this.buigNaarBinnen(e, doelHoek, dwaaltNu);
 
       const draai = e.gedrag === 'roofvis' || e.gedrag === 'apex' ? CFG.ROOFVIS_DRAAI : CFG.NPC_DRAAI;
       e.hoek = draaiNaar(e.hoek, doelHoek, draai, dt);
@@ -1106,7 +1178,7 @@ export default class VisScene extends Phaser.Scene {
     const frame = Math.floor(e.animT * ANIM_FPS) % ANIM_FRAMES;
     if (frame !== e.frame) {
       e.frame = frame;
-      e.sprite.setTexture(TEX.soort(e.soort, frame));
+      e.sprite.setTexture(this.soortSleutels[e.soort][frame]);
     }
   }
 
@@ -1137,12 +1209,26 @@ export default class VisScene extends Phaser.Scene {
 
     if (e.geheugenT <= 0) {
       e.jaagT = 0;
+      // Een burst die eindigt doordat de speler uit zicht raakt, kost óók rust
+      // — anders kun je de Diepteschrik eindeloos op burstsnelheid houden door
+      // steeds even buiten zijn zichtradius te duiken.
+      if (isApex && e.burstT > 0) e.rustT = CFG.APEX_RUST;
       e.burstT = 0;
       return kruis;
     }
 
     e.geheugenT -= dt;
     e.jaagT += dt;
+
+    // Dezelfde afbreekregels voor roofvis én apex: te lang of te ver = stoppen.
+    if (!magBlijvenJagen(e.jaagT, afstandSpeler)) {
+      e.jaagT = 0;
+      e.burstT = 0;
+      e.geheugenT = 0;
+      e.afkoelT = CFG.JAAG_AFKOEL;
+      return kruis;
+    }
+
     if (isApex) {
       e.burstT += dt;
       if (e.burstT > CFG.APEX_BURST_MAX_T) {
@@ -1153,12 +1239,6 @@ export default class VisScene extends Phaser.Scene {
         return kruis;
       }
       return cfg.topSnelheid; // de apex-burst schaalt bewust niet met de dreiging
-    }
-    if (!magBlijvenJagen(e.jaagT, afstandSpeler)) {
-      e.jaagT = 0;
-      e.geheugenT = 0;
-      e.afkoelT = CFG.JAAG_AFKOEL;
-      return kruis;
     }
     return cfg.topSnelheid * jaagFactor(this.dreiging);
   }
@@ -1209,7 +1289,7 @@ export default class VisScene extends Phaser.Scene {
       if (dx * dx + dy * dy > CFG.SCHOOL_RADIUS * CFG.SCHOOL_RADIUS) continue;
       this.burenBuffer[n] = ander;
       n++;
-      if (n >= CFG.SCHOOL_SPAWN_N * 2) break; // meer buren voegt niets toe
+      if (n >= CFG.SCHOOL_MAX_BUREN) break; // meer buren voegt niets toe
     }
     return n;
   }
@@ -1225,10 +1305,12 @@ export default class VisScene extends Phaser.Scene {
   }
 
   /**
-   * Houdt NPC's binnen de wereld en ruwweg binnen hun eigen dieptezone: bij de
-   * rand of te ver buiten de zoneband wordt de richting naar binnen gebogen.
+   * Houdt NPC's binnen de wereld en — als ze dwalen — ruwweg binnen hun eigen
+   * dieptezone. De wereldrand geldt altijd; de zoneband alleen tijdens dwalen
+   * of patrouilleren, want anders zou een jager of vluchter zijn koers laten
+   * bepalen door de zonegrens (en zou je gratis kunnen ontsnappen).
    */
-  private buigNaarBinnen(e: Entiteit, doelHoek: number): number {
+  private buigNaarBinnen(e: Entiteit, doelHoek: number, dwaaltNu: boolean): number {
     let mikX = 0;
     let mikY = 0;
     if (e.pos.x < CFG.RAND_MARGE) mikX = 1;
@@ -1236,7 +1318,7 @@ export default class VisScene extends Phaser.Scene {
     if (e.pos.y < CFG.RAND_MARGE) mikY = 1;
     else if (e.pos.y > CFG.WERELD_H - CFG.RAND_MARGE) mikY = -1;
 
-    if (mikY === 0) {
+    if (mikY === 0 && dwaaltNu) {
       const grens = this.zoneGrens[e.soort];
       if (e.pos.y < grens.boven) mikY = 1;
       else if (e.pos.y > grens.onder) mikY = -1;
@@ -1319,7 +1401,7 @@ export default class VisScene extends Phaser.Scene {
       s.fase = nieuweFase;
       s.maxSnelheid = maxSnelheidVoorMassa(s.massa);
       if (nieuweFase > this.grootsteFase) this.grootsteFase = nieuweFase;
-      s.sprite.setTexture(TEX.speler(nieuweFase, s.frame));
+      s.sprite.setTexture(this.spelerSleutels[nieuweFase][s.frame]);
       Geluid.fase();
       this.cameras.main.flash(200, 255, 255, 255);
       this.toonFaseNaam(nieuweFase);
@@ -1347,16 +1429,21 @@ export default class VisScene extends Phaser.Scene {
     });
   }
 
-  /** Kleine flits op een wereldpositie (alleen bij een gebeurtenis, niet per frame). */
+  /** Kleine flits op een wereldpositie; pakt de volgende uit de vaste ring. */
   private flits(x: number, y: number, kleur: number): void {
-    const beeld = this.add.image(x, y, TEX.hap).setDepth(8).setTint(kleur);
-    this.tweens.add({
-      targets: beeld,
-      scale: 2.2,
-      alpha: 0,
-      duration: 260,
-      onComplete: () => beeld.destroy(),
-    });
+    const beeld = this.flitsen[this.flitsIndex];
+    this.flitsIndex = (this.flitsIndex + 1) % this.flitsen.length;
+    beeld.setPosition(x, y).setTint(kleur).setScale(0.6).setAlpha(0.9).setVisible(true);
+  }
+
+  /** Laat de actieve flitsjes uitdijen en vervagen (geen tweens, geen afval). */
+  private updateFlitsen(dt: number): void {
+    for (const f of this.flitsen) {
+      if (!f.visible) continue;
+      f.setScale(f.scale + dt * 6);
+      f.setAlpha(f.alpha - dt * 3.5);
+      if (f.alpha <= 0.02) f.setVisible(false);
+    }
   }
 
   // ───────────────────────────────────────────────────────── spawner & sfeer
@@ -1408,6 +1495,8 @@ export default class VisScene extends Phaser.Scene {
     bel.x = this.camCentrum.x + (Math.random() - 0.5) * CFG.SCHERM_B * 1.4;
     bel.y = this.camCentrum.y + (overalRond ? (Math.random() - 0.5) * spreiding : CFG.SCHERM_H * 0.6);
     bel.setAlpha(0.25 + Math.random() * 0.35);
+    // Af en toe een zacht blubje; niet bij het opnieuw vullen aan het begin.
+    if (!overalRond && Math.random() < 0.04) Geluid.bel();
   }
 
   // ───────────────────────────────────────────────────────── tekenen
