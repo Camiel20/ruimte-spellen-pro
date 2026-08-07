@@ -39,6 +39,8 @@ export interface SaveData {
   grootsteFase: number; // fase bij dat record / hoogste ooit
   meesteGegeten: number; // meeste vissen gegeten in één ronde
   totaalGegeten: number; // cumulatief over alle rondes
+  nullen: number; // cumulatief opgepikte gouden nullen (§10.5)
+  zeges: number; // hoe vaak de Hengelbek is opgegeten (§10.6)
   laatste5: Ronde[]; // nieuwste eerst, max LAATSTE_N_RONDES
   gekozenKleur: string;
   gekozenSkin: string;
@@ -53,6 +55,8 @@ function leegSave(): SaveData {
     grootsteFase: 0,
     meesteGegeten: 0,
     totaalGegeten: 0,
+    nullen: 0,
+    zeges: 0,
     laatste5: [],
     gekozenKleur: STANDAARD_KLEUR,
     gekozenSkin: STANDAARD_SKIN,
@@ -136,6 +140,8 @@ export class SaveManager {
         grootsteFase: getal(parsed.grootsteFase, leeg.grootsteFase),
         meesteGegeten: getal(parsed.meesteGegeten, leeg.meesteGegeten),
         totaalGegeten: getal(parsed.totaalGegeten, leeg.totaalGegeten),
+        nullen: getal(parsed.nullen, leeg.nullen),
+        zeges: getal(parsed.zeges, leeg.zeges),
         laatste5: Array.isArray(parsed.laatste5)
           ? parsed.laatste5.slice(0, LAATSTE_N_RONDES).map((r) => ({
               score: getal(r?.score, 0),
@@ -204,6 +210,29 @@ export class SaveManager {
       if (SOORTEN[id].gedrag === 'gevaar') continue;
       data.vangst[id] = (data.vangst[id] ?? 0) + Math.max(0, Math.floor(aantal ?? 0));
     }
+    this.bewaar(data);
+    return data;
+  }
+
+  /**
+   * Telt opgepikte gouden nullen op (§10.5). Meteen wegschrijven en niet pas bij
+   * het einde van de ronde, zodat de medaille ook klopt als de app halverwege
+   * wordt weggeklikt. Negatieve of gebroken aantallen worden genegeerd.
+   */
+  registreerNullen(aantal: number): SaveData {
+    const data = this.laad();
+    const erbij = Number.isFinite(aantal) ? Math.max(0, Math.floor(aantal)) : 0;
+    if (erbij > 0) {
+      data.nullen += erbij;
+      this.bewaar(data);
+    }
+    return data;
+  }
+
+  /** Legt een gewonnen ronde vast (§10.6): de Hengelbek is opgegeten. */
+  registreerZege(): SaveData {
+    const data = this.laad();
+    data.zeges += 1;
     this.bewaar(data);
     return data;
   }

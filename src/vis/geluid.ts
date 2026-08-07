@@ -3,11 +3,16 @@
 // geluid pas toe na een aanraking: de scene roept daarom `ontgrendel()` aan
 // bij de eerste invoer.
 
+import { SFEER_VOLUME } from './GameConfig';
+
 type Golf = 'sine' | 'triangle' | 'square' | 'sawtooth';
 
 class HapvisGeluid {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  private sfeerBron: AudioBufferSourceNode | null = null;
+  private sfeerGain: GainNode | null = null;
+  private sfeerLfo: OscillatorNode | null = null;
 
   /** Maakt (of hervat) de audio-context. Veilig om vaak aan te roepen. */
   ontgrendel(): void {
@@ -76,9 +81,13 @@ class HapvisGeluid {
     bron.start();
   }
 
-  /** Hap: hoe groter de prooi, hoe lager de "blob". */
-  hap(prooiRadius: number): void {
-    const basis = Math.max(180, 620 - prooiRadius * 9);
+  /**
+   * Hap: hoe groter de prooi, hoe lager de "blob". `comboStijging` (Hz, uit
+   * `comboToonStijging`) tilt de toon op bij een reeks — dat is wat een combo
+   * hoorbaar maakt zonder dat je hoeft te kunnen lezen.
+   */
+  hap(prooiRadius: number, comboStijging = 0): void {
+    const basis = Math.max(180, 620 - prooiRadius * 9) + comboStijging;
     this.toon(basis, 0.12, 'triangle', 0.32, basis * 0.55);
     this.ruis(0.08, 0.12, 900);
   }
@@ -118,6 +127,137 @@ class HapvisGeluid {
   /** Belletje bij het opduiken van een luchtbel. */
   bel(): void {
     this.toon(880 + Math.random() * 300, 0.09, 'sine', 0.08, 1500);
+  }
+
+  // ── Leesbaar gevaar (§10.1) ───────────────────────────────────────────────
+
+  /** Een jager heeft je in het vizier: twee korte, dringende blips. */
+  gespot(): void {
+    this.toon(392, 0.09, 'square', 0.13);
+    this.toon(330, 0.11, 'square', 0.13, undefined, 0.1);
+  }
+
+  /** De jacht is afgebroken: opgelucht aflopend toontje. */
+  opgeven(): void {
+    this.toon(520, 0.18, 'sine', 0.11, 320);
+  }
+
+  // ── Luchtbelschild (§10.2) ────────────────────────────────────────────────
+
+  /** De bel klapt: plof met een dalende staart. */
+  schildKlap(): void {
+    this.ruis(0.14, 0.16, 400);
+    this.toon(520, 0.3, 'square', 0.2, 130);
+  }
+
+  /** Nieuw schild verdiend: opborrelend belletje. */
+  schildTerug(): void {
+    this.toon(420, 0.16, 'sine', 0.16, 880);
+    this.toon(1046, 0.22, 'sine', 0.12, undefined, 0.13);
+  }
+
+  // ── Gouden nul (§10.5) ────────────────────────────────────────────────────
+
+  /** Gouden nul opgepikt: kort glinsterend drieklankje. */
+  nul(): void {
+    [1046, 1319, 1568].forEach((f, i) => this.toon(f, 0.16, 'sine', 0.2, undefined, i * 0.06));
+  }
+
+  // ── Gebeurtenissen (§10.3) ────────────────────────────────────────────────
+
+  /** Aankondiging; de sfeer bepaalt of het vrolijk, rustig of dreigend klinkt. */
+  gebeurtenis(sfeer: 'blij' | 'rustig' | 'spannend'): void {
+    if (sfeer === 'blij') {
+      [523, 659, 784].forEach((f, i) => this.toon(f, 0.2, 'triangle', 0.24, undefined, i * 0.08));
+    } else if (sfeer === 'rustig') {
+      this.toon(392, 0.5, 'sine', 0.16);
+      this.toon(294, 0.6, 'sine', 0.13, undefined, 0.12);
+    } else {
+      this.toon(196, 0.4, 'sawtooth', 0.13, 147);
+      this.toon(165, 0.5, 'square', 0.1, undefined, 0.16);
+    }
+  }
+
+  // ── Onderwatersfeer (§10.4) ───────────────────────────────────────────────
+
+  /**
+   * Zachte, laaggefilterde ruis-drone. Geen bestand: de bruine ruis wordt hier
+   * gegenereerd en in een lus afgespeeld. Het einde wordt over het begin
+   * gemengd, anders klikt de lus elke paar seconden hoorbaar.
+   */
+  startSfeer(): void {
+    this.ontgrendel();
+    if (!this.ctx || !this.master || this.sfeerBron) return;
+    try {
+      const sr = this.ctx.sampleRate;
+      const lengte = Math.floor(sr * 4);
+      const overlap = Math.floor(lengte * 0.1);
+      const ruw = new Float32Array(lengte + overlap);
+      let vorige = 0;
+      for (let i = 0; i < ruw.length; i++) {
+        vorige = (vorige + 0.02 * (Math.random() * 2 - 1)) / 1.02;
+        ruw[i] = vorige * 3.5;
+      }
+      for (let i = 0; i < overlap; i++) {
+        const t = i / overlap;
+        ruw[i] = ruw[i] * t + ruw[lengte + i] * (1 - t);
+      }
+      const buffer = this.ctx.createBuffer(1, lengte, sr);
+      buffer.getChannelData(0).set(ruw.subarray(0, lengte));
+
+      const bron = this.ctx.createBufferSource();
+      bron.buffer = buffer;
+      bron.loop = true;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 340;
+      filter.Q.value = 0.7;
+
+      // Trage golfbeweging op de filter: het water "ademt".
+      const lfo = this.ctx.createOscillator();
+      const lfoGain = this.ctx.createGain();
+      lfo.frequency.value = 0.08;
+      lfoGain.gain.value = 90;
+      lfo.connect(lfoGain);
+      lfoGain.connect(filter.frequency);
+
+      const gain = this.ctx.createGain();
+      gain.gain.value = 0.0001;
+      gain.gain.exponentialRampToValueAtTime(SFEER_VOLUME, this.ctx.currentTime + 1.5);
+
+      bron.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.master);
+      bron.start();
+      lfo.start();
+
+      this.sfeerBron = bron;
+      this.sfeerGain = gain;
+      this.sfeerLfo = lfo;
+    } catch {
+      this.stopSfeer(); // half opgebouwde keten weer opruimen
+    }
+  }
+
+  /** Zet de drone uit (pauze, sterven, scene verlaten). Veilig zonder drone. */
+  stopSfeer(): void {
+    try {
+      this.sfeerBron?.stop();
+    } catch {
+      // al gestopt
+    }
+    this.sfeerBron?.disconnect();
+    this.sfeerGain?.disconnect();
+    try {
+      this.sfeerLfo?.stop();
+    } catch {
+      // al gestopt
+    }
+    this.sfeerLfo?.disconnect();
+    this.sfeerBron = null;
+    this.sfeerGain = null;
+    this.sfeerLfo = null;
   }
 }
 

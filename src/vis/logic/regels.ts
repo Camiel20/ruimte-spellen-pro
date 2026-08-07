@@ -3,6 +3,10 @@
 
 import {
   BOOST_START_MIN,
+  COMBO_BONUS,
+  COMBO_MIN,
+  COMBO_TOON_MAX,
+  COMBO_TOON_STAP,
   EET_FACTOR,
   ENERGIE_HERSTEL,
   ENERGIE_MAX,
@@ -12,6 +16,7 @@ import {
   HAP_HULP,
   KWAL_STRAF,
   MASSA_MAX,
+  SPELER_START_MASSA,
 } from '../GameConfig';
 
 /** Mag een eter met deze radius een prooi met die radius eten? */
@@ -92,6 +97,30 @@ export function maxSnelheidVoorMassa(massa: number): number {
 export function massaNaKwal(massa: number): number {
   const vloer = faseDrempel(faseVoorMassa(massa));
   return Math.max(vloer, massa * (1 - KWAL_STRAF));
+}
+
+/**
+ * Massa nadat het luchtbelschild geklapt is (§10.2): je zakt één fase terug naar
+ * de drempel daaronder, met de startmassa als vloer. Bewust een hele fase en
+ * geen percentage — een kind moet kunnen zíen dat het misging, en "ik ben weer
+ * een Makreel" is een begrijpelijk verlies. In fase 1 kost het niets meer dan
+ * het schild zelf; lager dan de startmassa kun je niet.
+ */
+export function massaNaKlap(massa: number): number {
+  const fase = faseVoorMassa(massa);
+  if (fase <= FASES[0].fase) return SPELER_START_MASSA;
+  return Math.max(SPELER_START_MASSA, faseDrempel(fase - 1));
+}
+
+/** Bonuspunten voor een hap bij deze combostand (0 onder de drempel). */
+export function comboBonus(combo: number): number {
+  return combo >= COMBO_MIN ? (combo - COMBO_MIN + 1) * COMBO_BONUS : 0;
+}
+
+/** Hoeveel Hz de hap-toon stijgt bij deze combostand; gecapt tegen gepiep. */
+export function comboToonStijging(combo: number): number {
+  if (combo < COMBO_MIN) return 0;
+  return Math.min(COMBO_TOON_MAX, (combo - COMBO_MIN + 1) * COMBO_TOON_STAP);
 }
 
 /** Mag de boost gestart worden bij deze energie? */

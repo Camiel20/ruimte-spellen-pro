@@ -416,6 +416,44 @@ doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
   Hapvis keert nu wél sterren en 4 medailles uit aan `progress.js`
   (`vis_diep/reus/apex/boek`) — daarvoor is `AwardsScene` naar 4 kolommen
   herbouwd, want met 17 medailles liep die kast al buiten beeld.
+- **v3-pass "spanning, kansen & sfeer" (aug 2026)** — `docs/DESIGN.md` §10.
+  Zes wijzigingen na de vraag "hoe maken we het beter":
+  1. **Gevaar is zichtbaar** (§10.1). Het roofdierbrein (zichtkegel, geheugen,
+     afhaken) bestond al maar was ONZICHTBAAR, waardoor sterven op pech leek.
+     Nu: rood uitroepteken + pulserende ring om een jager die je in het vizier
+     heeft, rode randgloed aan de kant waar hij vandaan komt, een pufje + toontje
+     als hij afhaakt. **Valkuil:** de ring moet om de GETEKENDE vis
+     (`e.radius * VIS_SCHAAL`), niet om de botsingsradius — die is veel kleiner
+     (gemeten: straal 40 bij een sprite van 191 px) en verdwijnt volledig achter
+     de sprite. Om dezelfde reden staat `gevaarLaag` op depth 5 (vóór de vissen).
+  2. **Luchtbelschild** (§10.2). Hapvis was het enige spel in de collectie dat je
+     meteen afstraft. De eerste hap klapt nu je bel: je zakt één fase terug
+     (`massaNaKlap`), wordt weggeduwd en bent even onaanraakbaar; de jager haakt
+     af. Terugverdienen door 12 vissen te eten. **Zonder de `onkwetsbaarT`-check
+     in de roofvis-tak was het schild waardeloos** — dezelfde vis at je het frame
+     erna alsnog op.
+  3. **Gebeurtenissen** (§10.3, `logic/gebeurtenis.ts`, getest): parade / stilte /
+     jachttijd, elke 35-55 s, met eigen spawnfilter, spawntempo en waterkleur.
+  4. **Gevoel** (§10.4): hitstop bij een flinke hap, combo met stijgende toon,
+     onderwater-drone (WebAudio-ruis in een lus, met crossfade tegen klikken),
+     fase-plof. **GEEN camera-zoom** — die schaalt de scrollFactor(0)-HUD mee en
+     verschuift de handmatige hittest van joystick/zwiepknop. De plof loopt via
+     een teller die `tekenSpeler()` meeneemt, niet via een tween: `tekenSpeler()`
+     zet de schaal élk frame en zou daar tegenin werken.
+  5. **Gouden nullen** (§10.5): het huismotief van Nul & Co, +25 punten en je
+     energie meteen vol. Medaille `vis_nul` bij 25 stuks.
+  6. **Finale + winnen** (§10.6). De Hengelbek (72) is bewust nooit eetbaar voor
+     een volgroeide speler (44,8-grens) en is de enige die zo'n speler nog opeet
+     — anders kan een ronde nooit meer aflopen. Nu: een **Diepteschrik opeten**
+     geeft 18 s **reuzenkracht** (radius × 1,8 = 100,8) én roept de Hengelbek op
+     (geen loterij: 6% spawngewicht zou de finale toeval maken). Eet je hem op,
+     dan **win je**: zegekaart, medaille `vis_koning`, teller `zeges`.
+- **Testen zonder zichtbaar venster**: de Browser-pane is verborgen, dus er loopt
+  geen RAF en `setTimeout` wordt afgeknepen. Stap de lus met de hand
+  (`game.step(t, 16.7)`) en haal screenshots op via `renderer.snapshot()` → POST
+  naar een lokaal Node-servertje. **Let op:** na een hap of schild-klap staat de
+  simulatie stil door de hitstop — meet je dan één frame, dan lijkt er niets te
+  gebeuren. Ruim na afloop `hapvis_v1` én `rsp_progress_v2` op.
 - **Nog niet gebouwd**: niets uit het ontwerp. Speeltest geslaagd (aug 2026); de
   tegel staat gewoon in het menu.
 

@@ -261,6 +261,74 @@ export const PROOI_VLOER_PCT = 10; // %: het snoep-prooigewicht zakt nooit hiero
 export const DREIGING_SNELHEID_PER_STAP = 0.02; // jaagsnelheid roofvis +2% per stap
 export const DREIGING_SNELHEID_MAX = 0.2; // max +20% (apex-burst en vlucht schalen NIET mee)
 
+// ── Leesbaar gevaar (§10.1 van DESIGN.md) ───────────────────────────────────
+// Het roofdierbrein (zichtkegel, geheugen, afhaken) bestond al maar was
+// onzichtbaar; zonder beeld is ontwijken geen vaardigheid maar pech.
+export const ALARM_BADGE_HOOGTE = 26; // px boven de vis waar het uitroepteken zweeft
+export const ALARM_POOL = 6; // aantal alarm-badges (meer jagers tegelijk komt niet voor)
+export const ALARM_RING_DIKTE = 2.5; // px lijndikte van de rode ring om een jager
+export const ALARM_RING_MARGE = 6; // px dat de ring buiten de botsingsradius valt
+export const ALARM_PULS = 6; // pulsen/s van ring en badge
+export const ALARM_GELUID_PAUZE = 1.2; // s minimale stilte tussen twee "gespot"-tonen
+export const RANDWAARSCHUWING_AFSTAND = 700; // px waarbinnen de randgloed opkomt
+// De gloed wordt verdeeld over de vier randen naar richting, dus één rand krijgt
+// bij een schuine hoek maar een deel. Op 0,5 was er in beeld nagenoeg niets te
+// zien (gemeten: 0,14 alpha bij een jager op 192 px schuin rechtsboven).
+export const RANDWAARSCHUWING_MAX = 0.8;
+export const RANDWAARSCHUWING_DIKTE = 110; // px breedte van de gloedband langs de rand
+
+// ── Luchtbelschild (§10.2 van DESIGN.md) ────────────────────────────────────
+export const SCHILD_HAPPEN = 12; // happen om een geklapt schild terug te verdienen
+export const SCHILD_ONKWETSBAAR = 1.5; // s onaanraakbaar na een klap
+export const SCHILD_TERUGSTOOT = 260; // px/s waarmee je van de jager weg schiet
+export const SCHILD_PULS = 1.6; // pulsen/s van de bel (rustig ademen)
+
+// ── Gebeurtenissen (§10.3 van DESIGN.md) ────────────────────────────────────
+export const GEBEURTENIS_EERSTE = 25; // s tot de eerste gebeurtenis van een ronde
+export const GEBEURTENIS_PAUZE_MIN = 35; // s min. rust tussen twee gebeurtenissen
+export const GEBEURTENIS_PAUZE_MAX = 55; // s max. rust tussen twee gebeurtenissen
+export const PARADE_DUUR = 12; // s
+export const PARADE_TEMPO = 2; // × spawntempo tijdens de parade
+export const STILTE_DUUR = 10; // s
+export const JACHT_DUUR = 14; // s
+export const JACHT_PP = 12; // pp extra roofvisgewicht tijdens de jachttijd
+export const GEBEURTENIS_BANNER = 2.6; // s dat de aankondiging blijft staan
+export const STILTE_LICHT = 0.12; // aandeel waarmee het water optrekt tijdens de stilte
+export const JACHT_DONKER = 0.14; // aandeel waarmee het water verduistert bij jachttijd
+
+// ── Gevoel (§10.4 van DESIGN.md) ────────────────────────────────────────────
+export const HITSTOP = 0.055; // s bevriezen bij een flinke hap
+export const HITSTOP_MIN_R = 12; // px prooistraal vanaf waar de hitstop aangaat
+export const HITSTOP_FASE = 0.12; // s bevriezen bij een nieuwe fase
+export const COMBO_TIJD = 2.0; // s venster waarbinnen een volgende hap meetelt
+export const COMBO_MIN = 3; // vanaf deze combo verschijnt de teller en het bonuspunt
+export const COMBO_BONUS = 1; // punten extra per stap boven COMBO_MIN
+export const COMBO_TOON_STAP = 60; // Hz die de hap-toon per combostap stijgt
+export const COMBO_TOON_MAX = 480; // Hz maximale stijging (anders wordt het gepiep)
+export const SFEER_VOLUME = 0.05; // volume van de onderwater-drone (0..1)
+
+// ── Gouden nullen (§10.5 van DESIGN.md) ─────────────────────────────────────
+export const NUL_INTERVAL = 20; // s tussen spawnkans-rollen
+export const NUL_KANS = 0.5; // kans per rol
+export const NUL_MAX_ACTIEF = 1; // hoeveel gouden nullen tegelijk in de wereld
+export const NUL_RADIUS = 16; // px botsingsradius (ruim: hij mag makkelijk te pakken zijn)
+export const NUL_SCORE = 25; // punten bij het oppikken
+export const NUL_DRIFT = 26; // px/s waarmee hij omhoog zweeft
+export const NUL_AMPLITUDE = 34; // px horizontale slinger
+export const NUL_PERIODE = 2.6; // s periode van die slinger
+export const NUL_MEDAILLE_EIS = 25; // totaal opgepikte nullen voor de medaille
+
+// ── Finale: reuzenkracht & winnen (§10.6 van DESIGN.md) ─────────────────────
+export const MEGA_DUUR = 18; // s reuzenkracht na het opeten van een Diepteschrik
+/**
+ * × botsingsradius tijdens de reuzenkracht. Op je grootst: 56 × 1,8 = 100,8.
+ * Om een Hengelbek (72) te mogen eten is 72 / 0,8 = 90 nodig, dus dat past met
+ * marge; omgekeerd is 100,8 > 57,6 zodat niets jou dan nog kan opeten.
+ */
+export const MEGA_FACTOR = 1.8;
+export const MEGA_WAARSCHUWING = 5; // s waarin de meter knippert voor het aflopen
+export const MEGA_TINT = 0xffe066; // goudgloed over de speler (art, maar hoort bij de regel)
+
 // ── HUD & besturing ─────────────────────────────────────────────────────────
 export const HINT_DIEPTE_FASE = 2; // vanaf deze fase wijst een hint naar beneden
 export const HINT_DUUR = 3.5; // s dat zo'n hint blijft staan
@@ -303,3 +371,5 @@ export const MEDAILLE_DIEP = 'vis_diep'; // de Inktdiepte bereikt
 export const MEDAILLE_REUS = 'vis_reus'; // fase 5 bereikt
 export const MEDAILLE_APEX = 'vis_apex'; // een Diepteschrik opgegeten
 export const MEDAILLE_BOEK = 'vis_boek'; // alle soorten in het vissenboek
+export const MEDAILLE_NUL = 'vis_nul'; // NUL_MEDAILLE_EIS gouden nullen opgepikt
+export const MEDAILLE_KONING = 'vis_koning'; // de Hengelbek opgegeten: gewonnen (§10.6)

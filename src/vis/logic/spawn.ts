@@ -68,9 +68,15 @@ export function kiesSpawnPunt(camCentrum: Punt, rng: Rng): Punt | null {
   return null;
 }
 
-/** Kies een soort volgens de spawngewichten van de zone op dit dreigingsniveau. */
-export function kiesSoort(zoneNr: number, niveau: number, rng: Rng): SoortId {
-  const gewichten = spawnGewichten(zoneNr, niveau);
+/**
+ * Trek één soort uit een gewichtentabel (roulettewiel). Apart van `kiesSoort`
+ * zodat de gebeurtenissen (§10.3) hun eigen tabel kunnen aanleveren zonder deze
+ * trekking te dupliceren.
+ */
+export function kiesUitGewichten(
+  gewichten: Partial<Record<SoortId, number>>,
+  rng: Rng,
+): SoortId {
   const ids = Object.keys(gewichten) as SoortId[];
   const totaal = ids.reduce((som, id) => som + (gewichten[id] ?? 0), 0);
   let rest = rng() * totaal;
@@ -79,6 +85,11 @@ export function kiesSoort(zoneNr: number, niveau: number, rng: Rng): SoortId {
     if (rest < 0) return id;
   }
   return ids[ids.length - 1];
+}
+
+/** Kies een soort volgens de spawngewichten van de zone op dit dreigingsniveau. */
+export function kiesSoort(zoneNr: number, niveau: number, rng: Rng): SoortId {
+  return kiesUitGewichten(spawnGewichten(zoneNr, niveau), rng);
 }
 
 /** Posities voor één school-spawn: n leden binnen de spawnstraal rond het centrum. */

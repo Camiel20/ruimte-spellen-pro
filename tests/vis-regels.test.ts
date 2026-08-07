@@ -4,21 +4,32 @@
 import { describe, it, expect } from 'vitest';
 import {
   AANTAL_ZONES,
+  COMBO_BONUS,
+  COMBO_MIN,
+  COMBO_TOON_MAX,
+  COMBO_TOON_STAP,
+  DESPAWN_AFSTAND,
   EET_FACTOR,
   FASES,
   MASSA_MAX,
+  MEGA_DUUR,
+  MEGA_FACTOR,
   SOORTEN,
+  SPELER_START_MASSA,
   VLUCHT_FACTOR,
   ZONE4_EIS_FASE,
   ZONES,
 } from '../src/vis/GameConfig';
 import {
+  comboBonus,
+  comboToonStijging,
   eetBinnenBereik,
   faseDrempel,
   faseVoorMassa,
   kanEten,
   magBoostStarten,
   massaNaEten,
+  massaNaKlap,
   massaNaKwal,
   maxSnelheidVoorMassa,
   nieuweEnergie,
@@ -300,5 +311,103 @@ describe('config-consistentie met het ontwerp', () => {
 
   it('de eetfactor zelf staat op 0,8', () => {
     expect(EET_FACTOR).toBe(0.8);
+  });
+});
+
+// ── v3: luchtbelschild en combo (§10.2 / §10.4 van DESIGN.md) ────────────────
+describe('luchtbelschild: massa na een klap', () => {
+  it('zakt precies één fase terug, naar de drempel eronder', () => {
+    for (let i = 1; i < FASES.length; i++) {
+      const midden = (FASES[i].drempel + (FASES[i + 1]?.drempel ?? MASSA_MAX)) / 2;
+      expect(faseVoorMassa(midden)).toBe(FASES[i].fase); // controle op de testopzet
+      expect(massaNaKlap(midden)).toBe(FASES[i - 1].drempel);
+      expect(faseVoorMassa(massaNaKlap(midden))).toBe(FASES[i].fase - 1);
+    }
+  });
+
+  it('in fase 1 is de startmassa de vloer — lager kun je niet zakken', () => {
+    expect(massaNaKlap(SPELER_START_MASSA)).toBe(SPELER_START_MASSA);
+    expect(massaNaKlap(25)).toBe(SPELER_START_MASSA); // nog fase 1
+    expect(massaNaKlap(MASSA_MAX)).toBe(FASES[FASES.length - 2].drempel);
+  });
+
+  it('een klap kost altijd massa zodra je boven fase 1 zit', () => {
+    for (let i = 1; i < FASES.length; i++) {
+      expect(massaNaKlap(FASES[i].drempel)).toBeLessThan(FASES[i].drempel);
+    }
+    // ...en nooit meer dan de fase eronder: je verliest hoogstens één stap.
+    expect(massaNaKlap(FASES[4].drempel)).toBe(FASES[3].drempel);
+  });
+
+  it('de uitkomst is nooit negatief of onder de startmassa', () => {
+    for (const massa of [0, 1, 9, 10, 11, 29, 30, 79, 200, 499, 500, 999]) {
+      expect(massaNaKlap(massa)).toBeGreaterThanOrEqual(SPELER_START_MASSA);
+    }
+  });
+});
+
+describe('combo', () => {
+  it('levert pas bonus vanaf de drempel', () => {
+    expect(comboBonus(0)).toBe(0);
+    expect(comboBonus(COMBO_MIN - 1)).toBe(0);
+    expect(comboBonus(COMBO_MIN)).toBe(COMBO_BONUS);
+    expect(comboBonus(COMBO_MIN + 3)).toBe(COMBO_BONUS * 4);
+  });
+
+  it('de toonhoogte stijgt mee maar wordt gecapt', () => {
+    expect(comboToonStijging(COMBO_MIN - 1)).toBe(0);
+    expect(comboToonStijging(COMBO_MIN)).toBe(COMBO_TOON_STAP);
+    expect(comboToonStijging(1000)).toBe(COMBO_TOON_MAX);
+    // monotoon niet-dalend, zodat de toon nooit terugvalt tijdens een reeks
+    let vorige = 0;
+    for (let c = 0; c < 40; c++) {
+      const nu = comboToonStijging(c);
+      expect(nu).toBeGreaterThanOrEqual(vorige);
+      vorige = nu;
+    }
+  });
+});
+
+// ── v3: de finale (§10.6 van DESIGN.md) ─────────────────────────────────────
+describe('reuzenkracht en winnen', () => {
+  const maxR = FASES[FASES.length - 1].radius;
+  const megaR = maxR * MEGA_FACTOR;
+  const hengelbek = SOORTEN.hengelbek.radius;
+  const apex = SOORTEN.diepteschrik.radius;
+
+  it('de Hengelbek is normaal ONeetbaar en eet zelfs een volgroeide speler op', () => {
+    // Dit is met opzet zo: zonder hem kan een uitgegroeide speler niet meer
+    // sterven en loopt een ronde nooit af.
+    expect(kanEten(maxR, hengelbek)).toBe(false);
+    expect(kanEten(hengelbek, maxR)).toBe(true);
+  });
+
+  it('de Diepteschrik is wél te eten zodra je volgroeid bent — dat start de finale', () => {
+    expect(kanEten(maxR, apex)).toBe(true);
+    expect(kanEten(apex, maxR)).toBe(false);
+    // Krap: hij mag niet per ongeluk al veel eerder eetbaar worden.
+    expect(apex).toBeGreaterThan(FASES[FASES.length - 2].radius * EET_FACTOR);
+  });
+
+  it('met reuzenkracht kun je de Hengelbek wél op, en niets jou', () => {
+    expect(kanEten(megaR, hengelbek)).toBe(true);
+    expect(kanEten(hengelbek, megaR)).toBe(false);
+    // Geen enkele soort kan een speler met reuzenkracht aan.
+    for (const id of Object.keys(SOORTEN) as (keyof typeof SOORTEN)[]) {
+      expect(kanEten(SOORTEN[id].radius, megaR), `${id} zou de mega-speler eten`).toBe(false);
+    }
+  });
+
+  it('MEGA_FACTOR heeft marge: precies genoeg zou bij een tuningtik breken', () => {
+    const nodig = hengelbek / EET_FACTOR / maxR; // = 1,607...
+    expect(MEGA_FACTOR).toBeGreaterThan(nodig);
+    expect(MEGA_FACTOR / nodig).toBeGreaterThan(1.1); // minstens 10% speling
+  });
+
+  it('de reuzenkracht duurt lang genoeg om de opgeroepen baas te bereiken', () => {
+    // Hij spawnt op hoogstens DESPAWN_AFSTAND; bij de traagste (fase 5) snelheid
+    // moet je hem binnen de tijd kunnen halen, anders is de finale onhaalbaar.
+    const traagste = FASES[FASES.length - 1].maxSnelheid;
+    expect(MEGA_DUUR * traagste).toBeGreaterThan(DESPAWN_AFSTAND);
   });
 });

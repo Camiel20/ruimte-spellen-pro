@@ -191,3 +191,72 @@ describe('unlocks', () => {
     expect(sm.kiesSkin('gewoon')).toBe(true);
   });
 });
+
+// ── v3: gouden nullen (§10.5 van DESIGN.md) ─────────────────────────────────
+describe('gouden nullen', () => {
+  it('telt op en bewaart meteen', () => {
+    const stub = maakStub();
+    const save = new SaveManager(stub);
+    expect(save.laad().nullen).toBe(0);
+    expect(save.registreerNullen(1).nullen).toBe(1);
+    expect(save.registreerNullen(3).nullen).toBe(4);
+    expect(new SaveManager(stub).laad().nullen).toBe(4); // echt weggeschreven
+  });
+
+  it('negeert rommel in plaats van de teller te verzieken', () => {
+    const save = new SaveManager(maakStub());
+    save.registreerNullen(5);
+    for (const rommel of [0, -3, NaN, Infinity]) {
+      expect(save.registreerNullen(rommel).nullen).toBe(5);
+    }
+    expect(save.registreerNullen(1.9).nullen).toBe(6); // naar beneden afgerond
+  });
+
+  it('een oude save zonder het veld begint gewoon op 0', () => {
+    const stub = maakStub();
+    stub.setItem(OPSLAG_SLEUTEL, JSON.stringify({ hoogsteScore: 900 }));
+    const save = new SaveManager(stub);
+    expect(save.laad().nullen).toBe(0);
+    expect(save.laad().hoogsteScore).toBe(900); // de rest blijft staan
+  });
+
+  it('een ronde afronden wist de nullen niet', () => {
+    // Zelfde valkuil als bij `vangst`: laad() bouwt veld voor veld op en
+    // bewaar() schrijft dat terug, dus een vergeten veld verdwijnt stilletjes.
+    const save = new SaveManager(maakStub());
+    save.registreerNullen(7);
+    const na = save.registreerRonde(ronde());
+    expect(na.nullen).toBe(7);
+    expect(save.laad().nullen).toBe(7);
+  });
+
+  it('markeerFase en registreerVangst laten de nullen ook staan', () => {
+    const save = new SaveManager(maakStub());
+    save.registreerNullen(2);
+    save.markeerFase(4);
+    save.registreerVangst({ vlokje: 1 });
+    expect(save.laad().nullen).toBe(2);
+  });
+});
+
+// ── v3: zeges (§10.6 van DESIGN.md) ─────────────────────────────────────────
+describe('gewonnen rondes', () => {
+  it('telt op, bewaart, en overleeft een gewone ronde-afronding', () => {
+    const stub = maakStub();
+    const save = new SaveManager(stub);
+    expect(save.laad().zeges).toBe(0);
+    expect(save.registreerZege().zeges).toBe(1);
+    expect(save.registreerZege().zeges).toBe(2);
+    expect(save.registreerRonde(ronde()).zeges).toBe(2);
+    expect(new SaveManager(stub).laad().zeges).toBe(2);
+  });
+
+  it('een oude save zonder het veld begint op 0 en verliest niets anders', () => {
+    const stub = maakStub();
+    stub.setItem(OPSLAG_SLEUTEL, JSON.stringify({ nullen: 4, hoogsteScore: 12 }));
+    const data = new SaveManager(stub).laad();
+    expect(data.zeges).toBe(0);
+    expect(data.nullen).toBe(4);
+    expect(data.hoogsteScore).toBe(12);
+  });
+});

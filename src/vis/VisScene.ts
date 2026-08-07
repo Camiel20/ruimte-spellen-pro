@@ -8,18 +8,31 @@ import Phaser from 'phaser';
 import * as CFG from './GameConfig';
 import type { Gedrag, SoortId } from './GameConfig';
 import {
+  comboBonus,
+  comboToonStijging,
   eetBinnenBereik,
   faseVoorMassa,
   kanEten,
   magBoostStarten,
   massaNaEten,
+  massaNaKlap,
   massaNaKwal,
   maxSnelheidVoorMassa,
   nieuweEnergie,
   radiusVoorMassa,
 } from './logic/regels';
 import { dreigingsNiveau, jaagFactor } from './logic/moeilijkheid';
-import { kiesSoort, kiesSpawnPunt, schoolPosities, zoneVoorY, type Punt } from './logic/spawn';
+import { kiesSpawnPunt, schoolPosities, zoneVoorY, type Punt } from './logic/spawn';
+import {
+  gebeurtenisConfig,
+  kiesGebeurtenis,
+  kiesSoortTijdens,
+  magSpawnen,
+  spawnTempoFactor,
+  wachttijd,
+  wateraanpassing,
+  type GebeurtenisId,
+} from './logic/gebeurtenis';
 import {
   draaiNaar,
   inZicht,
@@ -37,8 +50,13 @@ import { addStars, giveMedal } from '../progress.js';
 import {
   ANIM_FPS,
   ANIM_FRAMES,
+  FASE_POP_DUUR,
+  FASE_POP_KRACHT,
+  GEBEURTENIS_DONKER,
+  GEBEURTENIS_LICHT,
   TEX,
   TEX_SCHAAL,
+  VIS_SCHAAL,
   ZONE_LUCHT,
   kleurNummer,
   maakBesturingTexturen,
@@ -78,6 +96,18 @@ interface Entiteit extends SchoolLid {
   driftRichting: number; // +1 omlaag, −1 omhoog
   animT: number; // s, loopt de staartslag-frames af
   frame: number; // huidig staartslag-frame
+  /** Toont deze vis nu het alarmteken? Nodig om het aan/uit-moment te horen. */
+  alarmAan: boolean;
+}
+
+/** Een zwevende gouden nul (§10.5). Eigen lijstje: het is geen vis. */
+interface GoudenNul {
+  beeld: Phaser.GameObjects.Image;
+  actief: boolean;
+  basisX: number; // px, het midden waar hij omheen slingert
+  x: number;
+  y: number;
+  sinusT: number; // s, fase van de slinger
 }
 
 interface Speler {
@@ -92,6 +122,8 @@ interface Speler {
   energie: number;
   boostAan: boolean;
   onkwetsbaarT: number;
+  /** Luchtbelschild (§10.2): vangt één hap op in plaats van de ronde te beëindigen. */
+  schild: boolean;
   animT: number;
   frame: number;
   sprite: Phaser.GameObjects.Image;
@@ -146,6 +178,46 @@ export default class VisScene extends Phaser.Scene {
   private spoorT = 0;
   private flitsen: Phaser.GameObjects.Image[] = [];
   private flitsIndex = 0;
+  private ringen: Phaser.GameObjects.Image[] = [];
+  private ringIndex = 0;
+
+  // Leesbaar gevaar (§10.1)
+  private gevaarLaag!: Phaser.GameObjects.Graphics; // ringen om jagers, in de wereld
+  private randLaag!: Phaser.GameObjects.Graphics; // rode gloed langs de schermrand
+  private alarmBadges: Phaser.GameObjects.Image[] = [];
+  private alarmGeluidT = 0; // s tot het volgende alarmgeluid mag
+  private jagerAfstand = Infinity; // px tot de dichtstbijzijnde jager die jaagt
+  private jagerHoek = 0; // rad, richting van speler naar die jager
+
+  // Luchtbelschild (§10.2)
+  private schildBeeld!: Phaser.GameObjects.Image;
+  private schildHappen = 0; // happen sinds het schild klapte
+  private schildHintGehad = false; // de uitleg komt één keer per ronde
+
+  // Gebeurtenissen (§10.3)
+  private gebeurtenis: GebeurtenisId | null = null;
+  private gebeurtenisT = 0; // s dat de lopende gebeurtenis nog duurt
+  private gebeurtenisWachtT = 0; // s tot de volgende
+  private vorigeGebeurtenis: GebeurtenisId | null = null;
+  private bannerTekst!: Phaser.GameObjects.Text;
+  private bannerT = 0;
+
+  // Gevoel (§10.4)
+  private stopT = 0; // s hitstop: de simulatie staat stil, het beeld niet
+  private popT = 0; // s dat de fase-plof nog loopt
+  private combo = 0;
+  private comboT = 0; // s tot de combo vervalt
+  private comboTekst!: Phaser.GameObjects.Text;
+
+  // Gouden nullen (§10.5)
+  private goudenNullen: GoudenNul[] = [];
+  private nulRolT = 0; // s tot de volgende kansrol
+
+  // Finale (§10.6)
+  private megaT = 0; // s reuzenkracht die nog resteert
+  private gewonnenRonde = false;
+  private boosAfstand = Infinity; // px tot de opgeroepen Hengelbek
+  private boosHoek = 0; // rad, richting van speler naar die Hengelbek
 
   // HUD
   private hudBalken!: Phaser.GameObjects.Graphics;
@@ -228,6 +300,9 @@ export default class VisScene extends Phaser.Scene {
     this.plankton.length = 0;
     this.spoor.length = 0;
     this.flitsen.length = 0;
+    this.ringen.length = 0;
+    this.alarmBadges.length = 0;
+    this.goudenNullen.length = 0;
     this.actiefAantal = 0;
 
     this.bouwAchtergrond();
@@ -337,6 +412,30 @@ export default class VisScene extends Phaser.Scene {
     for (let i = 0; i < 8; i++) {
       this.flitsen.push(this.add.image(0, 0, TEX.hap).setDepth(8).setVisible(false));
     }
+    // Uitdijende ringen voor de grote momenten (fase-op, geklapt schild).
+    for (let i = 0; i < 6; i++) {
+      this.ringen.push(this.add.image(0, 0, TEX.ring).setDepth(9).setVisible(false));
+    }
+
+    // Leesbaar gevaar (§10.1). Depth 5: vóór de vissen (4) zodat de gloed niet
+    // achter de sprite verdwijnt, maar achter de speler (6).
+    this.gevaarLaag = this.add.graphics().setDepth(5);
+    for (let i = 0; i < CFG.ALARM_POOL; i++) {
+      this.alarmBadges.push(this.add.image(0, 0, TEX.alarm).setDepth(7).setVisible(false));
+    }
+    // Gouden nullen (§10.5).
+    for (let i = 0; i < CFG.NUL_MAX_ACTIEF; i++) {
+      this.goudenNullen.push({
+        beeld: this.add.image(0, 0, TEX.nul).setDepth(5).setVisible(false),
+        actief: false,
+        basisX: 0,
+        x: 0,
+        y: 0,
+        sinusT: 0,
+      });
+    }
+    // Luchtbelschild om de speler heen (§10.2), boven de vis zelf.
+    this.schildBeeld = this.add.image(0, 0, TEX.schild).setDepth(7).setVisible(false);
 
     // Koudwatergrens: alleen zichtbaar zolang zone 4 op slot zit.
     this.grensBand = this.add
@@ -389,6 +488,7 @@ export default class VisScene extends Phaser.Scene {
         driftRichting: 1,
         animT: 0,
         frame: 0,
+        alarmAan: false,
       });
     }
   }
@@ -406,6 +506,7 @@ export default class VisScene extends Phaser.Scene {
       energie: CFG.ENERGIE_MAX,
       boostAan: false,
       onkwetsbaarT: 0,
+      schild: true,
       animT: 0,
       frame: 0,
       sprite,
@@ -459,6 +560,32 @@ export default class VisScene extends Phaser.Scene {
       .setDepth(102)
       .setAlpha(0);
 
+    // Aankondiging van een gebeurtenis (§10.3). Eigen regel boven de fasenaam,
+    // zodat een parade die tijdens een fase-op begint elkaar niet overschrijft.
+    this.bannerTekst = this.add
+      .text(CFG.SCHERM_B / 2, CFG.SCHERM_H * 0.24, '', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '23px',
+        color: '#ffffff',
+        backgroundColor: '#03101fcc',
+        padding: { x: 14, y: 8 },
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(102)
+      .setAlpha(0);
+
+    // Combo-teller (§10.4), net onder het scorepaneel.
+    this.comboTekst = this.add
+      .text(20, 68, '', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '20px',
+        color: '#ffd60a',
+      })
+      .setScrollFactor(0)
+      .setDepth(101)
+      .setAlpha(0);
+
     this.hintTekst = this.add
       .text(CFG.SCHERM_B / 2, CFG.SCHERM_H * 0.62, '', {
         fontFamily: 'Arial Black, Arial',
@@ -471,6 +598,10 @@ export default class VisScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(102)
       .setAlpha(0);
+
+    // Rode randgloed als er een jager achter je aan zit (§10.1). Boven het
+    // vignet (40), onder de HUD-panelen (99) — het is sfeer, geen knop.
+    this.randLaag = this.add.graphics().setScrollFactor(0).setDepth(45);
 
     this.hudBalken = this.add.graphics().setScrollFactor(0).setDepth(100);
     this.scoreTekst = this.add
@@ -496,9 +627,22 @@ export default class VisScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * Zet geluid aan bij de eerste aanraking/toets. Browsers (en vooral iOS)
+   * staan audio pas ná een gebaar toe, dus de onderwater-drone kan niet bij het
+   * opstarten beginnen. Idempotent — vaak aanroepen is veilig.
+   */
+  private sfeerAan(): void {
+    Geluid.ontgrendel();
+    if (this.status === 'spelen') Geluid.startSfeer();
+  }
+
   private bouwBesturing(): void {
     const kb = this.input.keyboard;
     if (kb) {
+      // `once`: er is maar één eerste toetsaanslag nodig, en opruimen() haalt
+      // achtergebleven luisteraars bij een volgend bezoek weg.
+      kb.once('keydown', () => this.sfeerAan());
       this.toetsen = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE') as Record<
         string,
         Phaser.Input.Keyboard.Key
@@ -560,7 +704,7 @@ export default class VisScene extends Phaser.Scene {
     this.joystickThuis.y = jy;
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      Geluid.ontgrendel();
+      this.sfeerAan();
       // Deze tik hoorde bij een overlay-knop (die de status net op 'spelen'
       // zette); hij mag de vis niet óók laten wegschieten.
       if (p.id === this.negeerPointer) return;
@@ -680,11 +824,42 @@ export default class VisScene extends Phaser.Scene {
     this.speler.energie = CFG.ENERGIE_MAX;
     this.speler.boostAan = false;
     this.speler.onkwetsbaarT = 0;
+    this.speler.schild = true;
     this.speler.animT = 0;
     this.speler.frame = 0;
     this.speler.sprite.setTexture(TEX.speler(1, 0)).setVisible(true).setAlpha(1);
     for (const bel of this.spoor) bel.setVisible(false);
     for (const f of this.flitsen) f.setVisible(false);
+    for (const r of this.ringen) r.setVisible(false);
+    for (const b of this.alarmBadges) b.setVisible(false);
+    for (const n of this.goudenNullen) {
+      n.actief = false;
+      n.beeld.setVisible(false);
+    }
+    this.gevaarLaag.clear();
+    this.randLaag.clear();
+
+    // Schild, gebeurtenissen, combo, hitstop en nullen (§10) schoon beginnen.
+    this.schildHappen = 0;
+    this.schildHintGehad = false;
+    this.alarmGeluidT = 0;
+    this.jagerAfstand = Infinity;
+    this.gebeurtenis = null;
+    this.gebeurtenisT = 0;
+    this.vorigeGebeurtenis = null;
+    this.gebeurtenisWachtT = wachttijd(Math.random, true);
+    this.bannerT = 0;
+    this.bannerTekst.setAlpha(0);
+    this.stopT = 0;
+    this.combo = 0;
+    this.comboT = 0;
+    this.comboTekst.setAlpha(0);
+    this.nulRolT = CFG.NUL_INTERVAL;
+    this.megaT = 0;
+    this.gewonnenRonde = false;
+    this.boosAfstand = Infinity;
+    this.speler.sprite.clearTint();
+
     this.tekenSpeler();
 
     const opSlot = !this.save.zone4Ontgrendeld(this.saveData);
@@ -742,6 +917,7 @@ export default class VisScene extends Phaser.Scene {
   private pauzeer(): void {
     if (this.status !== 'spelen') return;
     this.status = 'pauze';
+    Geluid.stopSfeer(); // pauze hoort ook stil te zijn
     this.bewaarVangst();
     this.toonPauzeKaart();
   }
@@ -758,16 +934,26 @@ export default class VisScene extends Phaser.Scene {
   private hervat(): void {
     if (this.status !== 'pauze') return;
     this.status = 'spelen';
+    Geluid.startSfeer();
     this.overlay.setVisible(false);
     this.overlay.removeAll(true);
   }
 
-  private gaDood(doorSoort?: SoortId): void {
-    if (this.status === 'dood') return;
+  /**
+   * Einde van de ronde — voor zowel verliezen als winnen (§10.6). Alles wat in
+   * beide gevallen moet gebeuren staat hier één keer: records, vissenboek,
+   * beloningen en het opruimen van de speel-HUD.
+   */
+  private rondeAfronden(doorSoort?: SoortId): void {
     this.status = 'dood';
-    Geluid.dood();
-    this.cameras.main.shake(260, 0.012);
+    Geluid.stopSfeer();
     this.speler.boostAan = false;
+    // Alarm en gloed horen bij het spelen; op de eindkaart moeten ze weg.
+    this.gevaarLaag.clear();
+    this.randLaag.clear();
+    this.schildBeeld.setVisible(false);
+    this.comboTekst.setAlpha(0);
+    for (const b of this.alarmBadges) b.setVisible(false);
 
     // Wie jou opeet komt óók in het vissenboek — met teller 0 ("ontmoet").
     if (doorSoort) this.telVangst(doorSoort, 0);
@@ -782,7 +968,15 @@ export default class VisScene extends Phaser.Scene {
       gegeten: this.gegeten,
       datumIso: new Date().toISOString(),
     });
+    if (this.gewonnenRonde) this.saveData = this.save.registreerZege();
     this.verdeelBeloningen();
+  }
+
+  private gaDood(doorSoort?: SoortId): void {
+    if (this.status === 'dood') return;
+    Geluid.dood();
+    this.cameras.main.shake(260, 0.012);
+    this.rondeAfronden(doorSoort);
 
     this.tweens.add({
       targets: this.speler.sprite,
@@ -799,18 +993,21 @@ export default class VisScene extends Phaser.Scene {
   /** De eindkaart; ook gebruikt om te verversen na een keuze of het boek. */
   private toonEindKaart(): void {
     const naam = CFG.FASES.find((f) => f.fase === this.grootsteFase)?.naam ?? '';
-    const regels = [
+    const regels = this.gewonnenRonde
+      ? ['Je at de Hengelbek op — de baas van de hele zee!', '']
+      : [];
+    regels.push(
       `Score: ${this.score}${this.nieuwRecord ? '   ⭐ NIEUW RECORD!' : ''}`,
       `Overleefd: ${this.tijdTekst(this.rondeT)}`,
       `Grootste vis: ${naam} (fase ${this.grootsteFase})`,
       `Vissen gegeten: ${this.gegeten}`,
-    ];
+    );
     if (this.sterrenRonde > 0) regels.push(`Verdiend: ${this.sterrenRonde} ⭐ voor je prijzenkast`);
     const volgende = this.volgendeKleur();
     if (volgende) regels.push(`Nog ${volgende.tekort} punten tot de ${volgende.naam} vis.`);
     regels.push('', ...this.recordRegels());
 
-    this.toonKaart('Opgegeten!', regels, [
+    this.toonKaart(this.gewonnenRonde ? '🏆 GEWONNEN!' : 'Opgegeten!', regels, [
       { tekst: '▶ Nog een keer', kleur: 0x22c55e, actie: () => this.startRonde() },
       { tekst: '📖 Vissenboek', kleur: 0x0ea5e9, actie: () => this.toonBoek() },
       { tekst: '⬅ Terug naar het menu', kleur: 0x64748b, actie: () => this.scene.start('Menu') },
@@ -901,6 +1098,8 @@ export default class VisScene extends Phaser.Scene {
     if (this.grootsteFase >= CFG.FASES[CFG.FASES.length - 1].fase) giveMedal(CFG.MEDAILLE_REUS);
     if ((this.saveData.vangst.diepteschrik ?? 0) > 0) giveMedal(CFG.MEDAILLE_APEX);
     if (boekVol(this.saveData.vangst)) giveMedal(CFG.MEDAILLE_BOEK);
+    if (this.saveData.nullen >= CFG.NUL_MEDAILLE_EIS) giveMedal(CFG.MEDAILLE_NUL);
+    if (this.gewonnenRonde) giveMedal(CFG.MEDAILLE_KONING);
   }
 
   /** Zet een pas ontdekte soort in de wachtrij voor de NIEUW!-melding. */
@@ -936,6 +1135,8 @@ export default class VisScene extends Phaser.Scene {
       `Grootste vis: ${d.grootsteMassa} (fase ${Math.max(1, d.grootsteFase)})`,
       `Meeste gegeten: ${d.meesteGegeten}   ·   totaal: ${d.totaalGegeten}`,
     ];
+    if (d.nullen > 0) regels.push(`Gouden nullen: ${d.nullen}`);
+    if (d.zeges > 0) regels.push(`🏆 Gewonnen: ${d.zeges}×`);
     if (d.laatste5.length > 0) {
       regels.push('', 'LAATSTE RONDES');
       for (const r of d.laatste5) {
@@ -1148,7 +1349,9 @@ export default class VisScene extends Phaser.Scene {
     if (!punt) return;
     const zone = zoneVoorY(punt.y);
     if (zone === CFG.AANTAL_ZONES && !this.save.zone4Ontgrendeld(this.saveData)) return;
-    const soort = kiesSoort(zone, this.dreiging, Math.random);
+    // De lopende gebeurtenis bepaalt mee wát er spawnt (§10.3).
+    const soort = kiesSoortTijdens(zone, this.dreiging, this.gebeurtenis, Math.random);
+    if (!magSpawnen(CFG.SOORTEN[soort].gedrag, this.gebeurtenis)) return;
 
     if (CFG.SOORTEN[soort].gedrag === 'schoolvis') {
       if (this.actiefAantal + CFG.SCHOOL_SPAWN_N > CFG.MAX_ACTIEF) return;
@@ -1204,6 +1407,7 @@ export default class VisScene extends Phaser.Scene {
       e.driftRichting = Math.random() < 0.5 ? 1 : -1;
       e.animT = Math.random() * ANIM_FRAMES; // niet alle vissen in de maat
       e.frame = 0;
+      e.alarmAan = false;
       e.sprite
         .setTexture(TEX.soort(soort, 0))
         .setPosition(x, y)
@@ -1221,6 +1425,7 @@ export default class VisScene extends Phaser.Scene {
   private geefTerug(e: Entiteit): void {
     if (e.actief) this.actiefAantal--;
     e.actief = false;
+    e.alarmAan = false;
     e.sprite.setVisible(false);
   }
 
@@ -1234,15 +1439,28 @@ export default class VisScene extends Phaser.Scene {
 
     if (this.status !== 'spelen') return;
 
+    // Hitstop (§10.4): de simulatie staat een paar honderdsten stil zodat een
+    // flinke hap "landt". Het beeld loopt door — camera-shake en -flits zitten
+    // op Phasers eigen klok, dus die merken hier niets van.
+    if (this.stopT > 0) {
+      this.stopT -= dt;
+      this.tekenHud();
+      return;
+    }
+
     this.rondeT += dt;
     this.dreiging = dreigingsNiveau(this.rondeT);
+    if (this.alarmGeluidT > 0) this.alarmGeluidT -= dt;
 
     this.updateSpeler(dt);
     this.updateEntiteiten(dt);
     this.botsingen();
+    this.updateGebeurtenis(dt);
     this.updateSpawner(dt);
+    this.updateNullen(dt);
     this.updateBellen(dt);
     this.updateFlitsen(dt);
+    this.updateRingen(dt);
     this.updateMeldingen(dt);
     this.tekenHud();
   }
@@ -1315,6 +1533,15 @@ export default class VisScene extends Phaser.Scene {
     }
 
     if (s.onkwetsbaarT > 0) s.onkwetsbaarT -= dt;
+    if (this.megaT > 0) {
+      this.megaT -= dt;
+      if (this.megaT <= 0) this.stopMega();
+    }
+    if (this.popT > 0) this.popT -= dt;
+    if (this.comboT > 0) {
+      this.comboT -= dt;
+      if (this.comboT <= 0) this.combo = 0;
+    }
 
     // Staartslag volgt de zwemsnelheid.
     const tempo = Math.sqrt(s.vel.x * s.vel.x + s.vel.y * s.vel.y) / s.maxSnelheid;
@@ -1375,17 +1602,43 @@ export default class VisScene extends Phaser.Scene {
   private tekenSpeler(): void {
     const s = this.speler;
     const faseCfg = this.faseCfg[s.fase] ?? CFG.FASES[0];
+    // Fase-plof: één golf omhoog en terug (sin van 0 → π), zonder tween.
+    const pop =
+      this.popT > 0
+        ? 1 + Math.sin((this.popT / FASE_POP_DUUR) * Math.PI) * FASE_POP_KRACHT
+        : 1;
     s.sprite.setPosition(s.pos.x, s.pos.y);
-    s.sprite.setScale((s.radius / faseCfg.radius) * texSchaalVoor(faseCfg.radius));
+    s.sprite.setScale((s.radius / faseCfg.radius) * texSchaalVoor(faseCfg.radius) * pop);
     s.sprite.setRotation(s.hoek);
     s.sprite.setFlipY(Math.cos(s.hoek) < 0);
     s.sprite.setAlpha(s.onkwetsbaarT > 0 ? 0.55 : 1);
+
+    // Luchtbelschild eromheen: rustig ademend, ruim om de vis heen.
+    if (s.schild) {
+      const adem = 1 + 0.05 * Math.sin(this.rondeT * CFG.SCHILD_PULS * Math.PI * 2);
+      const maat = s.radius * 3.1 * adem;
+      this.schildBeeld
+        .setPosition(s.pos.x, s.pos.y)
+        .setDisplaySize(maat, maat)
+        .setAlpha(0.55 + 0.2 * Math.sin(this.rondeT * CFG.SCHILD_PULS * Math.PI * 2))
+        .setVisible(true);
+    } else {
+      this.schildBeeld.setVisible(false);
+    }
   }
 
   // ───────────────────────────────────────────────────────── AI
 
   private updateEntiteiten(dt: number): void {
     const speler = this.speler;
+    // Leesbaar gevaar (§10.1) wordt in dezelfde doorloop bijgehouden: de ringen
+    // worden per frame opnieuw getekend en de badges opnieuw uitgedeeld.
+    this.gevaarLaag.clear();
+    const puls = 0.5 + 0.5 * Math.sin(this.rondeT * CFG.ALARM_PULS * Math.PI * 2);
+    let badges = 0;
+    this.jagerAfstand = Infinity;
+    this.boosAfstand = Infinity;
+
     for (const e of this.pool) {
       if (!e.actief) continue;
 
@@ -1474,6 +1727,57 @@ export default class VisScene extends Phaser.Scene {
       e.sprite.setPosition(e.pos.x, e.pos.y);
       e.sprite.setRotation(e.hoek);
       e.sprite.setFlipY(Math.cos(e.hoek) < 0);
+
+      // Tijdens de reuzenkracht wijst een gouden gloed naar de Hengelbek: hij
+      // is dan geen bedreiging maar het doelwit, dus het rode alarm zwijgt.
+      if (this.megaT > 0 && e.soort === 'hengelbek' && afstandSpeler < this.boosAfstand) {
+        this.boosAfstand = afstandSpeler;
+        this.boosHoek = Math.atan2(-dys, -dxs);
+      }
+
+      // Heeft deze jager de speler in het vizier én kan hij hem op? Dan is dat
+      // vanaf nu te zien en te horen. Zonder dit is het roofdierbrein (zicht,
+      // geheugen, afhaken) onzichtbaar en voelt sterven als pech.
+      const jaagtNu =
+        (e.gedrag === 'roofvis' || e.gedrag === 'apex') &&
+        e.geheugenT > 0 &&
+        kanEten(e.radius, speler.radius);
+      if (jaagtNu !== e.alarmAan) {
+        e.alarmAan = jaagtNu;
+        // Eén alarmkanaal met een pauze: met drie jagers wordt het anders een ratel.
+        if (this.alarmGeluidT <= 0) {
+          this.alarmGeluidT = CFG.ALARM_GELUID_PAUZE;
+          if (jaagtNu) Geluid.gespot();
+          else Geluid.opgeven();
+        }
+        if (!jaagtNu) this.flits(e.pos.x, e.pos.y, 0xbfe3fb); // pufje: hij haakt af
+      }
+      if (jaagtNu) {
+        if (afstandSpeler < this.jagerAfstand) {
+          this.jagerAfstand = afstandSpeler;
+          this.jagerHoek = Math.atan2(-dys, -dxs); // van de speler naar de jager
+        }
+        // LET OP: de ring moet om de GETEKENDE vis, niet om zijn botsingsradius.
+        // Die is een stuk kleiner (VIS_SCHAAL), dus een ring op `e.radius` valt
+        // volledig achter de sprite weg — gemeten: straal 40 bij een vis van
+        // 191 px hoog. Twee strekken geven een gloed in plaats van een lijntje.
+        const straal = e.radius * VIS_SCHAAL + CFG.ALARM_RING_MARGE;
+        this.gevaarLaag.lineStyle(CFG.ALARM_RING_DIKTE * 2.5, 0xff4d4d, 0.12 + 0.16 * puls);
+        this.gevaarLaag.strokeCircle(e.pos.x, e.pos.y, straal + CFG.ALARM_RING_DIKTE);
+        this.gevaarLaag.lineStyle(CFG.ALARM_RING_DIKTE, 0xff4d4d, 0.45 + 0.45 * puls);
+        this.gevaarLaag.strokeCircle(e.pos.x, e.pos.y, straal);
+        if (badges < this.alarmBadges.length) {
+          this.alarmBadges[badges++]
+            .setPosition(e.pos.x, e.pos.y - straal - CFG.ALARM_BADGE_HOOGTE)
+            .setVisible(true)
+            .setScale(0.85 + 0.15 * puls)
+            .setAlpha(0.75 + 0.25 * puls);
+        }
+      }
+    }
+
+    for (let i = badges; i < this.alarmBadges.length; i++) {
+      this.alarmBadges[i].setVisible(false);
     }
   }
 
@@ -1662,9 +1966,11 @@ export default class VisScene extends Phaser.Scene {
       const afstand = Math.sqrt(dx * dx + dy * dy);
 
       if (e.gedrag === 'gevaar') {
-        if (afstand < e.radius + s.radius && s.onkwetsbaarT <= 0) {
+        // Tijdens de reuzenkracht doet zelfs een kwal geen pijn — anders zou de
+        // finale kunnen stranden op een prik van een kwal die je niet zag.
+        if (afstand < e.radius + s.radius && s.onkwetsbaarT <= 0 && this.megaT <= 0) {
           s.massa = massaNaKwal(s.massa);
-          s.radius = radiusVoorMassa(s.massa);
+          this.zetRadius();
           s.onkwetsbaarT = CFG.ONKWETSBAAR;
           Geluid.au();
           this.cameras.main.shake(180, 0.008);
@@ -1685,25 +1991,97 @@ export default class VisScene extends Phaser.Scene {
         kanEten(e.radius, s.radius) &&
         eetBinnenBereik(afstand, e.radius)
       ) {
+        // Onkwetsbaar (net geklapt schild of kwal-contact): deze hap telt niet.
+        // Zonder deze regel zou dezelfde roofvis je in het volgende frame alsnog
+        // opeten en was het schild waardeloos.
+        if (s.onkwetsbaarT > 0) continue;
+        if (s.schild) {
+          this.klapSchild(e);
+          continue;
+        }
         this.gaDood(e.soort);
         return;
       }
     }
   }
 
+  /**
+   * De eerste hap kost je grootte, niet je ronde (§10.2). De jager krijgt zijn
+   * hap en haakt daarna af — anders sta je na de terugstoot meteen weer met je
+   * neus tegen hem aan.
+   */
+  private klapSchild(e: Entiteit): void {
+    const s = this.speler;
+    s.schild = false;
+    this.schildHappen = 0;
+    this.combo = 0;
+    this.comboT = 0;
+
+    s.massa = massaNaKlap(s.massa);
+    this.zetRadius();
+    s.fase = faseVoorMassa(s.massa);
+    s.maxSnelheid = maxSnelheidVoorMassa(s.massa);
+    s.sprite.setTexture(this.spelerSleutels[s.fase][s.frame]);
+    s.onkwetsbaarT = CFG.SCHILD_ONKWETSBAAR;
+
+    // Wegduwen bij de jager vandaan.
+    const dx = s.pos.x - e.pos.x;
+    const dy = s.pos.y - e.pos.y;
+    const lengte = Math.sqrt(dx * dx + dy * dy) || 1;
+    s.vel.x = (dx / lengte) * CFG.SCHILD_TERUGSTOOT;
+    s.vel.y = (dy / lengte) * CFG.SCHILD_TERUGSTOOT;
+
+    e.jaagT = 0;
+    e.geheugenT = 0;
+    e.burstT = 0;
+    e.afkoelT = CFG.JAAG_AFKOEL;
+
+    Geluid.schildKlap();
+    this.cameras.main.shake(220, 0.011);
+    this.ring(s.pos.x, s.pos.y, 0xbfe3fb);
+    this.stopT = CFG.HITSTOP_FASE;
+    this.schildBeeld.setVisible(false);
+    this.tekenSpeler();
+
+    if (!this.schildHintGehad) {
+      this.schildHintGehad = true;
+      this.toonHint(`Je bel klapte! Eet ${CFG.SCHILD_HAPPEN} visjes voor een nieuwe.`);
+    }
+  }
+
   private eetOp(e: Entiteit): void {
     const s = this.speler;
-    const cfg = CFG.SOORTEN[e.soort];
+    const soort = e.soort; // vasthouden: `e` gaat straks terug in de pool
+    const cfg = CFG.SOORTEN[soort];
     s.massa = massaNaEten(s.massa, cfg.massa);
-    s.radius = radiusVoorMassa(s.massa);
-    this.score += cfg.score;
+    this.zetRadius();
+
+    // Combo (§10.4): happen kort na elkaar tellen op. De teller loopt vóór de
+    // score, zodat de eerste hap combo 1 is en niet 0.
+    this.combo = this.comboT > 0 ? this.combo + 1 : 1;
+    this.comboT = CFG.COMBO_TIJD;
+    this.score += cfg.score + comboBonus(this.combo);
     this.gegeten++;
     if (s.massa > this.grootsteMassa) this.grootsteMassa = s.massa;
 
-    Geluid.hap(e.radius);
+    Geluid.hap(e.radius, comboToonStijging(this.combo));
     this.flits(e.pos.x, e.pos.y, 0xffffff);
-    this.telVangst(e.soort, 1);
+    // Een flinke prooi laat het beeld heel even stilstaan; dat is wat een hap
+    // "gewicht" geeft. Kleine visjes niet, anders hakkelt het spel.
+    if (e.radius >= CFG.HITSTOP_MIN_R) this.stopT = Math.max(this.stopT, CFG.HITSTOP);
+    this.telVangst(soort, 1);
     this.geefTerug(e);
+
+    // Schild terugverdienen (§10.2).
+    if (!s.schild) {
+      this.schildHappen++;
+      if (this.schildHappen >= CFG.SCHILD_HAPPEN) {
+        this.schildHappen = 0;
+        s.schild = true;
+        Geluid.schildTerug();
+        this.ring(s.pos.x, s.pos.y, 0xbfe3fb);
+      }
+    }
 
     const nieuweFase = faseVoorMassa(s.massa);
     if (nieuweFase !== s.fase) {
@@ -1721,8 +2099,31 @@ export default class VisScene extends Phaser.Scene {
       Geluid.fase();
       this.cameras.main.flash(200, 255, 255, 255);
       this.toonFaseNaam(nieuweFase);
+      this.vierFase();
     }
     this.tekenSpeler();
+
+    // De finale (§10.6). Na `geefTerug(e)` is `e` weer vrij, dus de soort is
+    // hierboven al verwerkt; deze twee checks staan bewust achteraan zodat de
+    // hap zelf (score, groei, boek) altijd eerst volledig is afgehandeld.
+    if (soort === 'diepteschrik') this.startMega();
+    else if (soort === 'hengelbek' && this.megaT > 0) this.winRonde();
+  }
+
+  /**
+   * Groeien is het grootste moment van het spel; dat verdient meer dan een
+   * flits. Bewust GEEN camera-zoom: die schaalt de scrollFactor(0)-HUD mee en
+   * verschuift de handmatige hittest van joystick en zwiepknop (§10.4).
+   */
+  private vierFase(): void {
+    const s = this.speler;
+    this.stopT = Math.max(this.stopT, CFG.HITSTOP_FASE);
+    this.ring(s.pos.x, s.pos.y, 0xffffff);
+    this.ring(s.pos.x, s.pos.y, 0xffe066);
+    // Geen tween op de sprite: `tekenSpeler()` zet de schaal élk frame opnieuw
+    // en zou daar tegenin werken. In plaats daarvan een tellertje dat
+    // tekenSpeler zelf meeneemt — datamodel eerst, sprite volgt.
+    this.popT = FASE_POP_DUUR;
   }
 
   /** De koudwatergrens gaat open: bordje weg en even melden dat het kan. */
@@ -1773,12 +2174,195 @@ export default class VisScene extends Phaser.Scene {
     }
   }
 
+  // ─────────────────────────────────────────────────────── finale (§10.6)
+
+  /**
+   * Zet de botsingsradius van de speler op zijn massa — met de reuzenkracht
+   * erin verwerkt. Eén plek, want de radius wordt op vijf momenten herberekend
+   * (eten, kwal, schild-klap, start) en zou anders midden in de finale
+   * stilletjes terugvallen naar zijn gewone maat.
+   */
+  private zetRadius(): void {
+    const basis = radiusVoorMassa(this.speler.massa);
+    this.speler.radius = this.megaT > 0 ? basis * CFG.MEGA_FACTOR : basis;
+  }
+
+  /**
+   * Een Diepteschrik opgegeten: reuzenkracht aan en de Hengelbek oproepen. Niet
+   * wachten tot er toevallig een langszwemt — met 6% spawngewicht in zone 4 zou
+   * de finale dan een loterij zijn.
+   */
+  private startMega(): void {
+    this.megaT = CFG.MEGA_DUUR;
+    this.zetRadius();
+    this.speler.sprite.setTint(CFG.MEGA_TINT);
+    this.roepHengelbek();
+    this.bannerTekst.setText('REUZENKRACHT!  Eet de Hengelbek!').setAlpha(1);
+    this.bannerT = CFG.GEBEURTENIS_BANNER;
+    Geluid.gebeurtenis('blij');
+    this.ring(this.speler.pos.x, this.speler.pos.y, CFG.MEGA_TINT);
+  }
+
+  private stopMega(): void {
+    this.megaT = 0;
+    this.zetRadius();
+    this.speler.sprite.clearTint();
+    this.boosAfstand = Infinity;
+    Geluid.opgeven();
+  }
+
+  /** Zet één Hengelbek net buiten beeld neer; hij is nu het doelwit. */
+  private roepHengelbek(): void {
+    for (const e of this.pool) {
+      if (e.actief && e.soort === 'hengelbek') return; // er zwemt er al een
+    }
+    for (let i = 0; i < CFG.SPAWN_POGINGEN; i++) {
+      const punt = kiesSpawnPunt(this.camCentrum, Math.random);
+      if (punt && this.neemUitPool('hengelbek', punt.x, punt.y)) return;
+    }
+  }
+
+  /** De Hengelbek is opgegeten: de zee is verslagen. */
+  private winRonde(): void {
+    if (this.status === 'dood') return;
+    this.gewonnenRonde = true;
+    this.megaT = 0;
+    this.speler.sprite.clearTint();
+    Geluid.fase();
+    Geluid.record();
+    this.cameras.main.flash(420, 255, 236, 150);
+    for (let i = 0; i < 3; i++) this.ring(this.speler.pos.x, this.speler.pos.y, CFG.MEGA_TINT);
+    this.rondeAfronden();
+    // Even laten bezinken voordat de kaart eroverheen komt.
+    this.time.delayedCall(1200, () => this.toonEindKaart());
+  }
+
+  /** Uitdijende schokgolf voor de grote momenten; zelfde poolprincipe. */
+  private ring(x: number, y: number, kleur: number): void {
+    const r = this.ringen[this.ringIndex];
+    this.ringIndex = (this.ringIndex + 1) % this.ringen.length;
+    r.setPosition(x, y).setTint(kleur).setScale(0.15).setAlpha(0.85).setVisible(true);
+  }
+
+  private updateRingen(dt: number): void {
+    for (const r of this.ringen) {
+      if (!r.visible) continue;
+      r.setScale(r.scale + dt * 3.2);
+      r.setAlpha(r.alpha - dt * 1.6);
+      if (r.alpha <= 0.02) r.setVisible(false);
+    }
+  }
+
+  // ────────────────────────────────────────────────── gebeurtenissen (§10.3)
+
+  private updateGebeurtenis(dt: number): void {
+    if (this.gebeurtenisT > 0) {
+      this.gebeurtenisT -= dt;
+      if (this.gebeurtenisT <= 0) this.stopGebeurtenis();
+      return;
+    }
+    this.gebeurtenisWachtT -= dt;
+    if (this.gebeurtenisWachtT <= 0) this.startGebeurtenis();
+  }
+
+  private startGebeurtenis(): void {
+    const id = kiesGebeurtenis(Math.random, this.vorigeGebeurtenis);
+    const cfg = gebeurtenisConfig(id);
+    this.gebeurtenis = id;
+    this.gebeurtenisT = cfg.duur;
+
+    this.bannerTekst.setText(cfg.naam).setAlpha(1);
+    this.bannerT = CFG.GEBEURTENIS_BANNER;
+
+    if (id === 'parade') {
+      Geluid.gebeurtenis('blij');
+      // Meteen een paar scholen erbij, anders duurt het te lang voor je iets
+      // ziet van een gebeurtenis die maar 12 seconden duurt.
+      for (let i = 0; i < CFG.SPAWN_ACTIES_MAX; i++) this.spawnActie();
+    } else if (id === 'stilte') {
+      Geluid.gebeurtenis('rustig');
+      // Lopende jachten breken af: dát is de adempauze.
+      for (const e of this.pool) {
+        if (!e.actief) continue;
+        if (e.gedrag !== 'roofvis' && e.gedrag !== 'apex') continue;
+        e.geheugenT = 0;
+        e.jaagT = 0;
+        e.burstT = 0;
+        e.afkoelT = CFG.JAAG_AFKOEL;
+      }
+    } else {
+      Geluid.gebeurtenis('spannend');
+    }
+  }
+
+  private stopGebeurtenis(): void {
+    this.vorigeGebeurtenis = this.gebeurtenis;
+    this.gebeurtenis = null;
+    this.gebeurtenisT = 0;
+    this.gebeurtenisWachtT = wachttijd(Math.random, false);
+  }
+
+  // ────────────────────────────────────────────────── gouden nullen (§10.5)
+
+  private spawnNul(): void {
+    for (const n of this.goudenNullen) {
+      if (n.actief) continue;
+      const punt = kiesSpawnPunt(this.camCentrum, Math.random);
+      if (!punt) return;
+      n.actief = true;
+      n.basisX = punt.x;
+      n.x = punt.x;
+      n.y = punt.y;
+      n.sinusT = Math.random() * CFG.NUL_PERIODE;
+      n.beeld.setPosition(punt.x, punt.y).setVisible(true).setAlpha(1).setScale(1);
+      return;
+    }
+  }
+
+  private updateNullen(dt: number): void {
+    const s = this.speler;
+    for (const n of this.goudenNullen) {
+      if (!n.actief) continue;
+      n.sinusT += dt;
+      n.y -= CFG.NUL_DRIFT * dt;
+      n.x = n.basisX + Math.sin((n.sinusT / CFG.NUL_PERIODE) * Math.PI * 2) * CFG.NUL_AMPLITUDE;
+
+      // Weg als hij het wateroppervlak haalt of te ver uit beeld drijft.
+      const dxc = n.x - this.camCentrum.x;
+      const dyc = n.y - this.camCentrum.y;
+      if (n.y < 0 || dxc * dxc + dyc * dyc > CFG.DESPAWN_AFSTAND * CFG.DESPAWN_AFSTAND) {
+        n.actief = false;
+        n.beeld.setVisible(false);
+        continue;
+      }
+
+      n.beeld.setPosition(n.x, n.y);
+      n.beeld.setRotation(Math.sin((n.sinusT / CFG.NUL_PERIODE) * Math.PI * 2) * 0.25);
+
+      const dx = n.x - s.pos.x;
+      const dy = n.y - s.pos.y;
+      if (dx * dx + dy * dy < (CFG.NUL_RADIUS + s.radius) ** 2) {
+        n.actief = false;
+        n.beeld.setVisible(false);
+        this.score += CFG.NUL_SCORE;
+        s.energie = CFG.ENERGIE_MAX; // een gouden nul geeft je de zwiep terug
+        // Meteen wegschrijven: de medaille moet ook kloppen als de app halverwege
+        // wordt weggeklikt.
+        this.saveData = this.save.registreerNullen(1);
+        Geluid.nul();
+        this.flits(n.x, n.y, 0xffd23f);
+        this.ring(n.x, n.y, 0xffd23f);
+      }
+    }
+  }
+
   // ───────────────────────────────────────────────────────── spawner & sfeer
 
   private updateSpawner(dt: number): void {
     this.spawnT -= dt;
     if (this.spawnT <= 0) {
-      this.spawnT = CFG.SPAWN_INTERVAL;
+      // De parade laat de zee sneller vollopen; de rest van de tijd is dit 1.
+      this.spawnT = CFG.SPAWN_INTERVAL / spawnTempoFactor(this.gebeurtenis);
       let acties = 0;
       while (acties < CFG.SPAWN_ACTIES_MAX && this.actiefAantal < CFG.DOEL_BEZETTING) {
         acties++;
@@ -1789,9 +2373,20 @@ export default class VisScene extends Phaser.Scene {
     this.apexRolT -= dt;
     if (this.apexRolT <= 0) {
       this.apexRolT = CFG.APEX_ROL_INTERVAL;
-      if (Math.random() < CFG.APEX_KANS && this.save.zone4Ontgrendeld(this.saveData)) {
+      // Tijdens de stilte komt er geen apex bij; dat zou de adempauze breken.
+      if (
+        Math.random() < CFG.APEX_KANS &&
+        this.save.zone4Ontgrendeld(this.saveData) &&
+        magSpawnen('apex', this.gebeurtenis)
+      ) {
         this.probeerApex();
       }
+    }
+
+    this.nulRolT -= dt;
+    if (this.nulRolT <= 0) {
+      this.nulRolT = CFG.NUL_INTERVAL;
+      if (Math.random() < CFG.NUL_KANS) this.spawnNul();
     }
   }
 
@@ -1834,8 +2429,18 @@ export default class VisScene extends Phaser.Scene {
     const binnenZone = Phaser.Math.Clamp((y - (zone - 1) * CFG.ZONE_HOOGTE) / CFG.ZONE_HOOGTE, 0, 1);
     const volgende = ZONE_LUCHT[Math.min(zone, ZONE_LUCHT.length - 1)];
     const huidige = ZONE_LUCHT[zone - 1];
-    const boven = this.mengKleur(huidige[0], volgende[0], binnenZone);
-    const onder = this.mengKleur(huidige[1], volgende[1], binnenZone);
+    let boven = this.mengKleur(huidige[0], volgende[0], binnenZone);
+    let onder = this.mengKleur(huidige[1], volgende[1], binnenZone);
+
+    // Gebeurtenis (§10.3): de stilte klaart het water op, de jachttijd
+    // verduistert het. Zonder dit merk je alleen aan de banner dat er iets is.
+    const stemming = wateraanpassing(this.gebeurtenis);
+    if (stemming !== 0) {
+      const doel = stemming > 0 ? GEBEURTENIS_LICHT : GEBEURTENIS_DONKER;
+      const mate = Math.abs(stemming);
+      boven = this.mengKleur(boven, doel, mate);
+      onder = this.mengKleur(onder, doel, mate);
+    }
 
     this.achtergrond.clear();
     this.achtergrond.fillGradientStyle(boven, boven, onder, onder, 1);
@@ -1930,6 +2535,10 @@ export default class VisScene extends Phaser.Scene {
       this.hintT -= dt;
       this.hintTekst.setAlpha(Math.min(1, this.hintT / 0.8));
     }
+    if (this.bannerT > 0) {
+      this.bannerT -= dt;
+      this.bannerTekst.setAlpha(Math.min(1, this.bannerT / 0.6));
+    }
 
     // NIEUW!-meldingen één voor één: in zone 1 eet je makkelijk drie nieuwe
     // soorten binnen een paar seconden, en dan overschrijft de derde de eerste.
@@ -2010,6 +2619,43 @@ export default class VisScene extends Phaser.Scene {
     g.fillStyle(0xffd60a, 1);
     g.fillCircle(DM_X, markerY, 3.5);
 
+    // Schild-belletje (§10.2): vol = je hebt een bel, anders loopt hij vol
+    // naarmate je vissen eet. Beeld, geen tekst — hij kan nog niet lezen.
+    const bx2 = 134;
+    const by2 = 28;
+    const deelSchild = s.schild ? 1 : this.schildHappen / CFG.SCHILD_HAPPEN;
+    g.fillStyle(0x03101f, 0.35);
+    g.fillCircle(bx2, by2, 14);
+    g.fillStyle(0x9fe3ff, s.schild ? 0.85 : 0.35);
+    g.fillCircle(bx2, by2, 3 + 10 * deelSchild);
+    g.lineStyle(2, 0xe2faff, s.schild ? 0.95 : 0.5);
+    g.strokeCircle(bx2, by2, 12.5);
+    if (s.schild) {
+      g.fillStyle(0xffffff, 0.9); // glansje: de bel staat "aan"
+      g.fillCircle(bx2 - 4.5, by2 - 5, 2.6);
+    }
+
+    // Combo-teller (§10.4): pas zichtbaar vanaf de drempel.
+    if (this.combo >= CFG.COMBO_MIN) {
+      this.comboTekst.setText(`×${this.combo}`).setAlpha(Math.min(1, this.comboT / 0.4));
+    } else {
+      this.comboTekst.setAlpha(0);
+    }
+
+    // Reuzenkracht-meter (§10.6): een gouden balk onder de score die leegloopt
+    // en gaat knipperen als de tijd bijna om is.
+    if (this.megaT > 0) {
+      const deel = Phaser.Math.Clamp(this.megaT / CFG.MEGA_DUUR, 0, 1);
+      const bijna = this.megaT < CFG.MEGA_WAARSCHUWING;
+      const knipper = bijna ? 0.45 + 0.55 * Math.abs(Math.sin(this.rondeT * 8)) : 1;
+      g.fillStyle(0x03101f, 0.4);
+      g.fillRoundedRect(18, 88, 200, 14, 7);
+      g.fillStyle(CFG.MEGA_TINT, knipper);
+      g.fillRoundedRect(18, 88, Math.max(8, 200 * deel), 14, 7);
+    }
+
+    this.tekenRandwaarschuwing();
+
     // De zwiepknop laat zien of er genoeg energie is om te starten.
     const kanZwiepen = s.boostAan || magBoostStarten(s.energie);
     this.boostKnop.setAlpha(kanZwiepen ? 1 : 0.45);
@@ -2017,8 +2663,59 @@ export default class VisScene extends Phaser.Scene {
     this.boostKnopTekst.setAlpha(kanZwiepen ? 0.95 : 0.35);
   }
 
+  /**
+   * Rode gloed langs de schermrand aan de kant waar de jager zit (§10.1). Alle
+   * vier de randen krijgen een aandeel op basis van de richting, zodat de gloed
+   * meedraait als hij om je heen zwemt in plaats van te springen.
+   */
+  private tekenRandwaarschuwing(): void {
+    const g = this.randLaag;
+    g.clear();
+    const puls = 0.7 + 0.3 * Math.sin(this.rondeT * CFG.ALARM_PULS * Math.PI * 2);
+    // Rood = pas op. Goud = daar zwemt de Hengelbek tijdens de reuzenkracht.
+    this.randBand(this.jagerAfstand, this.jagerHoek, 0xff2d2d, puls);
+    if (this.megaT > 0) this.randBand(this.boosAfstand, this.boosHoek, CFG.MEGA_TINT, puls);
+  }
+
+  /**
+   * Eén gerichte gloed langs de schermranden. De sterkte wordt over de vier
+   * randen verdeeld naar richting, zodat de gloed meedraait als het doel om je
+   * heen zwemt in plaats van van rand naar rand te springen.
+   */
+  private randBand(afstand: number, hoek: number, kleur: number, puls: number): void {
+    if (afstand >= CFG.RANDWAARSCHUWING_AFSTAND) return;
+    const g = this.randLaag;
+    const sterkte =
+      (1 - afstand / CFG.RANDWAARSCHUWING_AFSTAND) * CFG.RANDWAARSCHUWING_MAX * puls;
+    const dx = Math.cos(hoek);
+    const dy = Math.sin(hoek);
+    const d = CFG.RANDWAARSCHUWING_DIKTE;
+
+    const rechts = Math.max(0, dx) * sterkte;
+    if (rechts > 0.01) {
+      g.fillGradientStyle(kleur, kleur, kleur, kleur, 0, rechts, 0, rechts);
+      g.fillRect(CFG.SCHERM_B - d, 0, d, CFG.SCHERM_H);
+    }
+    const links = Math.max(0, -dx) * sterkte;
+    if (links > 0.01) {
+      g.fillGradientStyle(kleur, kleur, kleur, kleur, links, 0, links, 0);
+      g.fillRect(0, 0, d, CFG.SCHERM_H);
+    }
+    const onder = Math.max(0, dy) * sterkte;
+    if (onder > 0.01) {
+      g.fillGradientStyle(kleur, kleur, kleur, kleur, 0, 0, onder, onder);
+      g.fillRect(0, CFG.SCHERM_H - d, CFG.SCHERM_B, d);
+    }
+    const bovenaan = Math.max(0, -dy) * sterkte;
+    if (bovenaan > 0.01) {
+      g.fillGradientStyle(kleur, kleur, kleur, kleur, bovenaan, bovenaan, 0, 0);
+      g.fillRect(0, 0, CFG.SCHERM_B, d);
+    }
+  }
+
   private opruimen(): void {
     this.bewaarVangst(); // niets van het vissenboek verliezen bij het verlaten
+    Geluid.stopSfeer(); // anders blijft de drone in het menu doorlopen
     vernietigBoekTexturen(this);
     this.input.removeAllListeners();
     this.input.keyboard?.removeAllListeners();

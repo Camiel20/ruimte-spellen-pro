@@ -75,7 +75,24 @@ export const TEX = {
   boostKnop: 'hv_boost',
   caustiek: 'hv_caustiek',
   boek: (id: SoortId) => `hv_boek_${id}`,
+  alarm: 'hv_alarm',
+  schild: 'hv_schild',
+  nul: 'hv_nul',
+  ring: 'hv_ring',
 } as const;
+
+/**
+ * Waar de waterkleur naartoe getrokken wordt tijdens een gebeurtenis (§10.3):
+ * de stilte klaart op naar wit, de jachttijd zakt weg naar diep marineblauw.
+ * Kleuren = art, dus hier en niet in GameConfig; hoevéél er gemengd wordt is
+ * wél tuning (STILTE_LICHT / JACHT_DONKER).
+ */
+export const GEBEURTENIS_LICHT = 0xffffff;
+export const GEBEURTENIS_DONKER = 0x02132b;
+
+/** Het "ploffen" van de speler bij een nieuwe fase: animatie, geen speltuning. */
+export const FASE_POP_DUUR = 0.32; // s
+export const FASE_POP_KRACHT = 0.35; // aandeel extra schaal op het hoogtepunt
 
 /** Achtergrondkleuren per dieptezone (boven → onder). */
 export const ZONE_LUCHT: [number, number][] = [
@@ -888,6 +905,115 @@ export function maakEffectTexturen(scene: Phaser.Scene): void {
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.arc(32, 32, 20, 0, Math.PI * 2);
+      ctx.stroke();
+    });
+  }
+
+  // Alarmteken boven een jager die de speler in het vizier heeft (§10.1). Een
+  // wolkje met een uitroepteken: leesbaar zonder te kunnen lezen.
+  if (!scene.textures.exists(TEX.alarm)) {
+    canvasTextuur(scene, TEX.alarm, 44, 52, (ctx) => {
+      const gloed = ctx.createRadialGradient(22, 20, 2, 22, 20, 22);
+      gloed.addColorStop(0, 'rgba(255,90,90,0.55)');
+      gloed.addColorStop(1, 'rgba(255,60,60,0)');
+      ctx.fillStyle = gloed;
+      ctx.fillRect(0, 0, 44, 44);
+
+      ctx.beginPath(); // bolletje met een puntje naar de vis toe
+      ctx.arc(22, 20, 14, 0, Math.PI * 2);
+      ctx.moveTo(16, 31);
+      ctx.lineTo(22, 44);
+      ctx.lineTo(28, 31);
+      ctx.closePath();
+      ctx.fillStyle = '#e0342f';
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#7d1512';
+      ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(19.5, 10, 5, 13, 2.5);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(22, 27.5, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  // Luchtbelschild (§10.2): grote, bijna doorzichtige bel met een glansveeg.
+  // Wordt in de scene op de spelerstraal geschaald.
+  if (!scene.textures.exists(TEX.schild)) {
+    canvasTextuur(scene, TEX.schild, 128, 128, (ctx) => {
+      const bol = ctx.createRadialGradient(64, 64, 40, 64, 64, 62);
+      bol.addColorStop(0, 'rgba(180,240,255,0.03)');
+      bol.addColorStop(0.82, 'rgba(190,245,255,0.20)');
+      bol.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = bol;
+      ctx.beginPath();
+      ctx.arc(64, 64, 62, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(226,250,255,0.75)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(64, 64, 59, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)'; // glansveeg linksboven
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(64, 64, 52, Math.PI * 1.05, Math.PI * 1.38);
+      ctx.stroke();
+    });
+  }
+
+  // Gouden nul (§10.5) — het huismotief van Nul & Co, hier als verzamelding.
+  if (!scene.textures.exists(TEX.nul)) {
+    canvasTextuur(scene, TEX.nul, 72, 72, (ctx) => {
+      const gloed = ctx.createRadialGradient(36, 36, 8, 36, 36, 36);
+      gloed.addColorStop(0, 'rgba(255,226,120,0.55)');
+      gloed.addColorStop(1, 'rgba(255,200,60,0)');
+      ctx.fillStyle = gloed;
+      ctx.fillRect(0, 0, 72, 72);
+
+      const goud = ctx.createLinearGradient(0, 12, 0, 60);
+      goud.addColorStop(0, '#fff3b0');
+      goud.addColorStop(0.45, '#ffd23f');
+      goud.addColorStop(1, '#e39908');
+
+      ctx.lineWidth = 11; // de nul zelf: een dikke ovale ring
+      ctx.strokeStyle = goud;
+      ctx.beginPath();
+      ctx.ellipse(36, 36, 15, 21, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = 'rgba(140,86,0,0.85)';
+      ctx.beginPath();
+      ctx.ellipse(36, 36, 20.5, 26.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(36, 36, 9.5, 15.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)'; // glansje linksboven
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.ellipse(36, 36, 18, 24, 0, Math.PI * 1.08, Math.PI * 1.34);
+      ctx.stroke();
+    });
+  }
+
+  // Dunne ring voor uitdijende schokgolfjes (fase-viering, geklapt schild).
+  if (!scene.textures.exists(TEX.ring)) {
+    canvasTextuur(scene, TEX.ring, 128, 128, (ctx) => {
+      ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(64, 64, 58, 0, Math.PI * 2);
       ctx.stroke();
     });
   }

@@ -192,6 +192,7 @@ zelf.
 | `src/vis/logic/spawn.ts` | spawnpunt-keuze (buiten beeld) + soortkeuze per zone (rng als parameter, deterministisch testbaar) | GameConfig |
 | `src/vis/logic/sturing.ts` | pure steering-helpers: vluchtvector, jaagbesluit, schoolkrachten | GameConfig |
 | `src/vis/logic/boek.ts` | vissenboek: welke soorten, ontdekt/op slot, volgorde | GameConfig, regels |
+| `src/vis/logic/gebeurtenis.ts` | keuze + timing van de gebeurtenissen (§10.3), rng als parameter | GameConfig, moeilijkheid |
 | `src/vis/SaveManager.ts` | records, unlocks + vangst in localStorage (sleutel `hapvis_v1`) | GameConfig; géén Phaser |
 | `src/vis/graphics.ts` | getekende textures: visvormen (oog, vinnen, staart — vrolijke cartoonstijl), kwal, joystick, knoppen, boek-plaatjes | Phaser, GameConfig |
 | `src/vis/geluid.ts` | WebAudio-synth: hap, fase-fanfare, boost, au, einde-deuntje | niets van Phaser |
@@ -219,6 +220,10 @@ score ≥ 500 / 2000 / 5000; visvorm-skin "Neonvisje" bij 100 totaal gegeten;
 door te eten. De kleur-drempels worden ook tíjdens het spel getoond: op de eindkaart
 staat hoeveel punten de volgende kleur nog kost, en bij het passeren van een drempel
 verschijnt kort een melding.
+
+**Besturing:** mobiel — virtuele joystick links (straal 60 px, dode zone 10 px,
+springt naar je duim), boostknop rechts (straal 72 px), pauzeknop rechtsboven;
+desktop — WASD/pijltjes, spatie = boost, Esc = pauze.
 
 ## 8. Vissenboek
 
@@ -257,19 +262,124 @@ dus ook in het Plakboek te besteden.
   (Inktdiepte bereikt), `vis_reus` (fase 5 bereikt), `vis_apex` (een Diepteschrik
   opgegeten), `vis_boek` (alle 16 soorten in het boek).
 
-## 10. Niet in versie 1
+## 10. Spanning, kansen & sfeer (v3)
 
-**Besturing:** mobiel — virtuele joystick links (straal 60 px, dode zone 10 px),
-boostknop rechts (straal 72 px), pauzeknop rechtsboven; desktop — WASD/pijltjes,
-spatie = boost, Esc = pauze.
+Vijf wijzigingen na de speeltests van augustus 2026. De rode draad: het spel had
+een slim roofdierbrein (§4) dat de speler niet kón zien, en het was tegelijk het
+enige spel in Nul & Co dat je meteen afstraft.
 
-## 8. Niet in versie 1
+### 10.1 Gevaar is zichtbaar
+
+`geheugenT > 0` betekende al "deze jager weet waar je bent", maar dat was
+onzichtbaar. Vanaf nu heeft die toestand beeld en geluid, zodat ontwijken een
+vaardigheid wordt in plaats van pech:
+
+- **Alarmteken** boven een jager die de speler in het vizier heeft en hem kan
+  eten: een rood uitroepteken (`ALARM_BADGE_HOOGTE` px boven de vis) plus een
+  pulserende rode ring om de vis (`ALARM_PULS` pulsen/s). Uit een eigen pool van
+  `ALARM_POOL` badges — meer jagers tegelijk komen in de praktijk niet voor.
+- **Randwaarschuwing:** een rode gloed langs de schermrand aan de kant waar de
+  dichtstbijzijnde jager zit, sterker naarmate hij dichterbij komt
+  (`RANDWAARSCHUWING_AFSTAND` px → alpha max `RANDWAARSCHUWING_MAX`). Zonder dit
+  word je opgegeten door iets dat je nooit hebt gezien.
+- **Afhaken is zichtbaar:** breekt de jacht af (`afkoelT` gezet), dan verdwijnt
+  het alarm met een pufje en een aflopend toontje. Dit leert de belangrijkste
+  regel van het spel: volhouden werkt, jagers geven het op.
+- Geluid bij een níeuwe vergrendeling, met een pauze van `ALARM_GELUID_PAUZE` s
+  zodat het bij drie jagers geen ratel wordt.
+
+### 10.2 Luchtbelschild: de eerste hap kost je grootte, niet je ronde
+
+Alle andere spellen in Nul & Co zijn faal-vriendelijk (Tel-Slang maakt je korter,
+Bezorg-Baas kent geen game-over). Hapvis was de uitzondering. Daarom:
+
+- De speler start met een zichtbaar **luchtbelschild**.
+- Word je gepakt mét schild: de bel klapt, je **zakt één fase terug**
+  (`massaNaKlap` = de drempel van de fase eronder, met `SPELER_START_MASSA` als
+  vloer), je wordt `SCHILD_TERUGSTOOT` px/s weggeduwd en bent
+  `SCHILD_ONKWETSBAAR` s onaanraakbaar. De ronde loopt door.
+- Zonder schild ben je gewoon dood — de spanning blijft echt.
+- Terugverdienen door `SCHILD_HAPPEN` vissen te eten; de HUD toont een belletje
+  dat vol loopt.
+
+### 10.3 Gebeurtenissen geven de ronde een ritme
+
+Een ronde was elke minuut hetzelfde, alleen met een hoger dreigingsgetal. Na
+`GEBEURTENIS_EERSTE` s en daarna elke `GEBEURTENIS_PAUZE_MIN`–`_MAX` s begint een
+gebeurtenis van 10-14 s, aangekondigd met een banner en een geluid. Nooit twee
+keer dezelfde achter elkaar.
+
+| Id | Naam | Duur | Wat er gebeurt |
+|----|------|------|----------------|
+| `parade` | Vissen-parade | 12 s | een grote school trekt voorbij; alleen prooi spawnt, tempo × `PARADE_TEMPO` |
+| `stilte` | Even rustig | 10 s | geen nieuwe roofvissen, lopende jachten breken af, het water klaart op |
+| `jachttijd` | Jachttijd! | 14 s | `JACHT_PP` pp extra roofvisgewicht, het water wordt donkerder |
+
+De keuze en de wachttijden zitten in `logic/gebeurtenis.ts` met een injecteerbare
+rng, dus deterministisch testbaar.
+
+### 10.4 Gevoel
+
+- **Hitstop:** `HITSTOP` s bevriezen bij het happen van een prooi vanaf
+  `HITSTOP_MIN_R` px, en `HITSTOP_FASE` s bij een nieuwe fase. De scene rekent
+  zijn eigen dt uit, dus dit is simpelweg de simulatiestap overslaan.
+- **Combo:** happen binnen `COMBO_TIJD` s van elkaar tellen op. Vanaf
+  `COMBO_MIN` verschijnt een teller, stijgt de toonhoogte van de hap mee en
+  levert elke hap `COMBO_BONUS` extra punten per stap boven de drempel.
+- **Onderwatersfeer:** een zacht gefilterde ruis-drone (`SFEER_VOLUME`) via
+  WebAudio-synthese, dus nog steeds geen enkel geluidsbestand. Stopt bij pauze
+  en bij het verlaten van de scene. Dit heft de eerdere keuze "geen
+  achtergrondmuziek" op.
+- **Fase-viering:** de speler ploft op (schaal-tween) met uitdijende ringen naast
+  de bestaande flits en naam. **Geen camera-zoom** — die schaalt de
+  `scrollFactor(0)`-HUD mee en verschuift de handmatige hittest van joystick en
+  zwiepknop (bekende valkuil uit Bezorg-Baas).
+
+### 10.5 Gouden nullen
+
+Het huismotief van Nul & Co (Planeet Tikker, Bezorg-Baas, Tel-Slang, Reken-Raket)
+kwam in Hapvis nog niet voor. Elke `NUL_INTERVAL` s een kans van `NUL_KANS` op
+één zwevende gouden nul (max `NUL_MAX_ACTIEF`), die in dezelfde ring buiten beeld
+verschijnt als de vissen en op `DESPAWN_AFSTAND` weer verdwijnt. Aanraken is
+altijd veilig: `NUL_SCORE` punten, energie meteen weer vol, en een sterretje.
+Het totaal staat in de save (`nullen`); bij `NUL_MEDAILLE_EIS` stuks volgt de
+medaille `vis_nul`.
+
+### 10.6 De finale: reuzenkracht, de Hengelbek en winnen
+
+Tot nu toe kon Hapvis alleen eindigen doordat je werd opgegeten — en één soort
+was per definitie onverslaanbaar. De Hengelbek (straal 72) is nooit eetbaar voor
+een volgroeide speler (72 > 56 × 0,8 = 44,8) en is tegelijk de enige die zo'n
+speler nog opeet. Dat is met opzet zo: zonder hem zou een uitgegroeide speler
+onsterfelijk zijn en kon een ronde nooit meer aflopen.
+
+Nu krijgt het spel een top om naartoe te werken:
+
+1. **Diepteschrik opeten** (straal 44, kan pas rond fase 5) start de
+   **reuzenkracht**: `MEGA_DUUR` s lang telt je botsingsradius × `MEGA_FACTOR`.
+   Op je grootst is dat 56 × 1,8 = 100,8 — ruim boven de 90 die nodig is om een
+   Hengelbek van 72 te mogen eten. Omgekeerd kan niets jou dan nog opeten
+   (72 × 0,8 = 57,6 < 100,8), en ook de kwal doet geen pijn.
+2. **De Hengelbek wordt opgeroepen.** Hij spawnt meteen buiten beeld met een
+   banner en een gouden randgloed die de richting wijst. Bewust géén loterij:
+   met een spawngewicht van 6% in zone 4 zou "zoek er zelf maar een" van de
+   finale een toevalstreffer maken.
+3. **Eet je hem op, dan heb je gewonnen.** Zegekaart, de medaille `vis_koning`
+   (Zeekoning) en een teller `zeges` in de save. De ronde eindigt daar — met een
+   overwinning in plaats van met "Opgegeten!".
+4. Loopt de reuzenkracht af zonder dat het lukte, dan is de Hengelbek weer
+   levensgevaarlijk en gaat het spel gewoon door. Een volgende Diepteschrik geeft
+   een nieuwe kans.
+
+## 11. Niet in versie 1
 
 - Geen missies of quests, en met name geen terugkerende/resetbare opdrachten: dat
   is een retentiemechaniek voor volwassenen en wordt bij een kind een verplichting.
   Het vissenboek (§8) is bewust een permanente verzameling.
-- Geen power-ups (behalve boost) of baasgevechten.
-- Geen achtergrondmuziek (alleen SFX); geen instellingenscherm (alleen pauze).
+- Geen baasgevechten. Power-ups blijven beperkt tot de boost, het luchtbelschild
+  (§10.2) en de gouden nul (§10.5) — alle drie zonder keuzemenu of inventaris.
+- Geen instellingenscherm (alleen pauze). Achtergrondgeluid is er sinds §10.4 wél,
+  maar gesynthetiseerd; nog steeds geen enkel audiobestand.
 - Geen koppeling met het Plakboek zelf: Hapvis levert sterren (§9), maar krijgt
   geen eigen stickerpagina — anders kun je een vissenalbum vullen zonder Hapvis
   te spelen.

@@ -27,6 +27,8 @@ const ALL_MEDALS = [
   { id: 'vis_reus', icon: '🐟', label: 'Reuzenvis' },
   { id: 'vis_apex', icon: '😱', label: 'Schrik-Verslinder' },
   { id: 'vis_boek', icon: '📘', label: 'Vissenboek Vol' },
+  { id: 'vis_nul', icon: '🥇', label: 'Nullen-Visser' },
+  { id: 'vis_koning', icon: '🏆', label: 'Zeekoning' },
 ];
 
 export default class AwardsScene extends Phaser.Scene {
