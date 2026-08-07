@@ -73,6 +73,7 @@ export const TEX = {
   stickBasis: 'hv_stick_basis',
   stickDuim: 'hv_stick_duim',
   boostKnop: 'hv_boost',
+  caustiek: 'hv_caustiek',
   boek: (id: SoortId) => `hv_boek_${id}`,
 } as const;
 
@@ -284,9 +285,10 @@ function tekenVis(
   ctx.save();
   ctx.translate(cx - L * 0.62, cy);
   ctx.rotate(slag * 0.36);
+  // Vinnen zijn vliezen: aan de buitenrand doorschijnend, bij het lijf dicht.
   const staartVerloop = ctx.createLinearGradient(-r * 1.3, 0, 0, 0);
-  staartVerloop.addColorStop(0, hexNaarRgba(stijl.vin, 0.85));
-  staartVerloop.addColorStop(0.7, stijl.vin);
+  staartVerloop.addColorStop(0, hexNaarRgba(stijl.vin, 0.45));
+  staartVerloop.addColorStop(0.55, hexNaarRgba(stijl.vin, 0.85));
   staartVerloop.addColorStop(1, stijl.basis);
   ctx.fillStyle = staartVerloop;
   staartPad(ctx, r * 1.3, r * 0.9, stijl);
@@ -309,15 +311,27 @@ function tekenVis(
   ctx.save();
   ctx.translate(cx - r * 0.02, cy - H * 0.78);
   ctx.rotate(-Math.PI / 2 + slag * 0.12);
-  const rugVerloop = ctx.createLinearGradient(-r, 0, 0, 0);
-  rugVerloop.addColorStop(0, hexNaarRgba(stijl.vin, 0.9));
+  const rugLengte = stijl.roofdier ? r * 0.85 : r * 0.66;
+  const rugSpreiding = stijl.roofdier ? r * 0.45 : r * 0.5;
+  const rugVerloop = ctx.createLinearGradient(-rugLengte, 0, 0, 0);
+  rugVerloop.addColorStop(0, hexNaarRgba(stijl.vin, 0.45));
+  rugVerloop.addColorStop(0.6, hexNaarRgba(stijl.vin, 0.9));
   rugVerloop.addColorStop(1, stijl.basis);
   ctx.fillStyle = rugVerloop;
-  if (stijl.roofdier) vinPad(ctx, r * 0.85, r * 0.45, 0.9);
-  else vinPad(ctx, r * 0.66, r * 0.5, 0.7);
+  vinPad(ctx, rugLengte, rugSpreiding, stijl.roofdier ? 0.9 : 0.7);
   ctx.fill();
+  // vinstralen: de ribbels in het vlies
+  ctx.strokeStyle = hexNaarRgba(stijl.donker, 0.3);
+  ctx.lineWidth = Math.max(0.8, r * 0.04);
+  for (const a of [-0.5, 0, 0.5]) {
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.05, 0);
+    ctx.lineTo(-rugLengte * 0.9, a * rugSpreiding);
+    ctx.stroke();
+  }
   ctx.strokeStyle = hexNaarRgba(stijl.donker, 0.7);
   ctx.lineWidth = Math.max(1.2, r * 0.07);
+  vinPad(ctx, rugLengte, rugSpreiding, stijl.roofdier ? 0.9 : 0.7);
   ctx.stroke();
   ctx.restore();
 
@@ -339,6 +353,17 @@ function tekenVis(
   buik.addColorStop(0, hexNaarRgba(stijl.buik, 0));
   buik.addColorStop(1, hexNaarRgba(stijl.buik, 0.85));
   ctx.fillStyle = buik;
+  ctx.fillRect(cx - L, cy - H, L * 2, H * 2);
+
+  // Doorschijnendheid: een warme gloed net onder de rug, alsof het licht een
+  // stukje ín de vis valt. Dit is wat een platte vorm "vlezig" maakt.
+  const onderhuids = ctx.createRadialGradient(
+    cx + L * 0.15, cy - H * 0.25, r * 0.05,
+    cx + L * 0.15, cy - H * 0.25, r * 1.15,
+  );
+  onderhuids.addColorStop(0, hexNaarRgba(stijl.licht, 0.55));
+  onderhuids.addColorStop(1, hexNaarRgba(stijl.licht, 0));
+  ctx.fillStyle = onderhuids;
   ctx.fillRect(cx - L, cy - H, L * 2, H * 2);
 
   if (stijl.strepen) {
@@ -385,20 +410,51 @@ function tekenVis(
     ctx.fill();
   }
 
-  // schubbenboogjes: heel subtiel, geeft "textuur" zonder rommelig te worden
-  ctx.strokeStyle = 'rgba(255,255,255,0.13)';
-  ctx.lineWidth = Math.max(0.8, r * 0.045);
-  for (let ry = -1; ry <= 1; ry++) {
-    for (let i = 0; i < 4; i++) {
-      ctx.beginPath();
-      ctx.arc(cx - L * 0.35 + i * r * 0.34, cy + ry * H * 0.42, r * 0.22, -0.9, 0.9);
-      ctx.stroke();
+  // ── schubben: echte overlappende schubjes, elk met een lichte bovenrand en
+  //    een schaduwrand eronder. Alleen op het middenstuk, want bij de kop en de
+  //    staart wordt het rommelig.
+  if (!stijl.gloedstippen) {
+    const schubR = r * 0.26;
+    const stapX = schubR * 1.15;
+    const stapY = schubR * 0.85;
+    for (let ry = -2; ry <= 2; ry++) {
+      const sy = cy + ry * stapY;
+      for (let i = -2; i <= 3; i++) {
+        const sx = cx - L * 0.25 + i * stapX + (ry % 2 ? stapX / 2 : 0);
+        // schaduw onder de schub
+        ctx.beginPath();
+        ctx.arc(sx, sy + schubR * 0.12, schubR, Math.PI * 0.15, Math.PI * 0.85);
+        ctx.strokeStyle = hexNaarRgba(stijl.donker, 0.22);
+        ctx.lineWidth = Math.max(0.8, r * 0.05);
+        ctx.stroke();
+        // lichtrand erboven
+        ctx.beginPath();
+        ctx.arc(sx, sy, schubR, Math.PI * 0.2, Math.PI * 0.8);
+        ctx.strokeStyle = 'rgba(255,255,255,0.20)';
+        ctx.lineWidth = Math.max(0.7, r * 0.035);
+        ctx.stroke();
+      }
     }
   }
 
+  // ── schaduw waar de staart aan het lijf zit: zonder dit lijkt de staart
+  //    aangeplakt in plaats van vastgegroeid
+  const staartAO = ctx.createLinearGradient(cx - L, cy, cx - L * 0.25, cy);
+  staartAO.addColorStop(0, hexNaarRgba(stijl.donker, 0.55));
+  staartAO.addColorStop(1, hexNaarRgba(stijl.donker, 0));
+  ctx.fillStyle = staartAO;
+  ctx.fillRect(cx - L, cy - H, L * 0.8, H * 2);
+
+  // ── donkere onderrand (omgevingsschaduw), zodat de buik "wegdraait"
+  const buikAO = ctx.createLinearGradient(cx, cy + H * 0.35, cx, cy + H);
+  buikAO.addColorStop(0, hexNaarRgba(stijl.donker, 0));
+  buikAO.addColorStop(1, hexNaarRgba(stijl.donker, 0.5));
+  ctx.fillStyle = buikAO;
+  ctx.fillRect(cx - L, cy, L * 2, H);
+
   // glans over de rug: langgerekte lichtstreep
   const glans = ctx.createLinearGradient(cx, cy - H, cx, cy);
-  glans.addColorStop(0, 'rgba(255,255,255,0.55)');
+  glans.addColorStop(0, 'rgba(255,255,255,0.6)');
   glans.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = glans;
   ctx.beginPath();
@@ -880,9 +936,48 @@ export function maakLichtstralen(scene: Phaser.Scene, breed: number, hoog: numbe
 }
 
 /**
- * Twee tegelbare silhouet-lagen voor parallax: ver weg (vage bulten en
- * wiervelden) en middenafstand (scherpere rotsen en kelp). Ze worden getint
- * met de zonekleur, zodat ze in elke diepte kloppen.
+ * Caustiek: het netwerk van lichtvlekken dat door golven ontstaat. Tegelbaar,
+ * wordt additief over het water gelegd en langzaam verschoven. Dit is een van
+ * de dingen die water "levend" maakt in plaats van een blauw vlak.
+ */
+export function maakCaustiek(scene: Phaser.Scene, maat: number): void {
+  if (scene.textures.exists(TEX.caustiek)) return;
+  canvasTextuur(scene, TEX.caustiek, maat, maat, (ctx) => {
+    const kanBlurren = 'filter' in ctx;
+    // Stevig vervagen: caustiek moet je vóélen, niet zien. Zonder deze blur
+    // leest het als behang in plaats van licht.
+    if (kanBlurren) ctx.filter = `blur(${Math.round(maat * 0.035)}px)`;
+    ctx.strokeStyle = 'rgba(255,255,255,0.34)';
+    ctx.lineCap = 'round';
+    // Een grid van vervormde cellen: de randen daarvan zijn de lichtlijnen.
+    const cellen = 3;
+    const stap = maat / cellen;
+    for (let ry = 0; ry <= cellen; ry++) {
+      for (let rx = 0; rx <= cellen; rx++) {
+        const x = rx * stap;
+        const y = ry * stap;
+        // deterministische "wiebel" zodat het onregelmatig oogt maar herhaalbaar is
+        const w1 = Math.sin(rx * 12.9898 + ry * 78.233) * 0.5;
+        const w2 = Math.sin(rx * 39.346 + ry * 11.135) * 0.5;
+        ctx.lineWidth = maat * 0.012 * (0.6 + Math.abs(w1));
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(x + stap * (0.5 + w1 * 0.4), y + stap * (0.35 + w2 * 0.3), x + stap, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(x + stap * (0.35 + w2 * 0.3), y + stap * (0.5 + w1 * 0.4), x, y + stap);
+        ctx.stroke();
+      }
+    }
+    if (kanBlurren) ctx.filter = 'none';
+  });
+}
+
+/**
+ * Twee tegelbare lagen voor parallax: ver weg (rotsen en wier in de mist) en
+ * middenafstand (het kleurrijke rif). De scene mengt ze met de waterkleur op
+ * basis van de diepte — luchtperspectief, niet grijs maken.
  */
 export function maakDieptelagen(scene: Phaser.Scene, breed: number, hoog: number): void {
   const kelp = (ctx: CanvasRenderingContext2D, x: number, basisY: number, h: number, dik: number, kleur: string) => {
@@ -922,39 +1017,109 @@ export function maakDieptelagen(scene: Phaser.Scene, breed: number, hoog: number
     ctx.fill();
   };
 
+  // Hersenkoraal: bol met kronkellijnen.
+  const hersenkoraal = (ctx: CanvasRenderingContext2D, x: number, y: number, rr: number, kleur: string, lijn: string) => {
+    const bol = ctx.createRadialGradient(x - rr * 0.3, y - rr * 0.4, rr * 0.1, x, y, rr);
+    bol.addColorStop(0, kleur);
+    bol.addColorStop(1, lijn);
+    ctx.fillStyle = bol;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rr, rr * 0.8, 0, Math.PI, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = hexNaarRgba(lijn, 0.8);
+    ctx.lineWidth = Math.max(1.5, rr * 0.09);
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(x - rr * 0.8, y - rr * 0.1 + i * rr * 0.16);
+      ctx.quadraticCurveTo(x, y - rr * 0.45 + i * rr * 0.16, x + rr * 0.8, y - rr * 0.1 + i * rr * 0.16);
+      ctx.stroke();
+    }
+  };
+
+  // Anemoon: bosje tentakels met lichte topjes.
+  const anemoon = (ctx: CanvasRenderingContext2D, x: number, y: number, h: number, kleur: string, top: string) => {
+    ctx.strokeStyle = kleur;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(2, h * 0.1);
+    for (let a = -1; a <= 1; a += 0.22) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + a * h * 0.3, y - h * 0.6, x + a * h * 0.7, y - h);
+      ctx.stroke();
+      ctx.fillStyle = top;
+      ctx.beginPath();
+      ctx.arc(x + a * h * 0.7, y - h, Math.max(1.5, h * 0.07), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+
+  // Zandbodem met een zachte bovenrand.
+  const zandbodem = (ctx: CanvasRenderingContext2D, y: number, kleur: string, licht: string) => {
+    const zand = ctx.createLinearGradient(0, y - hoog * 0.06, 0, hoog);
+    zand.addColorStop(0, hexNaarRgba(licht, 0));
+    zand.addColorStop(0.35, hexNaarRgba(licht, 0.75));
+    zand.addColorStop(1, kleur);
+    ctx.fillStyle = zand;
+    ctx.beginPath();
+    ctx.moveTo(0, hoog);
+    ctx.lineTo(0, y);
+    for (let x = 0; x <= breed; x += breed / 8) {
+      ctx.quadraticCurveTo(x + breed / 16, y - hoog * 0.02 * Math.sin(x), x + breed / 8, y);
+    }
+    ctx.lineTo(breed, hoog);
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  // VERRE LAAG: rotsen en wier in de mist. Gedempt en blauwig — dat is wat
+  // afstand suggereert (luchtperspectief), niet grijs maken.
   if (!scene.textures.exists(TEX.verVer)) {
     canvasTextuur(scene, TEX.verVer, breed, hoog, (ctx) => {
-      // vage rotspartijen in de verte: nauwelijks zichtbaar, puur diepte
-      kei(ctx, breed * 0.18, hoog * 0.92, breed * 0.34, hoog * 0.2, 'rgba(255,255,255,0.09)');
-      kei(ctx, breed * 0.66, hoog * 0.97, breed * 0.4, hoog * 0.16, 'rgba(255,255,255,0.08)');
-      kei(ctx, breed * 1.02, hoog * 0.9, breed * 0.26, hoog * 0.13, 'rgba(255,255,255,0.09)');
-      for (let i = 0; i < 4; i++) {
-        kelp(ctx, breed * (0.12 + i * 0.26), hoog * 0.95, hoog * (0.26 + (i % 2) * 0.1), 4, 'rgba(255,255,255,0.07)');
+      kei(ctx, breed * 0.18, hoog * 0.94, breed * 0.34, hoog * 0.22, '#4e7f9c');
+      kei(ctx, breed * 0.66, hoog * 0.99, breed * 0.42, hoog * 0.18, '#456f8b');
+      kei(ctx, breed * 1.04, hoog * 0.92, breed * 0.28, hoog * 0.15, '#4e7f9c');
+      for (let i = 0; i < 5; i++) {
+        kelp(ctx, breed * (0.1 + i * 0.21), hoog * 0.96, hoog * (0.26 + (i % 2) * 0.12), 5, '#3f7a72');
       }
-      waaier(ctx, breed * 0.44, hoog * 0.93, hoog * 0.17, 'rgba(255,255,255,0.07)', 3);
+      waaier(ctx, breed * 0.44, hoog * 0.94, hoog * 0.19, '#5b7fa6', 4);
+      waaier(ctx, breed * 0.86, hoog * 0.95, hoog * 0.15, '#63708f', 4);
     });
   }
 
+  // MIDDENLAAG: hier zit de kleur. Een echt rif in plaats van grijze slierten.
   if (!scene.textures.exists(TEX.verMid)) {
     canvasTextuur(scene, TEX.verMid, breed, hoog, (ctx) => {
-      kei(ctx, breed * 0.3, hoog * 1.0, breed * 0.2, hoog * 0.13, 'rgba(255,255,255,0.15)');
-      kei(ctx, breed * 0.82, hoog * 1.0, breed * 0.24, hoog * 0.11, 'rgba(255,255,255,0.14)');
-      // koraal in twee maten geeft een rif-silhouet in plaats van gras
-      waaier(ctx, breed * 0.16, hoog * 0.99, hoog * 0.3, 'rgba(255,255,255,0.15)', 5);
-      waaier(ctx, breed * 0.55, hoog * 0.99, hoog * 0.22, 'rgba(255,255,255,0.13)', 4);
-      waaier(ctx, breed * 0.95, hoog * 0.99, hoog * 0.26, 'rgba(255,255,255,0.14)', 5);
-      for (let i = 0; i < 3; i++) {
-        kelp(ctx, breed * (0.36 + i * 0.28), hoog, hoog * (0.34 + (i % 2) * 0.12), 6, 'rgba(255,255,255,0.12)');
+      zandbodem(ctx, hoog * 0.9, '#c9a86a', '#f0dba6');
+
+      kei(ctx, breed * 0.3, hoog * 1.0, breed * 0.2, hoog * 0.13, '#6b7f93');
+      kei(ctx, breed * 0.84, hoog * 1.0, breed * 0.24, hoog * 0.12, '#5f7387');
+
+      hersenkoraal(ctx, breed * 0.2, hoog * 0.99, hoog * 0.05, '#9a6ab8', '#5f3880');
+      hersenkoraal(ctx, breed * 0.62, hoog * 1.0, hoog * 0.04, '#d4924f', '#96501f');
+
+      // Koraalwaaiers: lager en in gedempte rifkleuren. Fel oranje/roze op
+      // volle hoogte werd een snoepjungle die het spel opat.
+      waaier(ctx, breed * 0.1, hoog * 0.99, hoog * 0.17, '#d96f96', 5);
+      waaier(ctx, breed * 0.42, hoog * 0.99, hoog * 0.12, '#d8894f', 4);
+      waaier(ctx, breed * 0.74, hoog * 0.99, hoog * 0.15, '#6bb3a8', 4);
+      waaier(ctx, breed * 0.97, hoog * 0.98, hoog * 0.11, '#9d72b0', 4);
+
+      for (let i = 0; i < 4; i++) {
+        kelp(ctx, breed * (0.26 + i * 0.2), hoog, hoog * (0.17 + (i % 2) * 0.08), 6, '#4a8f66');
       }
-      // een paar buiskoralen
-      ctx.fillStyle = 'rgba(255,255,255,0.13)';
-      for (const [bx, bh] of [
-        [breed * 0.7, hoog * 0.16],
-        [breed * 0.73, hoog * 0.11],
-        [breed * 0.76, hoog * 0.19],
-      ]) {
+
+      anemoon(ctx, breed * 0.55, hoog * 0.99, hoog * 0.055, '#d98bb0', '#f6dfe9');
+
+      // buiskoralen
+      for (const [bx, bh, kl] of [
+        [breed * 0.68, hoog * 0.1, '#d97a54'],
+        [breed * 0.71, hoog * 0.07, '#e0a077'],
+        [breed * 0.735, hoog * 0.12, '#cf6743'],
+      ] as [number, number, string][]) {
+        ctx.fillStyle = kl;
         ctx.beginPath();
-        ctx.roundRect(bx, hoog - bh, breed * 0.018, bh, breed * 0.01);
+        ctx.roundRect(bx, hoog - bh, breed * 0.02, bh, breed * 0.01);
         ctx.fill();
       }
     });

@@ -4,6 +4,9 @@ import { describe, it, expect } from 'vitest';
 import {
   AANTAL_ZONES,
   DESPAWN_AFSTAND,
+  SCHERM_B,
+  SCHERM_H,
+  SPAWN_MARGE,
   SCHOOL_SPAWN_N,
   SCHOOL_SPAWN_STRAAL,
   SOORTEN,
@@ -42,10 +45,14 @@ function afstand(a: Punt, b: Punt): number {
 }
 
 describe('spawnafstand', () => {
-  it('minimale spawnafstand = halve schermdiagonaal + marge (≈ 666,5 px)', () => {
-    expect(minSpawnAfstand()).toBeCloseTo(Math.sqrt(480 * 480 + 800 * 800) / 2 + 200, 5);
-    expect(minSpawnAfstand()).toBeGreaterThan(666);
-    expect(minSpawnAfstand()).toBeLessThan(667);
+  it('spawnen gebeurt altijd buiten beeld: halve schermdiagonaal + marge', () => {
+    const halveDiagonaal = Math.sqrt(SCHERM_B ** 2 + SCHERM_H ** 2) / 2;
+    expect(minSpawnAfstand()).toBeCloseTo(halveDiagonaal + SPAWN_MARGE, 5);
+    // De regel die er echt toe doet: nooit binnen het zichtbare scherm.
+    expect(minSpawnAfstand()).toBeGreaterThan(halveDiagonaal);
+    // En er moet ruimte overblijven tussen spawnen en despawnen, anders
+    // ploppen vissen meteen weer weg.
+    expect(DESPAWN_AFSTAND).toBeGreaterThan(minSpawnAfstand() * 1.5);
   });
 
   it('gekozen punten liggen altijd in de ring én binnen de wereld', () => {

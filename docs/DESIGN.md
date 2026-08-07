@@ -152,10 +152,13 @@ aandeel in wat je ziet is ongeveer vijf keer zo groot.
 **Koudwatergrens:** vóór ontgrendeling (1× fase 3 gehaald, permanent — §7) duwt de
 grens op y = 3600 de speler terug met `GRENS_DUW = 200` px/s, met een zichtbare
 kleurband én een bordje dat vertelt wat je moet halen. **Spawnen: nooit in of vlak bij beeld** — afstand tot het cameracentrum
-≥ halve schermdiagonaal + `SPAWN_MARGE = 200` px (bij 480×800: ≈ 467 + 200 = 667 px);
-despawn bij > 1600 px. Maximaal `MAX_ACTIEF = 60` actieve entiteiten (incl. kwallen)
-uit een object-pool van 80; doelbezetting = 50 entiteiten binnen de despawnstraal
-(1600 px) rond het cameracentrum. De spawner checkt elke `SPAWN_INTERVAL = 0,5` s en
+≥ halve schermdiagonaal + `SPAWN_MARGE = 120` px (bij 480×800: ≈ 467 + 120 = 587 px);
+despawn bij > `DESPAWN_AFSTAND = 1050` px. Maximaal `MAX_ACTIEF = 60` actieve
+entiteiten (incl. kwallen) uit een object-pool van 80; doelbezetting = 50
+entiteiten binnen de despawnstraal rond het cameracentrum. **Die straal bepaalt
+hoe vol de zee oogt:** op 1600 px stonden dezelfde 50 vissen uitgesmeerd over
+6,6 miljoen px² en kwamen er gemeten 2 in beeld; op 1050 px zijn dat er ~10,
+zonder extra vissen en dus zonder prestatiekosten. De spawner checkt elke `SPAWN_INTERVAL = 0,5` s en
 doet max 3 spawn-acties per check; een school telt als één actie (5 leden tegelijk,
 alleen als de pool nog ≥ 5 plekken vrij heeft). Geen objectcreatie per frame; alles
 via de pool. Bij

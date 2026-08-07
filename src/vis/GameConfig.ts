@@ -236,8 +236,15 @@ export const ZONES: ZoneConfig[] = [
 ];
 
 // ── Spawnen & pooling ───────────────────────────────────────────────────────
-export const SPAWN_MARGE = 200; // px bovenop de halve schermdiagonaal (≈ 467 + 200 ≈ 667)
-export const DESPAWN_AFSTAND = 1600; // px van het cameracentrum
+export const SPAWN_MARGE = 120; // px bovenop de halve schermdiagonaal (≈ 467 + 120 ≈ 587)
+/**
+ * px van het cameracentrum. Stond op 1600: de 50 vissen waren toen uitgesmeerd
+ * over een ring van 6,6 miljoen px², waarvan je scherm maar 6% ziet — gemeten
+ * kwamen er 2 vissen in beeld en voelde de zee leeg. Op 1050 zit dezelfde
+ * populatie in een veel kleiner gebied, zonder extra vissen (dus zonder
+ * prestatiekosten).
+ */
+export const DESPAWN_AFSTAND = 1050;
 export const MAX_ACTIEF = 60; // max actieve entiteiten (incl. kwallen)
 export const POOL_GROOTTE = 80; // objectpool-grootte
 export const DOEL_BEZETTING = 50; // gewenste entiteiten binnen de despawnstraal

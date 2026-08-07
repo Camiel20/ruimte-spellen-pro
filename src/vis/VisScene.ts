@@ -43,6 +43,7 @@ import {
   kleurNummer,
   maakBesturingTexturen,
   maakBoekTexturen,
+  maakCaustiek,
   maakDieptelagen,
   maakEffectTexturen,
   maakLichtstralen,
@@ -132,6 +133,7 @@ export default class VisScene extends Phaser.Scene {
   // Beeld
   private achtergrond!: Phaser.GameObjects.Graphics;
   private lichtstralen!: Phaser.GameObjects.Image;
+  private caustiek!: Phaser.GameObjects.TileSprite;
   private laagVer!: Phaser.GameObjects.TileSprite;
   private laagMid!: Phaser.GameObjects.TileSprite;
   private vignet!: Phaser.GameObjects.Image;
@@ -213,6 +215,7 @@ export default class VisScene extends Phaser.Scene {
     maakVignet(this, Math.ceil(Math.sqrt(CFG.SCHERM_B ** 2 + CFG.SCHERM_H ** 2)));
     maakLichtstralen(this, CFG.SCHERM_B, CFG.SCHERM_H);
     maakDieptelagen(this, CFG.SCHERM_B, CFG.SCHERM_H);
+    maakCaustiek(this, 256);
 
     this.cameras.main.setBounds(0, 0, CFG.WERELD_B, CFG.WERELD_H);
 
@@ -293,6 +296,15 @@ export default class VisScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(-18)
       .setAlpha(0.55);
+
+    // Caustiek: bewegend lichtnet over het water, additief.
+    this.caustiek = this.add
+      .tileSprite(0, 0, CFG.SCHERM_B, CFG.SCHERM_H, TEX.caustiek)
+      .setOrigin(0)
+      .setScrollFactor(0)
+      .setDepth(-16)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0);
 
     // Zonnestralen door het wateroppervlak; vervagen met de diepte.
     this.lichtstralen = this.add
@@ -1839,19 +1851,37 @@ export default class VisScene extends Phaser.Scene {
 
     // Parallax: de verre laag schuift het traagst, de middenlaag sneller.
     const cam = this.cameras.main;
+    const diepte = Phaser.Math.Clamp(y / CFG.WERELD_H, 0, 1);
+
     this.laagVer.tilePositionX = cam.scrollX * 0.18;
     this.laagVer.tilePositionY = cam.scrollY * 0.12;
-    this.laagVer.setTint(this.mengKleur(onder, 0x000000, 0.45));
+    // Luchtperspectief: hoe dieper, hoe meer het rif in de waterkleur opgaat.
+    // Wél mengen met de waterkleur, NIET met zwart — anders wordt alles grijs
+    // en verdwijnt de kleur van het koraal.
+    this.laagVer.setTint(this.mengKleur(0xffffff, onder, 0.55 + diepte * 0.35));
+    this.laagVer.setAlpha(0.5 - diepte * 0.2);
+
     this.laagMid.tilePositionX = cam.scrollX * 0.42;
     this.laagMid.tilePositionY = cam.scrollY * 0.3;
-    this.laagMid.setTint(this.mengKleur(onder, 0x000000, 0.62));
+    this.laagMid.setTint(this.mengKleur(0xffffff, onder, 0.3 + diepte * 0.5));
+    this.laagMid.setAlpha(0.8 - diepte * 0.2);
 
     // Zonlicht: fel aan de oppervlakte, weg in de diepte.
-    this.lichtstralen.setAlpha(Phaser.Math.Clamp(1 - y / (CFG.ZONE_HOOGTE * 2.2), 0, 1) * 0.75);
+    const zon = Phaser.Math.Clamp(1 - y / (CFG.ZONE_HOOGTE * 2.2), 0, 1);
+    this.lichtstralen.setAlpha(zon * 0.75);
+
+    // Caustiek drijft langzaam mee; alleen zichtbaar waar nog licht komt.
+    this.caustiek.tilePositionX = cam.scrollX * 0.5 + this.rondeT * 9;
+    this.caustiek.tilePositionY = cam.scrollY * 0.5 + Math.sin(this.rondeT * 0.35) * 14;
+    this.caustiek.setAlpha(zon * 0.13);
 
     // Vignet: pas in de diepte, en alleen als de speler er echt is.
-    const diepte = Phaser.Math.Clamp((y - (CFG.GRENS_Y - CFG.ZONE_HOOGTE / 2)) / CFG.ZONE_HOOGTE, 0, 1);
-    this.vignet.setAlpha(diepte);
+    const inktdiepte = Phaser.Math.Clamp(
+      (y - (CFG.GRENS_Y - CFG.ZONE_HOOGTE / 2)) / CFG.ZONE_HOOGTE,
+      0,
+      1,
+    );
+    this.vignet.setAlpha(inktdiepte);
   }
 
   /** Mengt twee kleuren zonder objecten aan te maken (kanaal voor kanaal). */

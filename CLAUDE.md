@@ -388,6 +388,16 @@ doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
   Bezorg-Baas, Adventure en Letter-Missie deden dat al. Houd bovendien
   vastgehouden pointer-id's zelfherstellend (`controleerVingers`): raakt een
   loslaat-event verloren, dan blijft een knop anders vastgeplakt.
+- **Sfeer-pass (aug 2026)**, na "het lijkt niet echt op Fish Royale": (1) een
+  **kleurrijk rif** i.p.v. grijze silhouetten — koraalwaaiers, hersenkoraal,
+  anemonen, zandbodem, in `maakDieptelagen`; de scene mengt ze met de WATERkleur
+  op basis van diepte (luchtperspectief), nooit met zwart, anders gaat de kleur
+  dood. (2) **Caustiek** (`maakCaustiek`): tegelbaar lichtnet, additief, stevig
+  geblurd — ongeblurd leest het als behang. (3) Vissen kregen schubben met licht/
+  schaduw, doorschijnende vinnen met vinstralen, onderhuidse gloed en schaduw bij
+  de staartaanzet. (4) **De zee voelde leeg door de spawn-verdeling, niet door de
+  art**: `DESPAWN_AFSTAND` 1600 → 1050 bracht het aantal vissen in beeld van 2
+  naar 10 zonder extra entiteiten. Meet dat opnieuw als je aan de spawnring komt.
 - **Speelbaarheids-pass (aug 2026)**: na de eerste echte speeltest bleek vangen
   bijna onmogelijk — je liep maar 26 px/s in op de Pruillip en moest binnen 12 px
   mikken. Vier knoppen: `VLUCHT_FACTOR` 1,6 → 1,2, kruissnelheden van de grotere
