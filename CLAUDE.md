@@ -448,12 +448,31 @@ doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
      geeft 18 s **reuzenkracht** (radius × 1,8 = 100,8) én roept de Hengelbek op
      (geen loterij: 6% spawngewicht zou de finale toeval maken). Eet je hem op,
      dan **win je**: zegekaart, medaille `vis_koning`, teller `zeges`.
+- **Audio-herbouw (aug 2026)**, na "het geluid is nog echt slecht". De eerste
+  versie zette kale oscillatoren recht op de uitgang — dat is de klank van een
+  piepgenerator. `geluid.ts` heeft nu een echte signaalketen: elke stem gaat door
+  een **filter met eigen envelope**, er is **galm** (impulsrespons wordt zelf
+  gegenereerd, dus nog steeds geen bestand), een **mixbus met limiter**, en
+  **variatie** (willekeurige verstemming + stereopositie die volgt waar het
+  gebeurde). Belangrijkste vondst: alles stond **20-30 dB te zacht** — offline
+  gemeten met een `OfflineAudioContext` waren de pieken 0,02-0,09 op een schaal
+  waar 1,0 vol is. Zo klinkt alles dun, ook als de synthese goed is. Meet het
+  opnieuw als je aan de niveaus komt; de balans staat nu op hap −9 dBFS,
+  fase/nul/dood −5 tot −7, bel/knop −15 tot −18, sfeer −23 dBFS, en vier
+  geluiden tegelijk piekt op −3 zonder te klippen.
+  Ook aangepast: het alarm klinkt alleen bij de **omslag** van "geen gevaar" naar
+  "gevaar" en terug, niet per jager — met vier roofvissen werd dat een ratel
+  ([[stem-spaarzaam]] geldt ook voor effecten).
 - **Testen zonder zichtbaar venster**: de Browser-pane is verborgen, dus er loopt
   geen RAF en `setTimeout` wordt afgeknepen. Stap de lus met de hand
   (`game.step(t, 16.7)`) en haal screenshots op via `renderer.snapshot()` → POST
   naar een lokaal Node-servertje. **Let op:** na een hap of schild-klap staat de
   simulatie stil door de hitstop — meet je dan één frame, dan lijkt er niets te
   gebeuren. Ruim na afloop `hapvis_v1` én `rsp_progress_v2` op.
+  **Tweede valkuil:** na een paar hot-updates serveert Vite een module onder een
+  URL mét tijdstempel, waardoor een singleton (zoals `Geluid`) TWEE KEER bestaat
+  en een console-test op de verkeerde instantie kijkt. Lijkt precies op een bug.
+  Herstart de dev-server voordat je zoiets als een echt defect behandelt.
 - **Nog niet gebouwd**: niets uit het ontwerp. Speeltest geslaagd (aug 2026); de
   tegel staat gewoon in het menu.
 

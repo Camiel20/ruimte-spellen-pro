@@ -186,6 +186,7 @@ export default class VisScene extends Phaser.Scene {
   private randLaag!: Phaser.GameObjects.Graphics; // rode gloed langs de schermrand
   private alarmBadges: Phaser.GameObjects.Image[] = [];
   private alarmGeluidT = 0; // s tot het volgende alarmgeluid mag
+  private jagersVorig = 0; // hoeveel jagers vorig frame op je joegen
   private jagerAfstand = Infinity; // px tot de dichtstbijzijnde jager die jaagt
   private jagerHoek = 0; // rad, richting van speler naar die jager
 
@@ -843,6 +844,7 @@ export default class VisScene extends Phaser.Scene {
     this.schildHappen = 0;
     this.schildHintGehad = false;
     this.alarmGeluidT = 0;
+    this.jagersVorig = 0;
     this.jagerAfstand = Infinity;
     this.gebeurtenis = null;
     this.gebeurtenisT = 0;
@@ -1636,6 +1638,7 @@ export default class VisScene extends Phaser.Scene {
     this.gevaarLaag.clear();
     const puls = 0.5 + 0.5 * Math.sin(this.rondeT * CFG.ALARM_PULS * Math.PI * 2);
     let badges = 0;
+    let jagers = 0;
     this.jagerAfstand = Infinity;
     this.boosAfstand = Infinity;
 
@@ -1744,15 +1747,10 @@ export default class VisScene extends Phaser.Scene {
         kanEten(e.radius, speler.radius);
       if (jaagtNu !== e.alarmAan) {
         e.alarmAan = jaagtNu;
-        // Eén alarmkanaal met een pauze: met drie jagers wordt het anders een ratel.
-        if (this.alarmGeluidT <= 0) {
-          this.alarmGeluidT = CFG.ALARM_GELUID_PAUZE;
-          if (jaagtNu) Geluid.gespot();
-          else Geluid.opgeven();
-        }
         if (!jaagtNu) this.flits(e.pos.x, e.pos.y, 0xbfe3fb); // pufje: hij haakt af
       }
       if (jaagtNu) {
+        jagers++;
         if (afstandSpeler < this.jagerAfstand) {
           this.jagerAfstand = afstandSpeler;
           this.jagerHoek = Math.atan2(-dys, -dxs); // van de speler naar de jager
@@ -1779,6 +1777,33 @@ export default class VisScene extends Phaser.Scene {
     for (let i = badges; i < this.alarmBadges.length; i++) {
       this.alarmBadges[i].setVisible(false);
     }
+
+    // Geluid alleen op de OMSLAG van "geen gevaar" naar "gevaar" en terug — niet
+    // per jager. Met vier roofvissen om je heen werd dat anders een ratel, en
+    // dat is precies de valkuil die in de rest van de app al vastligt: een
+    // frequent event verdient hooguit een jingle, geen herhaalde melding.
+    if (jagers > 0 && this.jagersVorig === 0 && this.alarmGeluidT <= 0) {
+      this.alarmGeluidT = CFG.ALARM_GELUID_PAUZE;
+      Geluid.gespot(this.panVoor(this.jagerHoek));
+    } else if (jagers === 0 && this.jagersVorig > 0 && this.alarmGeluidT <= 0) {
+      this.alarmGeluidT = CFG.ALARM_GELUID_PAUZE;
+      Geluid.opgeven();
+    }
+    this.jagersVorig = jagers;
+  }
+
+  /**
+   * Stereopositie (−1..+1) voor een geluid dat uit een bepaalde richting komt.
+   * Niet helemaal naar de zijkant: volledig gepande effecten klinken op een
+   * telefoonspeaker alsof ze wegvallen.
+   */
+  private panVoor(hoek: number): number {
+    return Math.cos(hoek) * 0.6;
+  }
+
+  /** Stereopositie voor iets op een wereldpositie, ten opzichte van het beeld. */
+  private panVoorX(x: number): number {
+    return Phaser.Math.Clamp((x - this.camCentrum.x) / (CFG.SCHERM_B / 2), -1, 1) * 0.6;
   }
 
   /** Laat de staart slaan: sneller zwemmen = sneller frame wisselen. */
@@ -2064,7 +2089,7 @@ export default class VisScene extends Phaser.Scene {
     this.gegeten++;
     if (s.massa > this.grootsteMassa) this.grootsteMassa = s.massa;
 
-    Geluid.hap(e.radius, comboToonStijging(this.combo));
+    Geluid.hap(e.radius, comboToonStijging(this.combo), this.panVoorX(e.pos.x));
     this.flits(e.pos.x, e.pos.y, 0xffffff);
     // Een flinke prooi laat het beeld heel even stilstaan; dat is wat een hap
     // "gewicht" geeft. Kleine visjes niet, anders hakkelt het spel.
@@ -2418,7 +2443,7 @@ export default class VisScene extends Phaser.Scene {
     bel.y = this.camCentrum.y + (overalRond ? (Math.random() - 0.5) * spreiding : CFG.SCHERM_H * 0.6);
     bel.setAlpha(0.25 + Math.random() * 0.35);
     // Af en toe een zacht blubje; niet bij het opnieuw vullen aan het begin.
-    if (!overalRond && Math.random() < 0.04) Geluid.bel();
+    if (!overalRond && Math.random() < 0.04) Geluid.bel(this.panVoorX(bel.x));
   }
 
   // ───────────────────────────────────────────────────────── tekenen
