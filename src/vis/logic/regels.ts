@@ -9,6 +9,7 @@ import {
   ENERGIE_VERBRUIK,
   FASES,
   GROEI_OPNAME,
+  HAP_HULP,
   KWAL_STRAF,
   MASSA_MAX,
 } from '../GameConfig';
@@ -18,9 +19,15 @@ export function kanEten(eterRadius: number, prooiRadius: number): boolean {
   return prooiRadius <= eterRadius * EET_FACTOR;
 }
 
-/** "Mond raakt": eten gebeurt zodra de middelpunt-afstand kleiner is dan de eter-radius. */
-export function eetBinnenBereik(afstand: number, eterRadius: number): boolean {
-  return afstand < eterRadius;
+/**
+ * Is de prooi te pakken? Zonder `prooiRadius` moet het middelpunt van de prooi
+ * binnen je eigen straal komen — dat is streng en geldt voor roofvissen die de
+ * SPELER pakken. Geef je de prooistraal mee, dan hapt hij zodra de cirkels
+ * elkaar raken (`HAP_HULP`); dat is wat de speler zelf gebruikt, want binnen
+ * 12 px mikken is voor een kind niet te doen.
+ */
+export function eetBinnenBereik(afstand: number, eterRadius: number, prooiRadius = 0): boolean {
+  return afstand < eterRadius + prooiRadius * HAP_HULP;
 }
 
 /** Nieuwe massa na het eten van een prooi (gecapt op MASSA_MAX). */

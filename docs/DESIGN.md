@@ -27,22 +27,27 @@ terugknop (huisstijl). De pauze-overlay toont dezelfde records en keuzerij.
 Eetregel (geldt beide richtingen, dus ook voor roofvissen die de speler eten):
 een eter mag een prooi eten als `prooiRadius <= eterRadius * EET_FACTOR`,
 `EET_FACTOR = 0.8` (verhouding, configureerbaar). "Grootte" = botsingsradius in px
-(cirkel-botsing). Eten gebeurt zodra de afstand tussen de middelpunten kleiner is dan
-de eter-radius ("mond raakt") én de eetregel geldt.
+(cirkel-botsing).
+
+**Hapafstand — bewust in het voordeel van het kind.** De SPELER hapt zodra de
+cirkels elkaar raken: `afstand < eigenRadius + prooiRadius × HAP_HULP` met
+`HAP_HULP = 1`. Een roofvis moet de speler écht te pakken krijgen; daar telt
+alleen zijn eigen radius ("mond raakt"). Zonder die hulp moet je binnen 12 px van
+een bewegend doel mikken — niet te doen voor een zesjarige (speeltest aug 2026).
 
 | Soort        | Gedrag     | Massa | Radius (px) | Kruissnelheid (px/s) | Topsnelheid (px/s) | Score | Zones |
 |--------------|------------|------:|------------:|---------------------:|-------------------:|------:|-------|
-| Pijltje      | schoolvis  |     2 |           5 |                   55 |          88 (×1,6) |     1 | 1     |
-| Vlokje       | prooivis   |     2 |           6 |                   60 |          96 (×1,6) |     1 | 1     |
-| Stipje       | schoolvis  |     4 |           8 |                   80 |         128 (×1,6) |     2 | 1–2   |
-| Fonkeltje    | prooivis   |     4 |           9 |                   80 |         128 (×1,6) |     2 | 4     |
-| Pruillip     | prooivis   |     6 |          10 |                   90 |         144 (×1,6) |     3 | 1     |
-| Flapper      | prooivis   |    10 |          12 |                   90 |         144 (×1,6) |     5 | 2–4   |
-| Maantje      | prooivis   |    16 |          14 |                   88 |       140,8 (×1,6) |     8 | 2–3   |
-| Zilverpijl   | schoolvis  |    24 |          16 |                   85 |         136 (×1,6) |    12 | 3     |
+| Pijltje      | schoolvis  |     2 |           5 |                   55 |          66 (×1,2) |     1 | 1     |
+| Vlokje       | prooivis   |     2 |           6 |                   60 |          72 (×1,2) |     1 | 1     |
+| Stipje       | schoolvis  |     4 |           8 |                   68 |        81,6 (×1,2) |     2 | 1–2   |
+| Fonkeltje    | prooivis   |     4 |           9 |                   68 |        81,6 (×1,2) |     2 | 4     |
+| Pruillip     | prooivis   |     6 |          10 |                   72 |        86,4 (×1,2) |     3 | 1     |
+| Flapper      | prooivis   |    10 |          12 |                   74 |        88,8 (×1,2) |     5 | 2–4   |
+| Maantje      | prooivis   |    16 |          14 |                   76 |        91,2 (×1,2) |     8 | 2–3   |
+| Zilverpijl   | schoolvis  |    24 |          16 |                   76 |        91,2 (×1,2) |    12 | 3     |
 | Snapper      | roofvis    |    30 |          17 |                   70 |         150 (jaag) |    15 | 1–3   |
-| Snorrebol    | prooivis   |    50 |          20 |                   80 |         128 (×1,6) |    25 | 4     |
-| Bolwang      | prooivis   |    65 |          22 |                   85 |         136 (×1,6) |    32 | 3–4   |
+| Snorrebol    | prooivis   |    50 |          20 |                   72 |        86,4 (×1,2) |    25 | 4     |
+| Bolwang      | prooivis   |    65 |          22 |                   72 |        86,4 (×1,2) |    32 | 3–4   |
 | Pijlbek      | roofvis    |    75 |          23 |                   68 |         152 (jaag) |    35 | 2     |
 | Grombaars    | roofvis    |    90 |          25 |                   60 |         160 (jaag) |    40 | 3–4   |
 | Prikbek      | roofvis    |   253 |          34 |                   62 |         148 (jaag) |   110 | 3–4   |
@@ -57,7 +62,7 @@ je hoort iets eetbaars én iets gevaarlijks. Twee grenzen zijn kritiek: de
 zorgt dat de ronde altijd kan eindigen. De Hengelbek-score van 250 is daarmee
 onbereikbaar in v1 en staat er alleen voor de volledigheid.
 
-Prooivissen vluchten op `VLUCHT_FACTOR = 1.6` × kruissnelheid; jaag-/burstsnelheden
+Prooivissen vluchten op `VLUCHT_FACTOR = 1.2` × kruissnelheid; jaag-/burstsnelheden
 staan los in de tabel. Alle NPC's: acceleratie `NPC_ACCEL = 300` px/s², draaisnelheid
 2,5 rad/s (roofvissen 3,0). **Kwal:** drijft verticaal op `KWAL_DRIFT = 20` px/s
 (keert elke `KWAL_OMKEER = 4` s om) en slingert horizontaal met een sinus: amplitude
@@ -72,7 +77,7 @@ Diepteschrik vlucht nooit: die blijft patrouilleren en is zo in fase 5 het
 trofee-doel.
 
 **Speler:** start massa 10, radius 12. `SPELER_ACCEL = 400` px/s², demping
-`SPELER_DRAG = 250` px/s², draaisnelheid 3,5 rad/s; elke vis kijkt altijd in zijn
+`SPELER_DRAG = 250` px/s², draaisnelheid 4,5 rad/s; elke vis kijkt altijd in zijn
 bewegingsrichting. Boost: `BOOST_FACTOR = 1.8` × maxsnelheid, energie 0–100,
 verbruik 35/s, herstel 20/s, starten vereist ≥ 10 energie.
 
@@ -104,7 +109,7 @@ sneller dan zwemmen; daarvoor is boost nodig (fase 4: 155 × 1,8 = 279 > 260; fa
 ## 4. AI-gedragingen (4 typen)
 
 - **Prooivis** — dwaalt: nieuwe willekeurige richting elke 1,5–3 s. Vlucht recht weg
-  van elke grotere vis binnen `PROOI_DETECTIE = 140` px, op vluchtsnelheid.
+  van elke grotere vis binnen `PROOI_DETECTIE = 95` px, op vluchtsnelheid.
   Parameters: detectieradius, dwaalinterval, `VLUCHT_FACTOR`.
 - **Schoolvis** — boids binnen schoolradius 120 px: separatie gewicht 1,0 (binnen
   24 px), alignment 0,6, cohesie 0,4. Vlucht als prooivis; de school reageert als

@@ -1649,7 +1649,10 @@ export default class VisScene extends Phaser.Scene {
         continue;
       }
 
-      if (kanEten(s.radius, e.radius) && eetBinnenBereik(afstand, s.radius)) {
+      // De speler hapt zodra de cirkels elkaar raken (prooistraal telt mee);
+      // een roofvis moet de speler écht te pakken krijgen. Bewust in het
+      // voordeel van het kind.
+      if (kanEten(s.radius, e.radius) && eetBinnenBereik(afstand, s.radius, e.radius)) {
         this.eetOp(e);
         continue;
       }

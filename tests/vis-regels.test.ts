@@ -56,6 +56,24 @@ describe('eetregel', () => {
     expect(eetBinnenBereik(11.9, 12)).toBe(true);
     expect(eetBinnenBereik(12, 12)).toBe(false);
   });
+
+  it('de speler hapt zodra de cirkels raken; een roofvis moet dichterbij komen', () => {
+    // Speler (r12) hapt een Vlokje (r6) al op 17 px: anders moet je binnen
+    // 12 px mikken op een bewegend doel, en dat lukt een kind niet.
+    expect(eetBinnenBereik(17, 12, SOORTEN.vlokje.radius)).toBe(true);
+    expect(eetBinnenBereik(18, 12, SOORTEN.vlokje.radius)).toBe(false);
+    // Zonder prooistraal (zo pakt een roofvis de speler) blijft het streng.
+    expect(eetBinnenBereik(17, 12)).toBe(false);
+  });
+
+  it('vluchtende prooi is langzamer dan de speler die erop jaagt', () => {
+    // De kern van de speelbaarheid: je moet echt inlopen. Fase 1 zwemt 170.
+    const faseEen = FASES[0].maxSnelheid;
+    for (const id of ['pijltje', 'vlokje', 'stipje', 'pruillip'] as const) {
+      const marge = faseEen - SOORTEN[id].topSnelheid;
+      expect(marge, `${id} laat maar ${marge} px/s inloopruimte`).toBeGreaterThanOrEqual(60);
+    }
+  });
 });
 
 describe('groeicurve', () => {
@@ -145,17 +163,17 @@ describe('config-consistentie met het ontwerp', () => {
     // Bewust duplicaat: dit is de wisselbeveiliging tussen DESIGN.md en
     // GameConfig.ts — wie een waarde wijzigt, moet het op drie plekken menen.
     expect(SOORTEN).toEqual({
-      pijltje:      { gedrag: 'schoolvis', massa: 2,   radius: 5,  kruisSnelheid: 55, topSnelheid: 88,    score: 1,   zones: [1] },
-      vlokje:       { gedrag: 'prooivis',  massa: 2,   radius: 6,  kruisSnelheid: 60, topSnelheid: 96,    score: 1,   zones: [1] },
-      stipje:       { gedrag: 'schoolvis', massa: 4,   radius: 8,  kruisSnelheid: 80, topSnelheid: 128,   score: 2,   zones: [1, 2] },
-      fonkeltje:    { gedrag: 'prooivis',  massa: 4,   radius: 9,  kruisSnelheid: 80, topSnelheid: 128,   score: 2,   zones: [4] },
-      pruillip:     { gedrag: 'prooivis',  massa: 6,   radius: 10, kruisSnelheid: 90, topSnelheid: 144,   score: 3,   zones: [1] },
-      flapper:      { gedrag: 'prooivis',  massa: 10,  radius: 12, kruisSnelheid: 90, topSnelheid: 144,   score: 5,   zones: [2, 3, 4] },
-      maantje:      { gedrag: 'prooivis',  massa: 16,  radius: 14, kruisSnelheid: 88, topSnelheid: 140.8, score: 8,   zones: [2, 3] },
-      zilverpijl:   { gedrag: 'schoolvis', massa: 24,  radius: 16, kruisSnelheid: 85, topSnelheid: 136,   score: 12,  zones: [3] },
-      snapper:      { gedrag: 'roofvis',   massa: 30,  radius: 17, kruisSnelheid: 70, topSnelheid: 150,   score: 15,  zones: [1, 2, 3] },
-      snorrebol:    { gedrag: 'prooivis',  massa: 50,  radius: 20, kruisSnelheid: 80, topSnelheid: 128,   score: 25,  zones: [4] },
-      bolwang:      { gedrag: 'prooivis',  massa: 65,  radius: 22, kruisSnelheid: 85, topSnelheid: 136,   score: 32,  zones: [3, 4] },
+      pijltje:      { gedrag: 'schoolvis', massa: 2,   radius: 5,  kruisSnelheid: 55, topSnelheid: 66,   score: 1,   zones: [1] },
+      vlokje:       { gedrag: 'prooivis',  massa: 2,   radius: 6,  kruisSnelheid: 60, topSnelheid: 72,   score: 1,   zones: [1] },
+      stipje:       { gedrag: 'schoolvis', massa: 4,   radius: 8,  kruisSnelheid: 68, topSnelheid: 81.6, score: 2,   zones: [1, 2] },
+      fonkeltje:    { gedrag: 'prooivis',  massa: 4,   radius: 9,  kruisSnelheid: 68, topSnelheid: 81.6, score: 2,   zones: [4] },
+      pruillip:     { gedrag: 'prooivis',  massa: 6,   radius: 10, kruisSnelheid: 72, topSnelheid: 86.4, score: 3,   zones: [1] },
+      flapper:      { gedrag: 'prooivis',  massa: 10,  radius: 12, kruisSnelheid: 74, topSnelheid: 88.8, score: 5,   zones: [2, 3, 4] },
+      maantje:      { gedrag: 'prooivis',  massa: 16,  radius: 14, kruisSnelheid: 76, topSnelheid: 91.2, score: 8,   zones: [2, 3] },
+      zilverpijl:   { gedrag: 'schoolvis', massa: 24,  radius: 16, kruisSnelheid: 76, topSnelheid: 91.2, score: 12,  zones: [3] },
+      snapper:      { gedrag: 'roofvis',   massa: 30,  radius: 17, kruisSnelheid: 70, topSnelheid: 150,  score: 15,  zones: [1, 2, 3] },
+      snorrebol:    { gedrag: 'prooivis',  massa: 50,  radius: 20, kruisSnelheid: 72, topSnelheid: 86.4, score: 25,  zones: [4] },
+      bolwang:      { gedrag: 'prooivis',  massa: 65,  radius: 22, kruisSnelheid: 72, topSnelheid: 86.4, score: 32,  zones: [3, 4] },
       pijlbek:      { gedrag: 'roofvis',   massa: 75,  radius: 23, kruisSnelheid: 68, topSnelheid: 152,   score: 35,  zones: [2] },
       grombaars:    { gedrag: 'roofvis',   massa: 90,  radius: 25, kruisSnelheid: 60, topSnelheid: 160,   score: 40,  zones: [3, 4] },
       prikbek:      { gedrag: 'roofvis',   massa: 253, radius: 34, kruisSnelheid: 62, topSnelheid: 148,   score: 110, zones: [3, 4] },

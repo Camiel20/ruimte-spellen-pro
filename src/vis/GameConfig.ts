@@ -36,6 +36,13 @@ export interface SoortConfig {
 
 // ── Eetregel ────────────────────────────────────────────────────────────────
 export const EET_FACTOR = 0.8; // verhouding: eetbaar als prooiRadius <= eterRadius × dit
+/**
+ * Hoeveel van de PROOI-straal meetelt bij het happen. Op 0 moet het middelpunt
+ * van de prooi binnen je eigen straal komen (12 px in fase 1 — veel te precies
+ * voor een kind). Op 1 hap je zodra de cirkels elkaar raken. Geldt alleen als
+ * de SPELER eet; roofvissen moeten de speler nog steeds echt te pakken krijgen.
+ */
+export const HAP_HULP = 1;
 
 // ── Voedselketen (tabel §2 van DESIGN.md) ───────────────────────────────────
 // De radius-ladder is bewust dicht bezet: bij elke spelergrootte moet er in de
@@ -44,18 +51,18 @@ export const EET_FACTOR = 0.8; // verhouding: eetbaar als prooiRadius <= eterRad
 // (tests/vis-regels.test.ts pint de tabel vast).
 export const SOORTEN: Record<SoortId, SoortConfig> = {
   // ── kleine hapjes ─────────────────────────────────────────────────────────
-  pijltje:      { gedrag: 'schoolvis', massa: 2,   radius: 5,  kruisSnelheid: 55, topSnelheid: 88,  score: 1,   zones: [1] },
-  vlokje:       { gedrag: 'prooivis',  massa: 2,   radius: 6,  kruisSnelheid: 60, topSnelheid: 96,  score: 1,   zones: [1] },
-  stipje:       { gedrag: 'schoolvis', massa: 4,   radius: 8,  kruisSnelheid: 80, topSnelheid: 128, score: 2,   zones: [1, 2] },
-  fonkeltje:    { gedrag: 'prooivis',  massa: 4,   radius: 9,  kruisSnelheid: 80, topSnelheid: 128, score: 2,   zones: [4] },
-  pruillip:     { gedrag: 'prooivis',  massa: 6,   radius: 10, kruisSnelheid: 90, topSnelheid: 144, score: 3,   zones: [1] },
-  flapper:      { gedrag: 'prooivis',  massa: 10,  radius: 12, kruisSnelheid: 90, topSnelheid: 144, score: 5,   zones: [2, 3, 4] },
-  maantje:      { gedrag: 'prooivis',  massa: 16,  radius: 14, kruisSnelheid: 88, topSnelheid: 140.8, score: 8, zones: [2, 3] },
-  zilverpijl:   { gedrag: 'schoolvis', massa: 24,  radius: 16, kruisSnelheid: 85, topSnelheid: 136, score: 12,  zones: [3] },
+  pijltje:      { gedrag: 'schoolvis', massa: 2,   radius: 5,  kruisSnelheid: 55, topSnelheid: 66,   score: 1,   zones: [1] },
+  vlokje:       { gedrag: 'prooivis',  massa: 2,   radius: 6,  kruisSnelheid: 60, topSnelheid: 72,   score: 1,   zones: [1] },
+  stipje:       { gedrag: 'schoolvis', massa: 4,   radius: 8,  kruisSnelheid: 68, topSnelheid: 81.6, score: 2,   zones: [1, 2] },
+  fonkeltje:    { gedrag: 'prooivis',  massa: 4,   radius: 9,  kruisSnelheid: 68, topSnelheid: 81.6, score: 2,   zones: [4] },
+  pruillip:     { gedrag: 'prooivis',  massa: 6,   radius: 10, kruisSnelheid: 72, topSnelheid: 86.4, score: 3,   zones: [1] },
+  flapper:      { gedrag: 'prooivis',  massa: 10,  radius: 12, kruisSnelheid: 74, topSnelheid: 88.8, score: 5,   zones: [2, 3, 4] },
+  maantje:      { gedrag: 'prooivis',  massa: 16,  radius: 14, kruisSnelheid: 76, topSnelheid: 91.2, score: 8,   zones: [2, 3] },
+  zilverpijl:   { gedrag: 'schoolvis', massa: 24,  radius: 16, kruisSnelheid: 76, topSnelheid: 91.2, score: 12,  zones: [3] },
   // ── middenmoot: prooi én jager ────────────────────────────────────────────
   snapper:      { gedrag: 'roofvis',   massa: 30,  radius: 17, kruisSnelheid: 70, topSnelheid: 150, score: 15,  zones: [1, 2, 3] },
-  snorrebol:    { gedrag: 'prooivis',  massa: 50,  radius: 20, kruisSnelheid: 80, topSnelheid: 128, score: 25,  zones: [4] },
-  bolwang:      { gedrag: 'prooivis',  massa: 65,  radius: 22, kruisSnelheid: 85, topSnelheid: 136, score: 32,  zones: [3, 4] },
+  snorrebol:    { gedrag: 'prooivis',  massa: 50,  radius: 20, kruisSnelheid: 72, topSnelheid: 86.4, score: 25,  zones: [4] },
+  bolwang:      { gedrag: 'prooivis',  massa: 65,  radius: 22, kruisSnelheid: 72, topSnelheid: 86.4, score: 32,  zones: [3, 4] },
   pijlbek:      { gedrag: 'roofvis',   massa: 75,  radius: 23, kruisSnelheid: 68, topSnelheid: 152, score: 35,  zones: [2] },
   grombaars:    { gedrag: 'roofvis',   massa: 90,  radius: 25, kruisSnelheid: 60, topSnelheid: 160, score: 40,  zones: [3, 4] },
   // ── zwaargewichten ────────────────────────────────────────────────────────
@@ -98,7 +105,12 @@ export const SOORT_NAAM: Record<SoortId, string> = {
  */
 export type Vangst = Partial<Record<SoortId, number>>;
 
-export const VLUCHT_FACTOR = 1.6; // vluchtsnelheid prooi = kruissnelheid × dit
+/**
+ * Vluchtsnelheid prooi = kruissnelheid × dit. Stond op 1,6; toen liep je op je
+ * eerste "grote hapje" maar 26 px/s in en was vangen praktisch onmogelijk —
+ * ook voor een volwassene (speeltest aug 2026).
+ */
+export const VLUCHT_FACTOR = 1.2;
 export const NPC_ACCEL = 300; // px/s²
 export const NPC_DRAAI = 2.5; // rad/s (prooi- en schoolvissen)
 export const ROOFVIS_DRAAI = 3.0; // rad/s (roofvissen + apex)
@@ -115,7 +127,7 @@ export const ONKWETSBAAR = 1.0; // s onkwetsbaar na kwal-contact
 export const SPELER_START_MASSA = 10; // massa-eenheden bij rondestart
 export const SPELER_ACCEL = 400; // px/s²
 export const SPELER_DRAG = 250; // px/s² demping
-export const SPELER_DRAAI = 3.5; // rad/s max draaisnelheid
+export const SPELER_DRAAI = 4.5; // rad/s max draaisnelheid (wendbaar genoeg om bij te sturen)
 
 export const BOOST_FACTOR = 1.8; // × maxsnelheid tijdens boost
 export const ENERGIE_MAX = 100; // energie-eenheden
@@ -144,7 +156,9 @@ export const FASES: FaseConfig[] = [
 ];
 
 // ── AI ──────────────────────────────────────────────────────────────────────
-export const PROOI_DETECTIE = 140; // px: prooi vlucht voor grotere vis binnen deze afstand
+// px: prooi vlucht voor grotere vis binnen deze afstand. Stond op 140; toen
+// begon alles al te vluchten voordat je in de buurt was.
+export const PROOI_DETECTIE = 95;
 export const DWAAL_MIN = 1.5; // s min. dwaalinterval prooivis
 export const DWAAL_MAX = 3.0; // s max. dwaalinterval prooivis
 

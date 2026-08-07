@@ -388,6 +388,15 @@ doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
   Bezorg-Baas, Adventure en Letter-Missie deden dat al. Houd bovendien
   vastgehouden pointer-id's zelfherstellend (`controleerVingers`): raakt een
   loslaat-event verloren, dan blijft een knop anders vastgeplakt.
+- **Speelbaarheids-pass (aug 2026)**: na de eerste echte speeltest bleek vangen
+  bijna onmogelijk — je liep maar 26 px/s in op de Pruillip en moest binnen 12 px
+  mikken. Vier knoppen: `VLUCHT_FACTOR` 1,6 → 1,2, kruissnelheden van de grotere
+  prooivissen omlaag (~72-76), `PROOI_DETECTIE` 140 → 95, `SPELER_DRAAI` 3,5 →
+  4,5, en `HAP_HULP = 1` zodat de prooistraal meetelt bij het happen — **alleen
+  als de speler eet**; een roofvis moet je nog steeds écht te pakken krijgen.
+  Gemeten: van "niet te vangen" naar 0,5-1,8 s per vis, terwijl 16 van de 17
+  jager/fase-combinaties nog steeds sneller zijn dan de speler. Les: in dit genre
+  zit de spanning in het ONTWIJKEN, niet in het achtervolgen.
 - **Vissenboek + beloningen (aug 2026)**: 16 vissoorten verzamelen
   (`logic/boek.ts` + `BoekOverlay.ts`, opslag `vangst` in de SaveManager). Een
   soort komt erin als je hem opeet **of als hij jou opeet** — zo krijgt de
