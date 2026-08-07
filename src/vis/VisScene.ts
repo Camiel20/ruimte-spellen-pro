@@ -506,6 +506,11 @@ export default class VisScene extends Phaser.Scene {
       });
     }
 
+    // Phaser volgt standaard MAAR ÉÉN vinger. Zonder dit werkt de zwiepknop
+    // niet zolang je andere duim op de joystick staat — precies wat je op een
+    // telefoon de hele tijd doet. Zelfde regel als in Bezorg-Baas en Adventure.
+    this.input.addPointer(3);
+
     maakBesturingTexturen(this, CFG.JOYSTICK_STRAAL, CFG.BOOSTKNOP_STRAAL);
 
     const jx = CFG.JOYSTICK_STRAAL + 26;
@@ -566,17 +571,46 @@ export default class VisScene extends Phaser.Scene {
       if (this.status === 'spelen' && p.id === this.joystickPointer) this.zetDuim(p.x, p.y);
     });
     const losLaten = (p: Phaser.Input.Pointer): void => {
-      if (p.id === this.joystickPointer) {
-        this.joystickPointer = null;
-        this.joystickBasis.setPosition(this.joystickThuis.x, this.joystickThuis.y);
-        this.joystickDuim.setPosition(this.joystickThuis.x, this.joystickThuis.y);
-        this.invoerSterkte = 0;
-      }
+      if (p.id === this.joystickPointer) this.laatJoystickLos();
       if (p.id === this.boostPointer) this.boostPointer = null;
       if (p.id === this.negeerPointer) this.negeerPointer = null;
     };
     this.input.on('pointerup', losLaten);
     this.input.on('pointerupoutside', losLaten);
+  }
+
+  /** Zet de joystick terug op zijn rustplek en stopt het sturen. */
+  private laatJoystickLos(): void {
+    this.joystickPointer = null;
+    this.joystickBasis.setPosition(this.joystickThuis.x, this.joystickThuis.y);
+    this.joystickDuim.setPosition(this.joystickThuis.x, this.joystickThuis.y);
+    this.invoerSterkte = 0;
+  }
+
+  /** Ligt deze vinger nog op het scherm? */
+  private vingerNogNeer(id: number): boolean {
+    for (const p of this.input.manager.pointers) {
+      if (p.id === id) return p.isDown;
+    }
+    return false;
+  }
+
+  /**
+   * Vangnet voor verloren "vinger los"-events (vinger van het scherm geveegd,
+   * scherm gedraaid, tabwissel). Zonder dit blijft de joystick vastgeplakt of
+   * blijft de zwiep aan staan — op een telefoon niet meer te herstellen zonder
+   * het spel opnieuw te starten.
+   */
+  private controleerVingers(): void {
+    if (this.joystickPointer !== null && !this.vingerNogNeer(this.joystickPointer)) {
+      this.laatJoystickLos();
+    }
+    if (this.boostPointer !== null && !this.vingerNogNeer(this.boostPointer)) {
+      this.boostPointer = null;
+    }
+    if (this.negeerPointer !== null && !this.vingerNogNeer(this.negeerPointer)) {
+      this.negeerPointer = null;
+    }
   }
 
   private raaktBoostKnop(p: Phaser.Input.Pointer): boolean {
@@ -663,6 +697,11 @@ export default class VisScene extends Phaser.Scene {
     this.boekOpen = false;
     this.nieuwRecord = false;
     this.sterrenRonde = 0;
+    // Besturing schoon beginnen: Phaser hergebruikt de scene-instantie, dus
+    // een vastgehouden vinger uit een vorig bezoek zou blijven staan.
+    this.boostPointer = null;
+    this.negeerPointer = null;
+    this.laatJoystickLos();
     this.gehaaldeKleuren = CFG.KLEUR_UNLOCKS.filter((k) => k.drempelScore === 0).length;
 
     // Camera meteen op de speler, zodat de eerste spawns écht buiten beeld
@@ -1179,6 +1218,7 @@ export default class VisScene extends Phaser.Scene {
 
   private updateSpeler(dt: number): void {
     const s = this.speler;
+    this.controleerVingers();
     if (this.joystickPointer === null) this.invoerSterkte = 0;
     this.invoerUitToetsen();
 

@@ -384,6 +384,12 @@ doen wat de gebruiker opdraagt, dan stoppen en rapporteren); na elke stap
   sprites uit en bevriest de hele app. Gebruik `events.once` voor SHUTDOWN.
   (5) Art is geen speltuning: kleuren/animatie staan in `graphics.ts`, alle
   spelwaarden in `GameConfig.ts`.
+  (6) **Phaser volgt standaard MAAR ÉÉN vinger** — zonder `input.addPointer(3)`
+  werkt de zwiepknop niet zolang je duim op de joystick staat (speeltest iPhone,
+  aug 2026). Elk spel met twee tegelijk bedienbare knoppen heeft die regel nodig;
+  Bezorg-Baas, Adventure en Letter-Missie deden dat al. Houd bovendien
+  vastgehouden pointer-id's zelfherstellend (`controleerVingers`): raakt een
+  loslaat-event verloren, dan blijft een knop anders vastgeplakt.
 - **Vissenboek + beloningen (aug 2026)**: 16 vissoorten verzamelen
   (`logic/boek.ts` + `BoekOverlay.ts`, opslag `vangst` in de SaveManager). Een
   soort komt erin als je hem opeet **of als hij jou opeet** — zo krijgt de
