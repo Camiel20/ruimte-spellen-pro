@@ -179,6 +179,20 @@ export class SaveManager {
   }
 
   /**
+   * Legt een zojuist bereikte fase vast, midden in de ronde. Zonder dit zou een
+   * ontgrendeling die aan `grootsteFase` hangt (zoals de Inktdiepte) pas ingaan
+   * als de speler sterft — terwijl hij op dat moment allang groot genoeg is.
+   */
+  markeerFase(fase: number): SaveData {
+    const data = this.laad();
+    if (fase > data.grootsteFase) {
+      data.grootsteFase = fase;
+      this.bewaar(data);
+    }
+    return data;
+  }
+
+  /**
    * Telt vangsten op bij het vissenboek. Een delta van 0 zet de soort alleen
    * op "ontdekt" — dat is wat er gebeurt als die soort de speler opat.
    */

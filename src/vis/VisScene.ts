@@ -677,9 +677,11 @@ export default class VisScene extends Phaser.Scene {
 
     const opSlot = !this.save.zone4Ontgrendeld(this.saveData);
     this.grensBand.setVisible(opSlot);
+    // Niet "haal fase 3": een kind (en een ouder) denkt in punten, niet in
+    // fases. Zeg wat er moet gebeuren — groter worden — en noem de vis.
     this.grensLabel
       .setVisible(opSlot)
-      .setText(`❄ Koud water — haal eerst fase ${CFG.ZONE4_EIS_FASE}`);
+      .setText(`❄ Koud water — word eerst zo groot als een ${this.faseNaam(CFG.ZONE4_EIS_FASE)}`);
 
     this.laatsteZone = zoneVoorY(CFG.START_POS.y);
     this.zoneTekstT = 0;
@@ -902,6 +904,11 @@ export default class VisScene extends Phaser.Scene {
     else this.toonEindKaart();
   }
 
+  /** Naam van een fase ("Makreel"), voor teksten die een kind moet snappen. */
+  private faseNaam(fase: number): string {
+    return CFG.FASES.find((f) => f.fase === fase)?.naam ?? `fase ${fase}`;
+  }
+
   private tijdTekst(sec: number): string {
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60);
@@ -924,7 +931,12 @@ export default class VisScene extends Phaser.Scene {
       }
     }
     if (!this.save.zone4Ontgrendeld(d)) {
-      regels.push('', `Haal fase ${CFG.ZONE4_EIS_FASE} om de Inktdiepte te openen.`);
+      const nodig = CFG.FASES.find((f) => f.fase === CFG.ZONE4_EIS_FASE);
+      regels.push(
+        '',
+        `Word zo groot als een ${this.faseNaam(CFG.ZONE4_EIS_FASE)} (${nodig?.drempel ?? '?'})`,
+        'om de Inktdiepte te openen.',
+      );
     }
     return regels;
   }
@@ -1685,13 +1697,31 @@ export default class VisScene extends Phaser.Scene {
     if (nieuweFase !== s.fase) {
       s.fase = nieuweFase;
       s.maxSnelheid = maxSnelheidVoorMassa(s.massa);
-      if (nieuweFase > this.grootsteFase) this.grootsteFase = nieuweFase;
+      if (nieuweFase > this.grootsteFase) {
+        this.grootsteFase = nieuweFase;
+        // Meteen vastleggen. Deed de save dit pas bij het afronden van de ronde,
+        // dan bleef er "haal eerst fase 3" staan terwijl je die allang was.
+        const stondOpSlot = !this.save.zone4Ontgrendeld(this.saveData);
+        this.saveData = this.save.markeerFase(nieuweFase);
+        if (stondOpSlot && this.save.zone4Ontgrendeld(this.saveData)) this.openInktdiepte();
+      }
       s.sprite.setTexture(this.spelerSleutels[nieuweFase][s.frame]);
       Geluid.fase();
       this.cameras.main.flash(200, 255, 255, 255);
       this.toonFaseNaam(nieuweFase);
     }
     this.tekenSpeler();
+  }
+
+  /** De koudwatergrens gaat open: bordje weg en even melden dat het kan. */
+  private openInktdiepte(): void {
+    this.grensBand.setVisible(false);
+    this.grensLabel.setVisible(false);
+    // Deze melding vervangt de gewone duik-hint; anders overschrijft die hem
+    // nog in hetzelfde frame.
+    this.duikHintGehad = true;
+    this.toonHint('De Inktdiepte is open! Zwem naar beneden ↓');
+    Geluid.record();
   }
 
   private toonFaseNaam(fase: number): void {

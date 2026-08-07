@@ -1,7 +1,7 @@
 // Tests voor de Hapvis-SaveManager (src/vis/SaveManager.ts): records,
 // laatste 5 rondes, unlocks en robuustheid — met een localStorage-stub.
 import { describe, it, expect } from 'vitest';
-import { OPSLAG_SLEUTEL } from '../src/vis/GameConfig';
+import { OPSLAG_SLEUTEL, ZONE4_EIS_FASE } from '../src/vis/GameConfig';
 import { SaveManager, type OpslagAchtig, type Ronde } from '../src/vis/SaveManager';
 
 function maakStub(): OpslagAchtig & { data: Map<string, string> } {
@@ -152,6 +152,23 @@ describe('unlocks', () => {
     expect(sm.ontgrendeldeSkins()).toEqual(['gewoon', 'neonvisje']);
     sm.registreerRonde(ronde({ gegeten: 0, grootsteFase: 5 }));
     expect(sm.ontgrendeldeSkins()).toEqual(['gewoon', 'neonvisje', 'stekelbaars']);
+  });
+
+  it('markeerFase opent de diepte meteen, zonder op het einde van de ronde te wachten', () => {
+    // Dit was een echte bug: de ontgrendeling hing aan registreerRonde, dus je
+    // zag "word eerst groter" terwijl je die grootte al had.
+    const sm = new SaveManager(maakStub());
+    expect(sm.zone4Ontgrendeld()).toBe(false);
+    const data = sm.markeerFase(ZONE4_EIS_FASE);
+    expect(data.grootsteFase).toBe(ZONE4_EIS_FASE);
+    expect(sm.zone4Ontgrendeld()).toBe(true);
+  });
+
+  it('markeerFase verlaagt een bestaand record nooit', () => {
+    const sm = new SaveManager(maakStub());
+    sm.markeerFase(5);
+    sm.markeerFase(2);
+    expect(sm.laad().grootsteFase).toBe(5);
   });
 
   it('zone 4 ontgrendelt permanent na 1× fase 4', () => {
