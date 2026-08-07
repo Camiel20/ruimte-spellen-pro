@@ -17,6 +17,23 @@ import { SOORTEN, VIGNET_KERN, VIGNET_STRAAL, type SoortId } from './GameConfig'
  */
 export const SUPERSAMPLE = 1.6;
 export const TEX_SCHAAL = 1 / SUPERSAMPLE;
+
+/**
+ * Grote vissen hoeven niet zo zwaar gesupersampled te worden: ze zijn in
+ * pixels toch al groot. Zo blijft de hele set (17 soorten × 3 standen + 5
+ * spelerfases) rond de 12 MB videogeheugen in plaats van ver daarboven.
+ */
+function superSampleVoor(radius: number): number {
+  if (radius <= 12) return 2;
+  if (radius <= 25) return 1.5;
+  if (radius <= 40) return 1.2;
+  return 1;
+}
+
+/** Schaal waarop een vis-texture getoond moet worden (hoort bij superSampleVoor). */
+export function texSchaalVoor(radius: number): number {
+  return 1 / superSampleVoor(radius);
+}
 /**
  * De vis wordt iets groter getekend dan zijn botsingsradius. Puur beeld: de
  * eetregel blijft op de radius uit GameConfig werken, maar de vissen vullen
@@ -89,14 +106,47 @@ export function kleurNummer(id: string): number {
   return parseInt(p.basis.slice(1), 16);
 }
 
-const SOORT_PALET: Record<SoortId, Palet> = {
-  vlokje: { basis: '#ffd166', licht: '#ffe9a8', donker: '#d38b1f', buik: '#fff6dc', vin: '#f4a261', accent: '#ffffff' },
-  stipje: { basis: '#61c8ec', licht: '#b3ecff', donker: '#1c7fa8', buik: '#e7faff', vin: '#219ebc', accent: '#ffffff' },
-  flapper: { basis: '#8fd14f', licht: '#cdf0a0', donker: '#4e8f2a', buik: '#f0ffdc', vin: '#43aa8b', accent: '#ffffff' },
-  snapper: { basis: '#f0645a', licht: '#ffa79f', donker: '#9c1f18', buik: '#ffdedb', vin: '#c1121f', accent: '#ffe0b3' },
-  grombaars: { basis: '#8f5be0', licht: '#c8a6ff', donker: '#4b1e91', buik: '#e8d9ff', vin: '#5a189a', accent: '#ffd166' },
-  diepteschrik: { basis: '#2b3358', licht: '#4d5a91', donker: '#0a0e1f', buik: '#3a4370', vin: '#161b33', accent: '#7cf5d5' },
-  kwal: { basis: '#e0aaff', licht: '#f6e4ff', donker: '#9d4edd', buik: '#ffffff', vin: '#c77dff', accent: '#ffffff' },
+/**
+ * Het uiterlijk van elke soort: palet + de schakelaars die zijn silhouet
+ * bepalen. Elke zone heeft zo een eigen cast die je van ver uit elkaar houdt.
+ */
+const SOORT_STIJL: Record<SoortId, VisStijl> = {
+  // ── zone 1: zonnig rif ────────────────────────────────────────────────────
+  pijltje:   { basis: '#ff7eb6', licht: '#ffc2e0', donker: '#c43f83', buik: '#fff0f8', vin: '#ff4fa3', accent: '#ffffff',
+               vormSlank: true, staartPunt: true },
+  vlokje:    { basis: '#ffd166', licht: '#ffe9a8', donker: '#d38b1f', buik: '#fff6dc', vin: '#f4a261', accent: '#ffffff' },
+  stipje:    { basis: '#61c8ec', licht: '#b3ecff', donker: '#1c7fa8', buik: '#e7faff', vin: '#219ebc', accent: '#ffffff',
+               stippen: true },
+  pruillip:  { basis: '#2fd4b8', licht: '#9cf3e2', donker: '#0e8f7d', buik: '#eafff9', vin: '#00b39b', accent: '#ffe08a',
+               vormHoog: true, lippen: true },
+  // ── zone 2: open blauw ────────────────────────────────────────────────────
+  flapper:   { basis: '#8fd14f', licht: '#cdf0a0', donker: '#4e8f2a', buik: '#f0ffdc', vin: '#43aa8b', accent: '#ffffff',
+               strepen: 3 },
+  maantje:   { basis: '#e8eef7', licht: '#ffffff', donker: '#8ea3bd', buik: '#fffef8', vin: '#ffc93c', accent: '#2a3a57',
+               vormHoog: true, zadel: true },
+  snapper:   { basis: '#f0645a', licht: '#ffa79f', donker: '#9c1f18', buik: '#ffdedb', vin: '#c1121f', accent: '#ffe0b3',
+               roofdier: true },
+  pijlbek:   { basis: '#c4763a', licht: '#e9a566', donker: '#6f3c17', buik: '#ffe3bd', vin: '#93511f', accent: '#ffd24d',
+               roofdier: true, vormSlank: true, snuitLang: true },
+  // ── zone 3: schemerlaag ───────────────────────────────────────────────────
+  zilverpijl: { basis: '#9fb9d4', licht: '#e9f5ff', donker: '#52708f', buik: '#f6fbff', vin: '#7d9cbd', accent: '#cdf3ff',
+               vormSlank: true, staartSikkel: true },
+  bolwang:   { basis: '#cf8b3f', licht: '#f2c078', donker: '#7f4a15', buik: '#ffe8c2', vin: '#a9631f', accent: '#fff0c4',
+               vormHoog: true, lippen: true },
+  grombaars: { basis: '#8f5be0', licht: '#c8a6ff', donker: '#4b1e91', buik: '#e8d9ff', vin: '#5a189a', accent: '#ffd166',
+               roofdier: true, strepen: 3 },
+  prikbek:   { basis: '#1f7d80', licht: '#57b8b5', donker: '#0a3f45', buik: '#bfe9e2', vin: '#0f5c60', accent: '#ffb703',
+               roofdier: true, snuitLang: true, rugkam: true },
+  // ── zone 4: inktdiepte ────────────────────────────────────────────────────
+  fonkeltje: { basis: '#343a5c', licht: '#5f68a8', donker: '#171a2e', buik: '#8a93c8', vin: '#454d7e', accent: '#ffb763',
+               vormHoog: true, gloedstippen: true },
+  snorrebol: { basis: '#3d63d6', licht: '#82a4ff', donker: '#17307e', buik: '#cfe0ff', vin: '#2b49a8', accent: '#d9e8ff',
+               snorharen: true, lippen: true },
+  diepteschrik: { basis: '#2b3358', licht: '#4d5a91', donker: '#0a0e1f', buik: '#3a4370', vin: '#161b33', accent: '#7cf5d5',
+               roofdier: true, boosOog: true },
+  hengelbek: { basis: '#1c3f4a', licht: '#35707f', donker: '#0a1a20', buik: '#5b93a3', vin: '#12303a', accent: '#cfefff',
+               roofdier: true, lampje: true, staartSikkel: true, vlekken: true },
+  kwal:      { basis: '#e0aaff', licht: '#f6e4ff', donker: '#9d4edd', buik: '#ffffff', vin: '#c77dff', accent: '#ffffff' },
 };
 
 interface VisStijl extends Palet {
@@ -106,6 +156,19 @@ interface VisStijl extends Palet {
   stekels?: boolean; // skin "stekelbaars"
   gloed?: boolean; // skin "neonvisje"
   boosOog?: boolean; // klein fel oog (Diepteschrik)
+  // ── silhouet-schakelaars: hiermee verschillen de soorten van ver ──────────
+  vormSlank?: boolean; // lang en dun
+  vormHoog?: boolean; // plat en hoog (schijfvorm)
+  snuitLang?: boolean; // uitstekende punt vooraan
+  lippen?: boolean; // dikke tuitlippen
+  snorharen?: boolean; // voelsprieten onder de kop
+  lampje?: boolean; // lichtgevend bolletje aan een steeltje
+  vlekken?: boolean; // grote onregelmatige vlekken
+  zadel?: boolean; // brede dwarsband over de rug
+  staartSikkel?: boolean; // diep gevorkte snelle staart
+  staartPunt?: boolean; // spitse staart
+  rugkam?: boolean; // getande kam over de rug
+  gloedstippen?: boolean; // lichtgevende stippen langs de rand
 }
 
 type Tekenaar = (ctx: CanvasRenderingContext2D) => void;
@@ -127,14 +190,18 @@ function canvasTextuur(
   tex.refresh();
 }
 
-/** Halve lengte en halve hoogte van het lijf (roofdieren zijn langgerekter). */
-function lijfMaten(r: number, spits: boolean): [number, number] {
-  return spits ? [r * 1.12, r * 0.86] : [r * 1.04, r * 0.9];
+/** Halve lengte en halve hoogte van het lijf — hier ontstaat het silhouet. */
+function lijfMaten(r: number, stijl: VisStijl): [number, number] {
+  if (stijl.vormSlank) return [r * 1.45, r * 0.6];
+  if (stijl.vormHoog) return [r * 0.88, r * 1.14];
+  if (stijl.roofdier) return [r * 1.12, r * 0.86];
+  return [r * 1.04, r * 0.9];
 }
 
 /** Het lichaamssilhouet als pad: mollige druppel, roofdier iets spitser. */
-function lijfPad(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, spits: boolean): void {
-  const [L, H] = lijfMaten(r, spits);
+function lijfPad(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, stijl: VisStijl): void {
+  const [L, H] = lijfMaten(r, stijl);
+  const spits = !!stijl.roofdier || !!stijl.snuitLang;
   ctx.beginPath();
   ctx.moveTo(cx + L, cy + (spits ? H * 0.12 : 0));
   ctx.bezierCurveTo(cx + L * 0.45, cy - H * 1.02, cx - L * 0.5, cy - H * 1.05, cx - L, cy - H * 0.3);
@@ -153,6 +220,34 @@ function vinPad(ctx: CanvasRenderingContext2D, lengte: number, spreiding: number
   ctx.closePath();
 }
 
+/** Staartvorm: waaier (standaard), diep gevorkte sikkel, of één spitse punt. */
+function staartPad(
+  ctx: CanvasRenderingContext2D,
+  lengte: number,
+  spreiding: number,
+  stijl: VisStijl,
+): void {
+  if (stijl.staartSikkel) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-lengte * 0.5, -spreiding * 0.9, -lengte * 1.15, -spreiding * 1.25);
+    ctx.quadraticCurveTo(-lengte * 0.5, -spreiding * 0.25, -lengte * 0.28, 0);
+    ctx.quadraticCurveTo(-lengte * 0.5, spreiding * 0.25, -lengte * 1.15, spreiding * 1.25);
+    ctx.quadraticCurveTo(-lengte * 0.5, spreiding * 0.9, 0, 0);
+    ctx.closePath();
+    return;
+  }
+  if (stijl.staartPunt) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(-lengte * 0.6, -spreiding * 0.5, -lengte * 1.25, 0);
+    ctx.quadraticCurveTo(-lengte * 0.6, spreiding * 0.5, 0, 0);
+    ctx.closePath();
+    return;
+  }
+  vinPad(ctx, lengte, spreiding, 0.5);
+}
+
 /** Tekent één vis, met staartslag-hoek `slag` (−1..1). */
 function tekenVis(
   ctx: CanvasRenderingContext2D,
@@ -162,11 +257,11 @@ function tekenVis(
   stijl: VisStijl,
   slag: number,
 ): void {
-  const [L, H] = lijfMaten(r, !!stijl.roofdier);
+  const [L, H] = lijfMaten(r, stijl);
 
   // ── zachte slagschaduw onder de vis: geeft diepte in het water
   const schaduw = ctx.createRadialGradient(cx, cy + H * 0.95, r * 0.1, cx, cy + H * 1.0, r * 1.2);
-  schaduw.addColorStop(0, 'rgba(0,0,0,0.28)');
+  schaduw.addColorStop(0, 'rgba(0,0,0,0.16)');
   schaduw.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = schaduw;
   ctx.beginPath();
@@ -193,7 +288,7 @@ function tekenVis(
   staartVerloop.addColorStop(0.7, stijl.vin);
   staartVerloop.addColorStop(1, stijl.basis);
   ctx.fillStyle = staartVerloop;
-  vinPad(ctx, r * 1.3, r * 0.9, 0.5);
+  staartPad(ctx, r * 1.3, r * 0.9, stijl);
   ctx.fill();
   ctx.strokeStyle = hexNaarRgba(stijl.donker, 0.85);
   ctx.lineWidth = Math.max(1.4, r * 0.09);
@@ -226,7 +321,7 @@ function tekenVis(
   ctx.restore();
 
   // ── lijf met verticaal verloop (rug licht, buik donker) + rimlight
-  lijfPad(ctx, cx, cy, r, !!stijl.roofdier);
+  lijfPad(ctx, cx, cy, r, stijl);
   const lijfVerloop = ctx.createLinearGradient(cx, cy - H, cx, cy + H);
   lijfVerloop.addColorStop(0, stijl.licht);
   lijfVerloop.addColorStop(0.42, stijl.basis);
@@ -236,7 +331,7 @@ function tekenVis(
 
   // buik: zachte lichte ovaal, netjes binnen het lijf geknipt
   ctx.save();
-  lijfPad(ctx, cx, cy, r, !!stijl.roofdier);
+  lijfPad(ctx, cx, cy, r, stijl);
   ctx.clip();
 
   const buik = ctx.createLinearGradient(cx, cy + H * 0.1, cx, cy + H);
@@ -263,6 +358,30 @@ function tekenVis(
       ctx.arc(sx, sy, r * 0.1, 0, Math.PI * 2);
       ctx.fill();
     }
+  }
+  if (stijl.vlekken) {
+    ctx.fillStyle = hexNaarRgba(stijl.donker, 0.45);
+    for (const [vx, vy, vr] of [
+      [-0.45, -0.25, 0.3],
+      [0.05, 0.2, 0.24],
+      [0.5, -0.3, 0.2],
+      [-0.15, -0.5, 0.16],
+    ]) {
+      ctx.beginPath();
+      ctx.ellipse(cx + L * vx, cy + H * vy, r * vr, r * vr * 0.8, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  if (stijl.zadel) {
+    // brede dwarsband over de rug — van ver het opvallendste kenmerk
+    ctx.fillStyle = hexNaarRgba(stijl.accent, 0.75);
+    ctx.beginPath();
+    ctx.moveTo(cx - L * 0.28, cy - H);
+    ctx.lineTo(cx + L * 0.04, cy - H);
+    ctx.lineTo(cx + L * 0.16, cy + H);
+    ctx.lineTo(cx - L * 0.16, cy + H);
+    ctx.closePath();
+    ctx.fill();
   }
 
   // schubbenboogjes: heel subtiel, geeft "textuur" zonder rommelig te worden
@@ -315,20 +434,74 @@ function tekenVis(
     }
   }
 
+  if (stijl.rugkam) {
+    // getande kam over de hele rug: verraadt de jager in de schemer
+    ctx.fillStyle = hexNaarRgba(stijl.accent, 0.9);
+    ctx.beginPath();
+    ctx.moveTo(cx - L * 0.6, cy - H * 0.72);
+    for (let i = 0; i < 6; i++) {
+      const x1 = cx - L * 0.6 + (i + 0.5) * (L * 1.1) / 6;
+      const x2 = cx - L * 0.6 + (i + 1) * (L * 1.1) / 6;
+      ctx.lineTo(x1, cy - H * (1.02 + (i % 2) * 0.12));
+      ctx.lineTo(x2, cy - H * 0.72);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = hexNaarRgba(stijl.donker, 0.7);
+    ctx.lineWidth = Math.max(1, r * 0.04);
+    ctx.stroke();
+  }
+
+  if (stijl.snorharen) {
+    ctx.strokeStyle = hexNaarRgba(stijl.donker, 0.8);
+    ctx.lineWidth = Math.max(1.2, r * 0.055);
+    ctx.lineCap = 'round';
+    for (const [dy, len] of [
+      [0.1, 0.9],
+      [0.3, 1.1],
+      [0.5, 0.85],
+      [0.68, 0.6],
+    ]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + L * 0.72, cy + H * dy);
+      ctx.quadraticCurveTo(
+        cx + L * 0.72 + r * len * 0.4,
+        cy + H * dy + r * 0.4,
+        cx + L * 0.72 - r * len * 0.25,
+        cy + H * dy + r * len * 0.9,
+      );
+      ctx.stroke();
+    }
+  }
+
   // ── contour: donker genoeg om los te komen van het water, en een lichte
   //    rimlight langs de rug zodat de vis "rond" oogt
-  lijfPad(ctx, cx, cy, r, !!stijl.roofdier);
+  lijfPad(ctx, cx, cy, r, stijl);
   ctx.strokeStyle = hexNaarRgba(stijl.donker, 0.9);
   ctx.lineWidth = Math.max(2, r * 0.13);
   ctx.stroke();
   ctx.save();
-  lijfPad(ctx, cx, cy, r, !!stijl.roofdier);
+  lijfPad(ctx, cx, cy, r, stijl);
   ctx.clip();
   ctx.strokeStyle = 'rgba(255,255,255,0.45)';
   ctx.lineWidth = Math.max(1.5, r * 0.09);
-  lijfPad(ctx, cx, cy - r * 0.06, r, !!stijl.roofdier);
+  lijfPad(ctx, cx, cy - r * 0.06, r, stijl);
   ctx.stroke();
   ctx.restore();
+
+  // ── uitstekende snuit (vóór de mond getekend, zodat de mond erop past)
+  if (stijl.snuitLang) {
+    ctx.fillStyle = stijl.basis;
+    ctx.beginPath();
+    ctx.moveTo(cx + L * 0.72, cy - H * 0.3);
+    ctx.lineTo(cx + L * 1.5, cy + H * 0.02);
+    ctx.lineTo(cx + L * 0.72, cy + H * 0.34);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = hexNaarRgba(stijl.donker, 0.9);
+    ctx.lineWidth = Math.max(1.5, r * 0.09);
+    ctx.stroke();
+  }
 
   // ── mond
   const mx = cx + L * 0.74;
@@ -350,6 +523,18 @@ function tekenVis(
       ctx.closePath();
       ctx.fill();
     }
+  } else if (stijl.lippen) {
+    // dikke tuitlippen: twee gevulde boogjes vooraan
+    ctx.fillStyle = hexNaarRgba(stijl.accent, 0.95);
+    ctx.beginPath();
+    ctx.ellipse(cx + L * 0.86, my - H * 0.36, r * 0.2, r * 0.13, -0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + L * 0.84, my - H * 0.1, r * 0.18, r * 0.11, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = hexNaarRgba(stijl.donker, 0.75);
+    ctx.lineWidth = Math.max(1.2, r * 0.05);
+    ctx.stroke();
   } else {
     ctx.lineCap = 'round';
     ctx.lineWidth = Math.max(1.8, r * 0.11);
@@ -411,6 +596,46 @@ function tekenVis(
     ctx.lineTo(ox + oogR * 1.2, oy - oogR * 0.35);
     ctx.stroke();
   }
+
+  if (stijl.gloedstippen) {
+    // rij lichtgevende stipjes langs de onderrand: het enige wat je van deze
+    // vis ziet in het donker
+    for (let i = 0; i < 6; i++) {
+      const gx = cx - L * 0.55 + (i * L * 1.1) / 5;
+      const gy = cy + H * (0.55 + Math.sin(i) * 0.08);
+      const gloedje = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 0.28);
+      gloedje.addColorStop(0, hexNaarRgba(stijl.accent, 0.95));
+      gloedje.addColorStop(1, hexNaarRgba(stijl.accent, 0));
+      ctx.fillStyle = gloedje;
+      ctx.beginPath();
+      ctx.arc(gx, gy, r * 0.28, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  if (stijl.lampje) {
+    // hengeltje met lichtbol vóór de kop: je ziet eerst het licht
+    const bx = cx + L * 1.05;
+    const by = cy - H * 1.15;
+    ctx.strokeStyle = hexNaarRgba(stijl.donker, 0.95);
+    ctx.lineWidth = Math.max(1.5, r * 0.06);
+    ctx.beginPath();
+    ctx.moveTo(cx + L * 0.15, cy - H * 0.85);
+    ctx.quadraticCurveTo(cx + L * 0.7, cy - H * 1.5, bx, by);
+    ctx.stroke();
+    const halo = ctx.createRadialGradient(bx, by, 0, bx, by, r * 0.65);
+    halo.addColorStop(0, hexNaarRgba(stijl.accent, 0.95));
+    halo.addColorStop(0.35, hexNaarRgba(stijl.accent, 0.5));
+    halo.addColorStop(1, hexNaarRgba(stijl.accent, 0));
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(bx, by, r * 0.65, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(bx, by, r * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 /** '#rrggbb' → 'rgba(r,g,b,a)'. */
@@ -421,10 +646,11 @@ function hexNaarRgba(hex: string, alpha: number): string {
 
 /** Bakt de drie unieke staartstanden van één vis (keyVoor krijgt het textuurnummer). */
 function bakVisFrames(scene: Phaser.Scene, keyVoor: (tex: number) => string, r: number, stijl: VisStijl): void {
-  const rr = r * SUPERSAMPLE * VIS_SCHAAL;
-  // Krap bemeten canvas: net groot genoeg voor lijf + staart + rugvin.
-  const breed = rr * 4;
-  const hoog = rr * 3.3;
+  const rr = r * superSampleVoor(r) * VIS_SCHAAL;
+  // Ruim genoeg voor het langste lijf (slank, 1,45r), de staart erachter, een
+  // uitstekende snuit of lampje ervóór, en een hoge rugvin/kam erboven.
+  const breed = rr * 4.6;
+  const hoog = rr * 4;
   for (let f = 0; f < UNIEKE_FRAMES; f++) {
     canvasTextuur(scene, keyVoor(f), breed, hoog, (ctx) => {
       tekenVis(ctx, breed * 0.54, hoog / 2, rr, stijl, FRAME_SLAG[f]);
@@ -434,10 +660,10 @@ function bakVisFrames(scene: Phaser.Scene, keyVoor: (tex: number) => string, r: 
 
 /** Kwal: doorschijnende koepel met wapperende tentakels. */
 function bakKwal(scene: Phaser.Scene): void {
-  const r = SOORTEN.kwal.radius * SUPERSAMPLE * VIS_SCHAAL;
-  const breed = r * 4;
-  const hoog = r * 3.3;
-  const p = SOORT_PALET.kwal;
+  const r = SOORTEN.kwal.radius * superSampleVoor(SOORTEN.kwal.radius) * VIS_SCHAAL;
+  const breed = r * 4.6;
+  const hoog = r * 4;
+  const p = SOORT_STIJL.kwal;
   for (let f = 0; f < UNIEKE_FRAMES; f++) {
     const golf = FRAME_SLAG[f];
     canvasTextuur(scene, TEX.soortTex('kwal', f), breed, hoog, (ctx) => {
@@ -500,15 +726,7 @@ export function maakNpcTexturen(scene: Phaser.Scene): void {
   for (const id of Object.keys(SOORTEN) as SoortId[]) {
     if (id === 'kwal') continue;
     if (scene.textures.exists(TEX.soort(id, 0))) continue;
-    const p = SOORT_PALET[id];
-    const stijl: VisStijl = {
-      ...p,
-      roofdier: SOORTEN[id].gedrag === 'roofvis' || SOORTEN[id].gedrag === 'apex',
-      strepen: id === 'flapper' ? 3 : id === 'grombaars' ? 3 : 0,
-      stippen: id === 'stipje',
-      boosOog: id === 'diepteschrik',
-    };
-    bakVisFrames(scene, (tex) => TEX.soortTex(id, tex), SOORTEN[id].radius, stijl);
+    bakVisFrames(scene, (tex) => TEX.soortTex(id, tex), SOORTEN[id].radius, SOORT_STIJL[id]);
   }
   if (!scene.textures.exists(TEX.soort('kwal', 0))) bakKwal(scene);
 }
@@ -795,21 +1013,30 @@ export function maakBesturingTexturen(scene: Phaser.Scene, stickStraal: number, 
   }
 }
 
-/** Zichtvignet voor de diepte: helder rond de speler, zwart naar de randen. */
+/**
+ * Zichtvignet voor de diepte: helder rond de speler, zwart naar de randen.
+ * Het wordt klein gerasterd (VIGNET_RASTER) en in de scene uitgerekt naar
+ * `grootte` — een zacht verloop verliest daar niets bij, en het scheelt een
+ * paar megabyte videogeheugen op een telefoon.
+ */
+export const VIGNET_RASTER = 256;
+
 export function maakVignet(scene: Phaser.Scene, grootte: number): void {
   if (scene.textures.exists(TEX.vignet)) return;
-  canvasTextuur(scene, TEX.vignet, grootte, grootte, (ctx) => {
-    const c = grootte / 2;
+  const k = VIGNET_RASTER / grootte; // van wereld-px naar textuur-px
+  canvasTextuur(scene, TEX.vignet, VIGNET_RASTER, VIGNET_RASTER, (ctx) => {
+    const c = VIGNET_RASTER / 2;
     // VIGNET_STRAAL is de afstand waarop je nog goed ziet: tot VIGNET_KERN ×
     // die straal blijft het volledig helder, op de straal zelf is het half
     // donker, en daarbuiten loopt het naar zwart.
-    const kern = Math.min(VIGNET_STRAAL * VIGNET_KERN, c);
+    const kern = Math.min(VIGNET_STRAAL * VIGNET_KERN * k, c);
+    const straal = VIGNET_STRAAL * k;
     const verloop = ctx.createRadialGradient(c, c, kern, c, c, c);
     verloop.addColorStop(0, 'rgba(0,0,0,0)');
-    const opStraal = Phaser.Math.Clamp((VIGNET_STRAAL - kern) / Math.max(1, c - kern), 0.05, 0.95);
+    const opStraal = Phaser.Math.Clamp((straal - kern) / Math.max(1, c - kern), 0.05, 0.95);
     verloop.addColorStop(opStraal, 'rgba(0,0,0,0.5)');
     verloop.addColorStop(1, 'rgba(0,0,0,0.92)');
     ctx.fillStyle = verloop;
-    ctx.fillRect(0, 0, grootte, grootte);
+    ctx.fillRect(0, 0, VIGNET_RASTER, VIGNET_RASTER);
   });
 }

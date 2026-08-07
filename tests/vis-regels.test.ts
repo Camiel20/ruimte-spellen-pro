@@ -3,11 +3,13 @@
 // te rekenen vanuit docs/DESIGN.md.
 import { describe, it, expect } from 'vitest';
 import {
+  AANTAL_ZONES,
   EET_FACTOR,
   FASES,
   MASSA_MAX,
   SOORTEN,
   VLUCHT_FACTOR,
+  ZONE4_EIS_FASE,
   ZONES,
 } from '../src/vis/GameConfig';
 import {
@@ -143,13 +145,23 @@ describe('config-consistentie met het ontwerp', () => {
     // Bewust duplicaat: dit is de wisselbeveiliging tussen DESIGN.md en
     // GameConfig.ts — wie een waarde wijzigt, moet het op drie plekken menen.
     expect(SOORTEN).toEqual({
-      vlokje:       { gedrag: 'prooivis',  massa: 2,   radius: 6,  kruisSnelheid: 60, topSnelheid: 96,  score: 1,   zones: [1] },
-      stipje:       { gedrag: 'schoolvis', massa: 4,   radius: 8,  kruisSnelheid: 80, topSnelheid: 128, score: 2,   zones: [1, 2] },
-      flapper:      { gedrag: 'prooivis',  massa: 10,  radius: 12, kruisSnelheid: 90, topSnelheid: 144, score: 5,   zones: [2, 3, 4] },
-      snapper:      { gedrag: 'roofvis',   massa: 30,  radius: 17, kruisSnelheid: 70, topSnelheid: 150, score: 15,  zones: [1, 2, 3] },
-      grombaars:    { gedrag: 'roofvis',   massa: 90,  radius: 25, kruisSnelheid: 60, topSnelheid: 160, score: 40,  zones: [3, 4] },
-      diepteschrik: { gedrag: 'apex',      massa: 400, radius: 44, kruisSnelheid: 60, topSnelheid: 260, score: 150, zones: [4] },
-      kwal:         { gedrag: 'gevaar',    massa: 0,   radius: 14, kruisSnelheid: 0,  topSnelheid: 0,   score: 0,   zones: [2, 3, 4] },
+      pijltje:      { gedrag: 'schoolvis', massa: 2,   radius: 5,  kruisSnelheid: 55, topSnelheid: 88,    score: 1,   zones: [1] },
+      vlokje:       { gedrag: 'prooivis',  massa: 2,   radius: 6,  kruisSnelheid: 60, topSnelheid: 96,    score: 1,   zones: [1] },
+      stipje:       { gedrag: 'schoolvis', massa: 4,   radius: 8,  kruisSnelheid: 80, topSnelheid: 128,   score: 2,   zones: [1, 2] },
+      fonkeltje:    { gedrag: 'prooivis',  massa: 4,   radius: 9,  kruisSnelheid: 80, topSnelheid: 128,   score: 2,   zones: [4] },
+      pruillip:     { gedrag: 'prooivis',  massa: 6,   radius: 10, kruisSnelheid: 90, topSnelheid: 144,   score: 3,   zones: [1] },
+      flapper:      { gedrag: 'prooivis',  massa: 10,  radius: 12, kruisSnelheid: 90, topSnelheid: 144,   score: 5,   zones: [2, 3, 4] },
+      maantje:      { gedrag: 'prooivis',  massa: 16,  radius: 14, kruisSnelheid: 88, topSnelheid: 140.8, score: 8,   zones: [2, 3] },
+      zilverpijl:   { gedrag: 'schoolvis', massa: 24,  radius: 16, kruisSnelheid: 85, topSnelheid: 136,   score: 12,  zones: [3] },
+      snapper:      { gedrag: 'roofvis',   massa: 30,  radius: 17, kruisSnelheid: 70, topSnelheid: 150,   score: 15,  zones: [1, 2, 3] },
+      snorrebol:    { gedrag: 'prooivis',  massa: 50,  radius: 20, kruisSnelheid: 80, topSnelheid: 128,   score: 25,  zones: [4] },
+      bolwang:      { gedrag: 'prooivis',  massa: 65,  radius: 22, kruisSnelheid: 85, topSnelheid: 136,   score: 32,  zones: [3, 4] },
+      pijlbek:      { gedrag: 'roofvis',   massa: 75,  radius: 23, kruisSnelheid: 68, topSnelheid: 152,   score: 35,  zones: [2] },
+      grombaars:    { gedrag: 'roofvis',   massa: 90,  radius: 25, kruisSnelheid: 60, topSnelheid: 160,   score: 40,  zones: [3, 4] },
+      prikbek:      { gedrag: 'roofvis',   massa: 253, radius: 34, kruisSnelheid: 62, topSnelheid: 148,   score: 110, zones: [3, 4] },
+      diepteschrik: { gedrag: 'apex',      massa: 400, radius: 44, kruisSnelheid: 60, topSnelheid: 260,   score: 150, zones: [4] },
+      hengelbek:    { gedrag: 'roofvis',   massa: 900, radius: 72, kruisSnelheid: 55, topSnelheid: 138,   score: 250, zones: [4] },
+      kwal:         { gedrag: 'gevaar',    massa: 0,   radius: 14, kruisSnelheid: 0,  topSnelheid: 0,     score: 0,   zones: [2, 3, 4] },
     });
   });
 
@@ -171,10 +183,85 @@ describe('config-consistentie met het ontwerp', () => {
     }
   });
 
-  it('elke roofvis is langzamer dan de spelerfasen die hem kunnen ontmoeten als eter', () => {
-    // Snapper (150) eet alleen fase 1 (170); Grombaars (160) eet t/m fase 2 (165).
-    expect(SOORTEN.snapper.topSnelheid).toBeLessThan(170);
-    expect(SOORTEN.grombaars.topSnelheid).toBeLessThan(165);
+  it('elke roofvis is langzamer dan de spelerfasen die hij kan opeten', () => {
+    // Anders kun je bij dreiging 0 niet eens wegzwemmen van je jager. De apex
+    // is de bewuste uitzondering: zijn burst is sneller, daar is boost voor
+    // (zie DESIGN.md §3/§4) — die wordt in vis-moeilijkheid.test.ts gedekt.
+    for (const [id, soort] of Object.entries(SOORTEN)) {
+      if (soort.gedrag !== 'roofvis') continue;
+      for (const fase of FASES) {
+        if (!kanEten(soort.radius, fase.radius)) continue; // jaagt niet op deze fase
+        expect(
+          soort.topSnelheid,
+          `${id} (${soort.topSnelheid}) moet langzamer zijn dan fase ${fase.fase} (${fase.maxSnelheid})`,
+        ).toBeLessThan(fase.maxSnelheid);
+      }
+    }
+  });
+
+  it('elke fase vindt eten in een zone die hij mag betreden', () => {
+    // Niet élke zone hoeft elke fase te voeden (te diep gaan als klein visje
+    // hóórt gevaarlijk te zijn), maar geen enkele fase mag vastlopen.
+    for (const fase of FASES) {
+      const bereikbaar = ZONES.filter(
+        (z) => z.nr !== AANTAL_ZONES || fase.fase >= ZONE4_EIS_FASE,
+      );
+      const heeftEten = bereikbaar.some((z) =>
+        (Object.keys(z.gewichten) as (keyof typeof SOORTEN)[]).some(
+          (id) => SOORTEN[id].gedrag !== 'gevaar' && kanEten(fase.radius, SOORTEN[id].radius),
+        ),
+      );
+      expect(heeftEten, `fase ${fase.fase} vindt nergens eten`).toBe(true);
+    }
+  });
+
+  it('elke zone voedt minstens één fase én bedreigt minstens één fase', () => {
+    // Een zone waar niets te halen valt (of waar niets gevaarlijk is) is
+    // verspilde wereld.
+    for (const zone of ZONES) {
+      const ids = Object.keys(zone.gewichten) as (keyof typeof SOORTEN)[];
+      const voedt = FASES.some((f) =>
+        ids.some((id) => SOORTEN[id].gedrag !== 'gevaar' && kanEten(f.radius, SOORTEN[id].radius)),
+      );
+      const bedreigt = FASES.some((f) =>
+        ids.some(
+          (id) =>
+            (SOORTEN[id].gedrag === 'roofvis' || SOORTEN[id].gedrag === 'apex') &&
+            kanEten(SOORTEN[id].radius, f.radius),
+        ),
+      );
+      expect(voedt, `${zone.naam} voedt niemand`).toBe(true);
+      expect(bedreigt, `${zone.naam} bedreigt niemand`).toBe(true);
+    }
+  });
+
+  it('geen enkele fase is onsterfelijk: er bestaat altijd een jager', () => {
+    for (const fase of FASES) {
+      const jagers = Object.values(SOORTEN).filter(
+        (s) => (s.gedrag === 'roofvis' || s.gedrag === 'apex') && kanEten(s.radius, fase.radius),
+      );
+      expect(jagers.length, `niets kan een fase-${fase.fase}-speler opeten`).toBeGreaterThan(0);
+    }
+    // Ook bij de maximale massa (radius blijft dan op het fase-5-niveau).
+    const maxRadius = FASES[FASES.length - 1].radius;
+    expect(
+      Object.values(SOORTEN).some(
+        (s) => (s.gedrag === 'roofvis' || s.gedrag === 'apex') && kanEten(s.radius, maxRadius),
+      ),
+    ).toBe(true);
+  });
+
+  it('vluchtende prooi is in te halen door de fase die hem mag eten', () => {
+    for (const [id, soort] of Object.entries(SOORTEN)) {
+      if (soort.gedrag !== 'prooivis' && soort.gedrag !== 'schoolvis') continue;
+      const eersteFase = FASES.find((f) => kanEten(f.radius, soort.radius));
+      expect(eersteFase, `${id} is voor geen enkele fase eetbaar`).toBeDefined();
+      if (!eersteFase) continue;
+      expect(
+        soort.topSnelheid,
+        `${id} vlucht sneller (${soort.topSnelheid}) dan fase ${eersteFase.fase} zwemt`,
+      ).toBeLessThan(eersteFase.maxSnelheid);
+    }
   });
 
   it('fasedrempels en zone-gewichten zijn oplopend/kloppend', () => {

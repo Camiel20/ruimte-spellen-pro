@@ -16,6 +16,7 @@ import {
   spawnGewichten,
   verdeelVerschuiving,
 } from '../src/vis/logic/moeilijkheid';
+import { kanEten } from '../src/vis/logic/regels';
 
 describe('dreigingsniveau', () => {
   it('stijgt met 1 per 30 s en stopt op 10', () => {
@@ -69,23 +70,55 @@ describe('snelheids-scaling', () => {
       FASES[1].maxSnelheid * BOOST_FACTOR,
     );
   });
+
+  it('boost blijft ontsnappen mogelijk maken voor élke roofvis, ook op maximale dreiging', () => {
+    for (const [id, soort] of Object.entries(SOORTEN)) {
+      if (soort.gedrag !== 'roofvis' && soort.gedrag !== 'apex') continue;
+      // De apex-burst schaalt niet mee; roofvissen wel.
+      const maxJaag = soort.gedrag === 'apex' ? soort.topSnelheid : soort.topSnelheid * jaagFactor(DREIGING_MAX);
+      for (const fase of FASES) {
+        if (!kanEten(soort.radius, fase.radius)) continue;
+        expect(
+          maxJaag,
+          `fase ${fase.fase} kan niet met boost ontsnappen aan ${id}`,
+        ).toBeLessThan(fase.maxSnelheid * BOOST_FACTOR);
+      }
+    }
+  });
 });
 
 describe('spawngewichten', () => {
-  it('niveau 0 = de basisgewichten', () => {
-    expect(spawnGewichten(1, 0)).toEqual({ vlokje: 55, stipje: 35, snapper: 10 });
+  it('niveau 0 = de basisgewichten uit de config', () => {
+    for (const zone of ZONES) {
+      expect(spawnGewichten(zone.nr, 0)).toEqual(zone.gewichten);
+    }
   });
 
-  it('zone 1 op niveau 10: Snapper 30, Vlokje 35', () => {
-    expect(spawnGewichten(1, 10)).toEqual({ vlokje: 35, stipje: 35, snapper: 30 });
+  it('zone 1 op niveau 10: de volle 20 pp gaat naar de enige roofvis', () => {
+    expect(spawnGewichten(1, 10)).toEqual({
+      vlokje: 27, pruillip: 23, snapper: 36, pijltje: 8, stipje: 6,
+    });
   });
 
-  it('zone 2 op niveau 3: +6 pp naar Snapper, Flapper −6', () => {
-    expect(spawnGewichten(2, 3)).toEqual({ stipje: 30, flapper: 29, snapper: 31, kwal: 10 });
+  it('zone 2 op niveau 3: 6 pp naar rato over Snapper en Pijlbek', () => {
+    const g = spawnGewichten(2, 3);
+    expect(g.flapper).toBeCloseTo(28, 6); // 34 − 6
+    expect(g.snapper).toBeCloseTo(17 + (6 * 17) / 29, 6);
+    expect(g.pijlbek).toBeCloseTo(12 + (6 * 12) / 29, 6);
   });
 
-  it('zone 3 verdeelt naar rato over Snapper en Grombaars (+1/+1 per stap)', () => {
-    expect(spawnGewichten(3, 10)).toEqual({ flapper: 10, snapper: 40, grombaars: 40, kwal: 10 });
+  it('zone 3 verdeelt naar rato over drie roofvissen en stopt op de prooivloer', () => {
+    const g = spawnGewichten(3, 10);
+    expect(g.flapper).toBeCloseTo(10, 6); // 28 − 18 = vloer
+    expect(g.snapper).toBeCloseTo(12 + (18 * 12) / 32, 6);
+    expect(g.grombaars).toBeCloseTo(10 + (18 * 10) / 32, 6);
+    expect(g.prikbek).toBeCloseTo(10 + (18 * 10) / 32, 6);
+  });
+
+  it('zone 4 stopt op de prooivloer en schuift daarna niet verder', () => {
+    const g10 = spawnGewichten(4, 10);
+    expect(g10.flapper).toBeCloseTo(10, 6); // 24 − 14
+    expect(spawnGewichten(4, 50)).toEqual(g10);
   });
 
   it('verdeelt naar rato, ook bij ongelijke roofvisgewichten', () => {
@@ -97,11 +130,6 @@ describe('spawngewichten', () => {
       6,
     );
     expect(nieuw).toEqual({ snapper: 44, grombaars: 22, flapper: 30, kwal: 10 });
-  });
-
-  it('zone 4 stopt op +10 pp (Flapper-vloer van 10%)', () => {
-    expect(spawnGewichten(4, 5)).toEqual({ flapper: 10, grombaars: 70, kwal: 20 });
-    expect(spawnGewichten(4, 10)).toEqual({ flapper: 10, grombaars: 70, kwal: 20 }); // niet verder
   });
 
   it('alle zones × alle niveaus: som 100, niets negatief, snoep ≥ vloer', () => {

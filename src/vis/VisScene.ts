@@ -45,6 +45,7 @@ import {
   maakNpcTexturen,
   maakSpelerTexturen,
   maakVignet,
+  texSchaalVoor,
 } from './graphics';
 import { Geluid } from './geluid';
 import { stopMusic } from '../music.js';
@@ -92,6 +93,11 @@ interface Speler {
 
 type Status = 'spelen' | 'pauze' | 'dood';
 
+// Maatvoering van de dieptemeter rechts in beeld (alleen opmaak, geen speltuning).
+const DM_X = CFG.SCHERM_B - 20;
+const DM_Y = 96;
+const DM_H = 300;
+
 export default class VisScene extends Phaser.Scene {
   private save = new SaveManager();
   private saveData!: SaveData;
@@ -117,6 +123,7 @@ export default class VisScene extends Phaser.Scene {
   private laagMid!: Phaser.GameObjects.TileSprite;
   private vignet!: Phaser.GameObjects.Image;
   private grensBand!: Phaser.GameObjects.Rectangle;
+  private grensLabel!: Phaser.GameObjects.Text;
   private bellen: Phaser.GameObjects.Image[] = [];
   private plankton: Phaser.GameObjects.Image[] = [];
   private spoor: Phaser.GameObjects.Image[] = [];
@@ -130,6 +137,12 @@ export default class VisScene extends Phaser.Scene {
   private scoreTekst!: Phaser.GameObjects.Text;
   private laatsteScore = -1;
   private pauzeKnop!: Phaser.GameObjects.Text;
+  private zoneTekst!: Phaser.GameObjects.Text;
+  private zoneTekstT = 0; // s dat de zonenaam nog blijft staan
+  private laatsteZone = 0;
+  private hintTekst!: Phaser.GameObjects.Text;
+  private hintT = 0; // s dat de hint nog blijft staan
+  private duikHintGehad = false; // de duik-hint komt één keer per ronde
 
   // Besturing
   private toetsen: Record<string, Phaser.Input.Keyboard.Key> = {};
@@ -293,9 +306,22 @@ export default class VisScene extends Phaser.Scene {
     this.grensBand = this.add
       .rectangle(CFG.WERELD_B / 2, CFG.GRENS_Y, CFG.WERELD_B, 26, 0x9be7ff, 0.35)
       .setDepth(-5);
+    // Zonder uitleg is een gekleurde streep een raadsel: vertel wat er moet.
+    this.grensLabel = this.add
+      .text(CFG.WERELD_B / 2, CFG.GRENS_Y - 26, '', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '18px',
+        color: '#e8fbff',
+        backgroundColor: '#03101f99',
+        padding: { x: 12, y: 6 },
+      })
+      .setOrigin(0.5)
+      .setDepth(-4);
 
+    const vignetGrootte = Math.ceil(Math.sqrt(CFG.SCHERM_B ** 2 + CFG.SCHERM_H ** 2));
     this.vignet = this.add
       .image(CFG.SCHERM_B / 2, CFG.SCHERM_H / 2, TEX.vignet)
+      .setDisplaySize(vignetGrootte, vignetGrootte)
       .setScrollFactor(0)
       .setDepth(40)
       .setAlpha(0);
@@ -359,6 +385,41 @@ export default class VisScene extends Phaser.Scene {
     achter.fillCircle(CFG.SCHERM_B - 30, 30, 22);
     achter.fillStyle(0x03101f, 0.3);
     achter.fillRoundedRect(10, CFG.SCHERM_H - 28, CFG.SCHERM_B - 20, 16, 8);
+
+    // Dieptemeter langs de rechterrand: de vier zones als gekleurde banden,
+    // zodat je zíet dat er nog drie werelden onder je liggen.
+    achter.fillStyle(0x03101f, 0.3);
+    achter.fillRoundedRect(DM_X - 7, DM_Y - 8, 14, DM_H + 16, 7);
+    for (let i = 0; i < CFG.AANTAL_ZONES; i++) {
+      const bandY = DM_Y + (i * DM_H) / CFG.AANTAL_ZONES;
+      const bandH = DM_H / CFG.AANTAL_ZONES - 3;
+      achter.fillStyle(ZONE_LUCHT[i][1], 0.95);
+      achter.fillRoundedRect(DM_X - 4, bandY, 8, bandH, 4);
+    }
+
+    this.zoneTekst = this.add
+      .text(CFG.SCHERM_B / 2, 84, '', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '20px',
+        color: '#ffffff',
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(102)
+      .setAlpha(0);
+
+    this.hintTekst = this.add
+      .text(CFG.SCHERM_B / 2, CFG.SCHERM_H * 0.62, '', {
+        fontFamily: 'Arial Black, Arial',
+        fontSize: '17px',
+        color: '#ffffff',
+        backgroundColor: '#03101fbb',
+        padding: { x: 12, y: 7 },
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(102)
+      .setAlpha(0);
 
     this.hudBalken = this.add.graphics().setScrollFactor(0).setDepth(100);
     this.scoreTekst = this.add
@@ -532,7 +593,18 @@ export default class VisScene extends Phaser.Scene {
     for (const f of this.flitsen) f.setVisible(false);
     this.tekenSpeler();
 
-    this.grensBand.setVisible(!this.save.zone4Ontgrendeld(this.saveData));
+    const opSlot = !this.save.zone4Ontgrendeld(this.saveData);
+    this.grensBand.setVisible(opSlot);
+    this.grensLabel
+      .setVisible(opSlot)
+      .setText(`❄ Koud water — haal eerst fase ${CFG.ZONE4_EIS_FASE}`);
+
+    this.laatsteZone = zoneVoorY(CFG.START_POS.y);
+    this.zoneTekstT = 0;
+    this.zoneTekst.setAlpha(0);
+    this.hintT = 0;
+    this.hintTekst.setAlpha(0);
+    this.duikHintGehad = false;
 
     // Camera meteen op de speler, zodat de eerste spawns écht buiten beeld
     // vallen (de spawnring rekent met het cameracentrum).
@@ -905,7 +977,7 @@ export default class VisScene extends Phaser.Scene {
         .setTexture(TEX.soort(soort, 0))
         .setPosition(x, y)
         .setVisible(true)
-        .setScale(TEX_SCHAAL)
+        .setScale(texSchaalVoor(cfg.radius))
         .setAlpha(1)
         .setFlipY(false)
         .setRotation(0);
@@ -940,6 +1012,7 @@ export default class VisScene extends Phaser.Scene {
     this.updateSpawner(dt);
     this.updateBellen(dt);
     this.updateFlitsen(dt);
+    this.updateMeldingen(dt);
     this.tekenHud();
   }
 
@@ -1071,7 +1144,7 @@ export default class VisScene extends Phaser.Scene {
     const s = this.speler;
     const faseCfg = this.faseCfg[s.fase] ?? CFG.FASES[0];
     s.sprite.setPosition(s.pos.x, s.pos.y);
-    s.sprite.setScale((s.radius / faseCfg.radius) * TEX_SCHAAL);
+    s.sprite.setScale((s.radius / faseCfg.radius) * texSchaalVoor(faseCfg.radius));
     s.sprite.setRotation(s.hoek);
     s.sprite.setFlipY(Math.cos(s.hoek) < 0);
     s.sprite.setAlpha(s.onkwetsbaarT > 0 ? 0.55 : 1);
@@ -1553,6 +1626,45 @@ export default class VisScene extends Phaser.Scene {
     return (r << 16) | (g << 8) | bl;
   }
 
+  /**
+   * Zonenaam bij het passeren van een grens, plus één duik-hint zodra de
+   * speler groot genoeg is maar nog in de startzone rondhangt. Zonder deze
+   * twee dingen merkt een kind niet dat er drie zones onder hem liggen.
+   */
+  private updateMeldingen(dt: number): void {
+    const zone = zoneVoorY(this.speler.pos.y);
+    if (zone !== this.laatsteZone) {
+      this.laatsteZone = zone;
+      const cfg = CFG.ZONES.find((z) => z.nr === zone);
+      this.zoneTekst.setText(cfg ? cfg.naam.toUpperCase() : '');
+      this.zoneTekstT = CFG.HINT_DUUR;
+      this.zoneTekst.setAlpha(1);
+    }
+    if (this.zoneTekstT > 0) {
+      this.zoneTekstT -= dt;
+      this.zoneTekst.setAlpha(Math.min(1, this.zoneTekstT / 0.8));
+    }
+
+    if (
+      !this.duikHintGehad &&
+      this.speler.fase >= CFG.HINT_DIEPTE_FASE &&
+      zone === 1 &&
+      this.status === 'spelen'
+    ) {
+      this.duikHintGehad = true;
+      this.toonHint('Zwem naar beneden ↓  daar zwemt groter eten');
+    }
+    if (this.hintT > 0) {
+      this.hintT -= dt;
+      this.hintTekst.setAlpha(Math.min(1, this.hintT / 0.8));
+    }
+  }
+
+  private toonHint(tekst: string): void {
+    this.hintTekst.setText(tekst).setAlpha(1);
+    this.hintT = CFG.HINT_DUUR;
+  }
+
   private tekenHud(): void {
     if (this.score !== this.laatsteScore) {
       this.scoreTekst.setText(String(this.score));
@@ -1588,6 +1700,22 @@ export default class VisScene extends Phaser.Scene {
     g.fillStyle(0xffffff, 0.9);
     const drempelX = bx + bb * (CFG.BOOST_START_MIN / CFG.ENERGIE_MAX);
     g.fillRect(drempelX, by - 3, 2, 14);
+
+    // Dieptemeter: waar zwem ik, en welk stuk zit nog op slot?
+    const deelDiepte = Phaser.Math.Clamp(s.pos.y / CFG.WERELD_H, 0, 1);
+    const markerY = DM_Y + deelDiepte * DM_H;
+    if (!this.save.zone4Ontgrendeld(this.saveData)) {
+      // grendelstrepen over de laatste band
+      const slotY = DM_Y + (DM_H * (CFG.AANTAL_ZONES - 1)) / CFG.AANTAL_ZONES;
+      g.fillStyle(0x03101f, 0.75);
+      g.fillRoundedRect(DM_X - 4, slotY, 8, DM_H / CFG.AANTAL_ZONES - 3, 4);
+      g.fillStyle(0xffffff, 0.5);
+      for (let i = 0; i < 3; i++) g.fillRect(DM_X - 4, slotY + 6 + i * 8, 8, 2);
+    }
+    g.fillStyle(0xffffff, 1);
+    g.fillTriangle(DM_X - 14, markerY, DM_X - 8, markerY - 5, DM_X - 8, markerY + 5);
+    g.fillStyle(0xffd60a, 1);
+    g.fillCircle(DM_X, markerY, 3.5);
 
     // De zwiepknop laat zien of er genoeg energie is om te starten.
     const kanZwiepen = s.boostAan || magBoostStarten(s.energie);

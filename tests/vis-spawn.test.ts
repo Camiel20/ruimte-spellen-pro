@@ -108,39 +108,43 @@ describe('soortkeuze', () => {
   it('volgt de zone-gewichten bij benadering (zone 1, niveau 0)', () => {
     const rng = maakRng(99);
     const tellingen: Record<string, number> = {};
-    const n = 2000;
+    const n = 4000;
     for (let i = 0; i < n; i++) {
       const soort = kiesSoort(1, 0, rng);
       tellingen[soort] = (tellingen[soort] ?? 0) + 1;
     }
-    expect((tellingen.vlokje ?? 0) / n).toBeGreaterThan(0.5);
-    expect((tellingen.vlokje ?? 0) / n).toBeLessThan(0.6);
-    expect((tellingen.snapper ?? 0) / n).toBeGreaterThan(0.05);
-    expect((tellingen.snapper ?? 0) / n).toBeLessThan(0.15);
+    expect((tellingen.vlokje ?? 0) / n).toBeGreaterThan(0.42); // basis 47%
+    expect((tellingen.vlokje ?? 0) / n).toBeLessThan(0.52);
+    expect((tellingen.snapper ?? 0) / n).toBeGreaterThan(0.12); // basis 16%
+    expect((tellingen.snapper ?? 0) / n).toBeLessThan(0.2);
   });
 
   it('het dreigingsniveau werkt door in de soortkeuze', () => {
     // Met rng 0,4 valt de keuze in zone 1 op niveau 0 nog in de Vlokje-band
-    // (55%), maar op niveau 10 (Vlokje nog 35%) in de Stipje-band erna.
+    // (47%), maar op niveau 10 (Vlokje nog 27%) in de band daarna.
     const vast: Rng = () => 0.4;
     expect(kiesSoort(1, 0, vast)).toBe('vlokje');
-    expect(kiesSoort(1, 10, vast)).toBe('stipje');
+    expect(kiesSoort(1, 10, vast)).toBe('pruillip');
   });
 
-  it('zone 1 op niveau 10: het Snapper-aandeel is naar ±30% geschoven', () => {
+  it('zone 1 op niveau 10: het Snapper-aandeel is naar ±36% geschoven', () => {
     const rng = maakRng(77);
-    const n = 2000;
+    const n = 4000;
     let snapper = 0;
     for (let i = 0; i < n; i++) if (kiesSoort(1, 10, rng) === 'snapper') snapper++;
-    expect(snapper / n).toBeGreaterThan(0.25);
-    expect(snapper / n).toBeLessThan(0.35);
+    expect(snapper / n).toBeGreaterThan(0.31);
+    expect(snapper / n).toBeLessThan(0.41);
   });
 
-  it('zone 4 levert nooit Snapper of Diepteschrik (die spawnt via de aparte apex-regel)', () => {
+  it('elke zone levert alleen soorten die daar volgens de config horen', () => {
     const rng = maakRng(5);
-    for (let i = 0; i < 500; i++) {
-      const soort = kiesSoort(4, 10, rng);
-      expect(['flapper', 'grombaars', 'kwal']).toContain(soort);
+    for (const zone of ZONES) {
+      const toegestaan = Object.keys(zone.gewichten);
+      for (let i = 0; i < 400; i++) {
+        for (const niveau of [0, 10]) {
+          expect(toegestaan).toContain(kiesSoort(zone.nr, niveau, rng));
+        }
+      }
     }
   });
 });

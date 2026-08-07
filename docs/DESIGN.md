@@ -32,13 +32,30 @@ de eter-radius ("mond raakt") én de eetregel geldt.
 
 | Soort        | Gedrag     | Massa | Radius (px) | Kruissnelheid (px/s) | Topsnelheid (px/s) | Score | Zones |
 |--------------|------------|------:|------------:|---------------------:|-------------------:|------:|-------|
+| Pijltje      | schoolvis  |     2 |           5 |                   55 |          88 (×1,6) |     1 | 1     |
 | Vlokje       | prooivis   |     2 |           6 |                   60 |          96 (×1,6) |     1 | 1     |
 | Stipje       | schoolvis  |     4 |           8 |                   80 |         128 (×1,6) |     2 | 1–2   |
+| Fonkeltje    | prooivis   |     4 |           9 |                   80 |         128 (×1,6) |     2 | 4     |
+| Pruillip     | prooivis   |     6 |          10 |                   90 |         144 (×1,6) |     3 | 1     |
 | Flapper      | prooivis   |    10 |          12 |                   90 |         144 (×1,6) |     5 | 2–4   |
+| Maantje      | prooivis   |    16 |          14 |                   88 |       140,8 (×1,6) |     8 | 2–3   |
+| Zilverpijl   | schoolvis  |    24 |          16 |                   85 |         136 (×1,6) |    12 | 3     |
 | Snapper      | roofvis    |    30 |          17 |                   70 |         150 (jaag) |    15 | 1–3   |
+| Snorrebol    | prooivis   |    50 |          20 |                   80 |         128 (×1,6) |    25 | 4     |
+| Bolwang      | prooivis   |    65 |          22 |                   85 |         136 (×1,6) |    32 | 3–4   |
+| Pijlbek      | roofvis    |    75 |          23 |                   68 |         152 (jaag) |    35 | 2     |
 | Grombaars    | roofvis    |    90 |          25 |                   60 |         160 (jaag) |    40 | 3–4   |
+| Prikbek      | roofvis    |   253 |          34 |                   62 |         148 (jaag) |   110 | 3–4   |
 | Diepteschrik | apex (zeldzaam) | 400 |     44 |                   60 |        260 (burst) |   150 | 4     |
+| Hengelbek    | roofvis    |   900 |          72 |                   55 |         138 (jaag) |   250 | 4     |
 | Kwal         | gevaar (geen vis) | — |     14 |          zie onder |                  — |     0 | 2–4   |
+
+De ladder is bewust dicht bezet: bij elke spelergrootte zwemt er in de zone waar
+je hoort iets eetbaars én iets gevaarlijks. Twee grenzen zijn kritiek: de
+**Prikbek** (34) dekt fase 3 (eet t/m radius 27,2) en de **Hengelbek** (72) eet
+óók een volgroeide speler (72 × 0,8 = 57,6 > 56) en is zelf nooit eetbaar — die
+zorgt dat de ronde altijd kan eindigen. De Hengelbek-score van 250 is daarmee
+onbereikbaar in v1 en staat er alleen voor de volledigheid.
 
 Prooivissen vluchten op `VLUCHT_FACTOR = 1.6` × kruissnelheid; jaag-/burstsnelheden
 staan los in de tabel. Alle NPC's: acceleratie `NPC_ACCEL = 300` px/s², draaisnelheid
@@ -78,8 +95,9 @@ Ter controle: fasestap 1→2 ≈ 20 Vlokjes (of 10 Stipjes), 2→3 ≈ 10 Flappe
 fase 5 (44 ≤ 56 × 0,8) en kan de speler eten zolang die radius < 35,2 heeft (t/m begin
 fase 4). **Snelheidsbalans (bij dreiging 0; §6 beschrijft hoe dit verschuift):** elke roofvis
 is langzamer dan de spelerfasen die hij kan opeten — Snapper 150 < 170 (eet alleen
-fase 1, radius ≤ 13,6), Grombaars 160 < 165 (eet t/m radius 20, d.w.z. fase 2,
-massa ≈ 51). Alleen de Diepteschrik-burst (260) is
+fase 1), Pijlbek 152 < 165 (t/m radius 18,4), Grombaars 160 < 165 (t/m radius 20),
+Prikbek 148 < 160 (t/m radius 27,2), Hengelbek 138 < 150 (eet álles). Deze regel
+wordt in `tests/vis-regels.test.ts` over de hele tabel afgedwongen. Alleen de Diepteschrik-burst (260) is
 sneller dan zwemmen; daarvoor is boost nodig (fase 4: 155 × 1,8 = 279 > 260; fase 5:
 150 × 1,8 = 270 > 260) en de burst schaalt niet mee met de dreiging (§6).
 
@@ -115,16 +133,20 @@ de speler wordt geclampt op de wereldbounds; NPC-dwaalrichtingen spiegelen naar 
 binnen `RAND_MARGE = 100` px van een rand. Geen harde zone-binding: een NPC die > 200 px
 buiten zijn zoneband dwaalt, buigt zijn dwaalrichting terug.
 
+Een gewicht is de kans op één **spawn-actie**; een schoolvis-actie zet meteen
+`SCHOOL_SPAWN_N` vissen neer. Schoolsoorten hebben daarom een laag gewicht — hun
+aandeel in wat je ziet is ongeveer vijf keer zo groot.
+
 | Zone | Naam        | Diepte (px) | Spawngewichten                                | Sfeer / gevaar |
 |-----:|-------------|-------------|-----------------------------------------------|----------------|
-| 1    | Riffel-rif  | 0–1200      | Vlokje 55%, Stipje 35%, Snapper 10%           | licht, veilig begin |
-| 2    | Open Blauw  | 1200–2400   | Stipje 30%, Flapper 35%, Snapper 25%, Kwal 10% | eerste kwallen |
-| 3    | Schemerlaag | 2400–3600   | Flapper 30%, Snapper 30%, Grombaars 30%, Kwal 10% | donkerder tint |
-| 4    | Inktdiepte  | 3600–4800   | Flapper 20%, Grombaars 60%, Kwal 20% (+ Diepteschrik-regel) | donkerste laag; zichtvignet rond de speler, straal 420 px |
+| 1    | Riffel-rif  | 0–1200      | Vlokje 47, Pruillip 23, Snapper 16, Pijltje 8, Stipje 6 | licht, veilig begin |
+| 2    | Open Blauw  | 1200–2400   | Flapper 34, Maantje 23, Snapper 17, Pijlbek 12, Kwal 11, Stipje 3 | eerste kwallen |
+| 3    | Schemerlaag | 2400–3600   | Flapper 28, Maantje 16, Bolwang 12, Snapper 12, Grombaars 10, Prikbek 10, Kwal 8, Zilverpijl 4 | donkerder tint |
+| 4    | Inktdiepte  | 3600–4800   | Flapper 24, Fonkeltje 20, Snorrebol 15, Bolwang 12, Grombaars 11, Prikbek 8, Hengelbek 6, Kwal 4 (+ Diepteschrik-regel) | donkerste laag; zichtvignet rond de speler, straal 420 px |
 
-**Koudwatergrens:** vóór ontgrendeling (1× fase 4 gehaald, permanent — §7) duwt de
+**Koudwatergrens:** vóór ontgrendeling (1× fase 3 gehaald, permanent — §7) duwt de
 grens op y = 3600 de speler terug met `GRENS_DUW = 200` px/s, met een zichtbare
-kleurband. **Spawnen: nooit in of vlak bij beeld** — afstand tot het cameracentrum
+kleurband én een bordje dat vertelt wat je moet halen. **Spawnen: nooit in of vlak bij beeld** — afstand tot het cameracentrum
 ≥ halve schermdiagonaal + `SPAWN_MARGE = 200` px (bij 480×800: ≈ 467 + 200 = 667 px);
 despawn bij > 1600 px. Maximaal `MAX_ACTIEF = 60` actieve entiteiten (incl. kwallen)
 uit een object-pool van 80; doelbezetting = 50 entiteiten binnen de despawnstraal
@@ -172,13 +194,17 @@ moeilijkheidscurve, spawnafstand + soortkeuze, SaveManager (localStorage-stub).
 Integratie: `src/main.js` registreert `VisScene`; menutegel 🐟 in `MenuScene`.
 
 **HUD:** score linksboven, energiebalk onderin (met drempelstreep op 10),
-fase-voortgangsbalkje (massa → volgende drempel), pauzeknop rechtsboven. Massa-getal
-en dreiging worden níet getoond. **Records (SaveManager):** hoogsteScore,
+fase-voortgangsbalkje (massa → volgende drempel), pauzeknop rechtsboven, en langs
+de rechterrand een **dieptemeter**: de vier zones als gekleurde banden met een
+markering waar je zwemt en strepen over de zone die nog op slot zit. Bij het
+passeren van een zonegrens verschijnt kort de zonenaam, en zodra je fase
+`HINT_DIEPTE_FASE` haalt terwijl je nog in zone 1 rondhangt, wijst een eenmalige
+hint naar beneden. Massa-getal en dreiging worden níet getoond. **Records (SaveManager):** hoogsteScore,
 langsteOverleving (s), grootsteMassa (+ bijbehorende fase = "grootste vis"),
 meesteGegeten (één ronde), laatste 5 rondes {score, duur, fase, gegeten, datum},
 totaalGegeten, gekozenKleur, gekozenSkin. **Unlocks:** kleuren Groen/Paars/Goud bij
 score ≥ 500 / 2000 / 5000; visvorm-skin "Neonvisje" bij 100 totaal gegeten;
-"Stekelbaars" bij 1× fase 5; zone 4 bij 1× fase 4. Kiezen op de dood-/pauze-overlay
+"Stekelbaars" bij 1× fase 5; zone 4 bij 1× fase 3. Kiezen op de dood-/pauze-overlay
 (§1); skins/kleuren zijn puur cosmetisch. Score = som van de score-kolom in §2, alleen
 door te eten.
 

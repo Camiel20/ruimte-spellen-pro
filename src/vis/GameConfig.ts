@@ -6,12 +6,22 @@
 export type Gedrag = 'prooivis' | 'schoolvis' | 'roofvis' | 'apex' | 'gevaar';
 
 export type SoortId =
+  | 'pijltje'
   | 'vlokje'
   | 'stipje'
+  | 'fonkeltje'
+  | 'pruillip'
   | 'flapper'
+  | 'maantje'
+  | 'zilverpijl'
   | 'snapper'
+  | 'snorrebol'
+  | 'bolwang'
+  | 'pijlbek'
   | 'grombaars'
+  | 'prikbek'
   | 'diepteschrik'
+  | 'hengelbek'
   | 'kwal';
 
 export interface SoortConfig {
@@ -28,13 +38,32 @@ export interface SoortConfig {
 export const EET_FACTOR = 0.8; // verhouding: eetbaar als prooiRadius <= eterRadius × dit
 
 // ── Voedselketen (tabel §2 van DESIGN.md) ───────────────────────────────────
+// De radius-ladder is bewust dicht bezet: bij elke spelergrootte moet er in de
+// zone waar je hoort iets eetbaars ÉN iets gevaarlijks zwemmen. Een roofvis met
+// radius R eet spelers t/m R × EET_FACTOR; controleer die keten bij elke wijziging
+// (tests/vis-regels.test.ts pint de tabel vast).
 export const SOORTEN: Record<SoortId, SoortConfig> = {
+  // ── kleine hapjes ─────────────────────────────────────────────────────────
+  pijltje:      { gedrag: 'schoolvis', massa: 2,   radius: 5,  kruisSnelheid: 55, topSnelheid: 88,  score: 1,   zones: [1] },
   vlokje:       { gedrag: 'prooivis',  massa: 2,   radius: 6,  kruisSnelheid: 60, topSnelheid: 96,  score: 1,   zones: [1] },
   stipje:       { gedrag: 'schoolvis', massa: 4,   radius: 8,  kruisSnelheid: 80, topSnelheid: 128, score: 2,   zones: [1, 2] },
+  fonkeltje:    { gedrag: 'prooivis',  massa: 4,   radius: 9,  kruisSnelheid: 80, topSnelheid: 128, score: 2,   zones: [4] },
+  pruillip:     { gedrag: 'prooivis',  massa: 6,   radius: 10, kruisSnelheid: 90, topSnelheid: 144, score: 3,   zones: [1] },
   flapper:      { gedrag: 'prooivis',  massa: 10,  radius: 12, kruisSnelheid: 90, topSnelheid: 144, score: 5,   zones: [2, 3, 4] },
+  maantje:      { gedrag: 'prooivis',  massa: 16,  radius: 14, kruisSnelheid: 88, topSnelheid: 140.8, score: 8, zones: [2, 3] },
+  zilverpijl:   { gedrag: 'schoolvis', massa: 24,  radius: 16, kruisSnelheid: 85, topSnelheid: 136, score: 12,  zones: [3] },
+  // ── middenmoot: prooi én jager ────────────────────────────────────────────
   snapper:      { gedrag: 'roofvis',   massa: 30,  radius: 17, kruisSnelheid: 70, topSnelheid: 150, score: 15,  zones: [1, 2, 3] },
+  snorrebol:    { gedrag: 'prooivis',  massa: 50,  radius: 20, kruisSnelheid: 80, topSnelheid: 128, score: 25,  zones: [4] },
+  bolwang:      { gedrag: 'prooivis',  massa: 65,  radius: 22, kruisSnelheid: 85, topSnelheid: 136, score: 32,  zones: [3, 4] },
+  pijlbek:      { gedrag: 'roofvis',   massa: 75,  radius: 23, kruisSnelheid: 68, topSnelheid: 152, score: 35,  zones: [2] },
   grombaars:    { gedrag: 'roofvis',   massa: 90,  radius: 25, kruisSnelheid: 60, topSnelheid: 160, score: 40,  zones: [3, 4] },
+  // ── zwaargewichten ────────────────────────────────────────────────────────
+  prikbek:      { gedrag: 'roofvis',   massa: 253, radius: 34, kruisSnelheid: 62, topSnelheid: 148, score: 110, zones: [3, 4] },
   diepteschrik: { gedrag: 'apex',      massa: 400, radius: 44, kruisSnelheid: 60, topSnelheid: 260, score: 150, zones: [4] },
+  // De Hengelbek is de enige die ook een volgroeide speler (radius 56) opeet:
+  // 72 × 0,8 = 57,6. Zelf is hij nooit eetbaar — hij blijft dus altijd gevaarlijk.
+  hengelbek:    { gedrag: 'roofvis',   massa: 900, radius: 72, kruisSnelheid: 55, topSnelheid: 138, score: 250, zones: [4] },
   kwal:         { gedrag: 'gevaar',    massa: 0,   radius: 14, kruisSnelheid: 0,  topSnelheid: 0,   score: 0,   zones: [2, 3, 4] },
 };
 
@@ -143,11 +172,22 @@ export interface ZoneConfig {
   snoepSoort: SoortId; // grootste basis-prooigewicht: hiervan snoept de dreiging af
 }
 
+// LET OP: een gewicht is de kans op één SPAWN-ACTIE, en een schoolvis-actie zet
+// SCHOOL_SPAWN_N vissen neer. Schoolsoorten hebben hier dus een laag gewicht:
+// hun aandeel in wat je ziet is ongeveer vijf keer zo groot.
 export const ZONES: ZoneConfig[] = [
-  { nr: 1, naam: 'Riffel-rif',  vanY: 0,    totY: 1200, gewichten: { vlokje: 55, stipje: 35, snapper: 10 },               snoepSoort: 'vlokje' },
-  { nr: 2, naam: 'Open Blauw',  vanY: 1200, totY: 2400, gewichten: { stipje: 30, flapper: 35, snapper: 25, kwal: 10 },    snoepSoort: 'flapper' },
-  { nr: 3, naam: 'Schemerlaag', vanY: 2400, totY: 3600, gewichten: { flapper: 30, snapper: 30, grombaars: 30, kwal: 10 }, snoepSoort: 'flapper' },
-  { nr: 4, naam: 'Inktdiepte',  vanY: 3600, totY: 4800, gewichten: { flapper: 20, grombaars: 60, kwal: 20 },              snoepSoort: 'flapper' },
+  { nr: 1, naam: 'Riffel-rif',  vanY: 0,    totY: 1200,
+    gewichten: { vlokje: 47, pruillip: 23, snapper: 16, pijltje: 8, stipje: 6 },
+    snoepSoort: 'vlokje' },
+  { nr: 2, naam: 'Open Blauw',  vanY: 1200, totY: 2400,
+    gewichten: { flapper: 34, maantje: 23, snapper: 17, pijlbek: 12, kwal: 11, stipje: 3 },
+    snoepSoort: 'flapper' },
+  { nr: 3, naam: 'Schemerlaag', vanY: 2400, totY: 3600,
+    gewichten: { flapper: 28, maantje: 16, bolwang: 12, snapper: 12, grombaars: 10, prikbek: 10, kwal: 8, zilverpijl: 4 },
+    snoepSoort: 'flapper' },
+  { nr: 4, naam: 'Inktdiepte',  vanY: 3600, totY: 4800,
+    gewichten: { flapper: 24, fonkeltje: 20, snorrebol: 15, bolwang: 12, grombaars: 11, prikbek: 8, hengelbek: 6, kwal: 4 },
+    snoepSoort: 'flapper' },
 ];
 
 // ── Spawnen & pooling ───────────────────────────────────────────────────────
@@ -170,6 +210,9 @@ export const DREIGING_SNELHEID_PER_STAP = 0.02; // jaagsnelheid roofvis +2% per 
 export const DREIGING_SNELHEID_MAX = 0.2; // max +20% (apex-burst en vlucht schalen NIET mee)
 
 // ── HUD & besturing ─────────────────────────────────────────────────────────
+export const HINT_DIEPTE_FASE = 2; // vanaf deze fase wijst een hint naar beneden
+export const HINT_DUUR = 3.5; // s dat zo'n hint blijft staan
+
 export const JOYSTICK_STRAAL = 60; // px virtuele joystick (mobiel, links)
 export const JOYSTICK_DODE_ZONE = 10; // px dode zone in het midden
 export const JOYSTICK_ZONE_B = 0.62; // aandeel schermbreedte waarin een tik stuurt
@@ -180,7 +223,7 @@ export const BOOSTKNOP_STRAAL = 72; // px boostknop (mobiel, rechts)
 export const OPSLAG_SLEUTEL = 'hapvis_v1'; // localStorage-sleutel
 export const LAATSTE_N_RONDES = 5; // bewaarde recente rondes
 
-export const ZONE4_EIS_FASE = 4; // zone 4 ontgrendelt na 1× deze fase bereiken
+export const ZONE4_EIS_FASE = 3; // zone 4 ontgrendelt na 1× deze fase bereiken
 export const SKIN_NEON_EIS_GEGETEN = 100; // totaal gegeten voor skin "Neonvisje"
 export const SKIN_STEKELBAARS_EIS_FASE = 5; // 1× deze fase voor skin "Stekelbaars"
 
